@@ -1,0 +1,41 @@
+{
+  "name": "ss-journey-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SS Journey (SuccessSign Journey) — Professional Scalable Travel Booking Platform",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace=@traveler/web run dev",
+    "dev:admin": "npm --workspace=@traveler/admin run dev",
+    "dev:mobile": "npm --workspace=mobile run start",
+    "mobile:web": "npm --workspace=mobile run web",
+    "build:web": "npm --workspace=@traveler/web run build",
+    "build:admin": "npm --workspace=@traveler/admin run build",
+    "build": "npm run --workspaces --if-present build",
+    "typecheck": "npm run --workspaces --if-present typecheck",
+    "test": "npm run --workspaces --if-present test"
+  },
+  "keywords": [
+    "travel",
+    "flights",
+    "hotels",
+    "booking",
+    "makemytrip"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "expo": "~57.0.30",
+    "expo-linear-gradient": "~57.0.2",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "^0.86.3"
+  }
+}

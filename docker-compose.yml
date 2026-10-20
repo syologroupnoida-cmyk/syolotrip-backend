@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: traveler-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: traveler_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d traveler_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: traveler-backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgrespassword@postgres:5432/traveler_db
+      SECRET_KEY: dev-super-secret-jwt-key-change-in-prod-minimum-32-chars-long
+      ACCESS_TOKEN_EXPIRE_MINUTES: 1440
+      CORS_ORIGINS: '["http://localhost:5173","http://localhost:5174","http://localhost:8081","*"]'
+      ENVIRONMENT: production
+      PORT: 8000
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:

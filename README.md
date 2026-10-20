@@ -1,6 +1,6 @@
-# Traveler Booking Platform
+# SS Journey (SuccessSign Journey)
 
-A professional, scalable travel booking platform inspired by MakeMyTrip, built with clean architecture, strict modularity, and production-grade engineering principles.
+A professional, scalable travel booking platform — **Explore · Book · Travel · More** — built with clean architecture, strict modularity, and production-grade engineering principles.
 
 ---
 
@@ -10,7 +10,8 @@ A professional, scalable travel booking platform inspired by MakeMyTrip, built w
 traveler/
 ├── apps/
 │   ├── web/               # Customer Travel Portal (Vite + React + TS + Tailwind)
-│   └── admin/             # Operations & Inventory Dashboard (Vite + React + TS + Tailwind)
+│   ├── admin/             # Operations & Inventory Dashboard (Vite + React + TS + Tailwind)
+│   └── mobile/            # Customer Mobile App (Expo SDK 57 + React Native + TS)
 ├── backend/
 │   ├── app/
 │   │   ├── api/v1/        # API v1 versioned endpoints
@@ -82,6 +83,9 @@ npm run dev:web
 
 # Start Admin Dashboard (Port 5174)
 npm run dev:admin
+
+# Start Customer Mobile App (Expo)
+npm run dev:mobile
 ```
 
 ---
