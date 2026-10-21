@@ -97,12 +97,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
 
         <div className="flex items-center gap-3 self-end sm:self-auto">
           <a
-            href="http://localhost:5174"
+            href={import.meta.env.PROD ? '/admin/' : 'http://localhost:5174/admin/'}
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600/30 hover:bg-brand-600/50 text-xs font-semibold text-brand-300 border border-brand-500/40 transition cursor-pointer"
           >
-            <span>Dedicated Admin (Port 5174)</span>
+            <span>Dedicated Admin Portal</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
           <button

@@ -12,6 +12,12 @@
   },
   "rewrites": [
     {
+      "source": "/admin",
+      "destination": {
+        "service": "admin"
+      }
+    },
+    {
       "source": "/admin/(.*)",
       "destination": {
         "service": "admin"
