@@ -9,23 +9,23 @@ export interface CategoryIconProps {
 export const FlightsIsometricIcon: React.FC<CategoryIconProps> = ({ active, className = 'w-10 h-10' }) => (
   <svg className={`${className} transition-transform group-hover:scale-105`} viewBox="0 0 48 48" fill="none">
     {/* Ground shadow */}
-    <ellipse cx="24" cy="41" rx="14" ry="4" fill={active ? "#93c5fd" : "#e2e8f0"} opacity={active ? "0.8" : "0.7"} />
+    <ellipse cx="24" cy="41" rx="14" ry="4" fill={active ? "#93c5fd" : "#e2e8f0"} opacity={active ? "0.9" : "0.7"} />
     {active && <ellipse cx="26" cy="39" rx="8" ry="2.5" fill="#3b82f6" opacity="0.6" />}
     <g transform="translate(4, 3)">
       {/* Blue accent underwing */}
-      <path d="M20 18 L10 32 L15 32 L24 23 Z" fill={active ? "#0084ff" : "#94a3b8"} />
+      <path d="M20 18 L10 32 L15 32 L24 23 Z" fill={active ? "#0070e0" : "#94a3b8"} />
       {/* Wings and fuselage */}
       <path 
         d="M36 6 C37 8 35 11 31 15 L23 23 L22 33 L19 35 L19 26 L12 30 L9 29 L14 22 L23 15 L26 8 C29 4 34 4 36 6 Z" 
-        fill="#ffffff" 
-        stroke="#0f172a" 
+        fill={active ? "#008cff" : "#ffffff"} 
+        stroke={active ? "#0066cc" : "#0f172a"} 
         strokeWidth="1.8" 
         strokeLinejoin="round" 
       />
-      <path d="M26 13 L34 8" stroke="#0f172a" strokeWidth="1.4" strokeLinecap="round" />
-      <path d="M20 19 L16 31" stroke="#0f172a" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M26 13 L34 8" stroke={active ? "#ffffff" : "#0f172a"} strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M20 19 L16 31" stroke={active ? "#ffffff" : "#0f172a"} strokeWidth="1.4" strokeLinecap="round" />
       {/* Engine */}
-      <rect x="20" y="21" width="5" height="2.5" rx="1.2" fill="#e2e8f0" stroke="#0f172a" strokeWidth="1.2" transform="rotate(-40 20 21)" />
+      <rect x="20" y="21" width="5" height="2.5" rx="1.2" fill={active ? "#ffffff" : "#e2e8f0"} stroke={active ? "#0066cc" : "#0f172a"} strokeWidth="1.2" transform="rotate(-40 20 21)" />
     </g>
   </svg>
 );

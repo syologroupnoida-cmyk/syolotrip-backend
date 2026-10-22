@@ -1,6 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { WebCheckoutItem } from './BookingCheckoutPage';
 import { AppDownloadBanner } from '../components/AppDownloadBanner';
+import { 
+  FlightsIsometricIcon,
+  HotelsIsometricIcon,
+  VillasIsometricIcon,
+  HolidaysIsometricIcon,
+  TrainsIsometricIcon,
+  BusesIsometricIcon,
+  CabsIsometricIcon,
+  ToursIsometricIcon,
+  VisaIsometricIcon,
+  InsuranceIsometricIcon,
+} from '../components/TravelCategoryIcons';
 
 export interface AirportOption {
   code: string;
@@ -53,8 +65,20 @@ export interface HotelSearchParams {
   checkOut?: string;
 }
 
+export type ServiceCategory = 
+  | 'flights' 
+  | 'hotels' 
+  | 'villas' 
+  | 'holidays' 
+  | 'trains' 
+  | 'buses' 
+  | 'cabs' 
+  | 'tours' 
+  | 'visa' 
+  | 'insurance';
+
 interface ExplorePageProps {
-  onNavigate?: (screen: 'explore' | 'flights' | 'hotels' | 'checkout' | 'trips') => void;
+  onNavigate?: (screen: 'explore' | 'flights' | 'hotels' | 'checkout' | 'trips' | 'list-property') => void;
   onSearchFlights?: (params: FlightSearchParams) => void;
   onSearchHotels?: (params: HotelSearchParams) => void;
   onInitiateCheckout?: (item: WebCheckoutItem) => void;
@@ -66,7 +90,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
   onSearchHotels,
   onInitiateCheckout,
 }) => {
-  const [searchMode, setSearchMode] = useState<'flights' | 'hotels' | 'holidays' | 'trains' | 'buses' | 'cabs'>('flights');
+  const [searchMode, setSearchMode] = useState<ServiceCategory>('flights');
   const [tripType, setTripType] = useState<'oneway' | 'roundtrip' | 'multicity'>('oneway');
   const [specialFare, setSpecialFare] = useState('regular');
   const [offersCategory, setOffersCategory] = useState<'all' | 'flights' | 'hotels' | 'holidays' | 'trains' | 'cabs' | 'bank'>('all');
@@ -152,6 +176,12 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
       handleExecuteFlightSearch();
     } else if (searchMode === 'hotels') {
       handleExecuteHotelSearch();
+    } else if (searchMode === 'villas') {
+      handleBookVilla({
+        name: 'Villa Sol Candolim - 4BHK Private Pool Villa',
+        location: 'Candolim Beach, North Goa',
+        price: 14500,
+      });
     } else if (searchMode === 'trains') {
       handleBookTrain({
         name: 'Vande Bharat Express (20172)',
@@ -180,6 +210,24 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
         days: 5,
         nights: 4,
         price: 18500,
+      });
+    } else if (searchMode === 'tours') {
+      handleBookAttraction({
+        name: 'Burj Khalifa: At The Top (124th + 125th Floor)',
+        city: 'Dubai, UAE',
+        price: 3850,
+      });
+    } else if (searchMode === 'visa') {
+      handleApplyVisa({
+        country: 'Dubai (UAE)',
+        type: '30-Days Express Tourist eVisa',
+        price: 6499,
+      });
+    } else if (searchMode === 'insurance') {
+      handleBuyInsurance({
+        planName: 'Global Travel Shield Platinum ($250,000 Medical Cover)',
+        cover: 'Worldwide Medical & Baggage Protection',
+        price: 850,
       });
     }
   };
@@ -260,6 +308,82 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
     }
   };
 
+  const handleBookVilla = (villa: { name: string; location: string; price: number }) => {
+    if (onInitiateCheckout) {
+      onInitiateCheckout({
+        serviceType: 'HOTEL',
+        title: villa.name,
+        subtitle: 'Entire Luxury Pool Villa · 4 Bedrooms · Private Chef',
+        routeInfo: villa.location,
+        pricing: {
+          baseAmount: villa.price,
+          taxes: Math.round(villa.price * 0.12),
+          discount: 1000,
+          insurance: 249,
+        },
+      });
+    } else if (onNavigate) {
+      onNavigate('checkout');
+    }
+  };
+
+  const handleBookAttraction = (act: { name: string; city: string; price: number }) => {
+    if (onInitiateCheckout) {
+      onInitiateCheckout({
+        serviceType: 'ACTIVITY',
+        title: act.name,
+        subtitle: 'Instant Mobile Voucher · Skip-the-Line Entry · English Guide',
+        routeInfo: act.city,
+        pricing: {
+          baseAmount: act.price,
+          taxes: Math.round(act.price * 0.05),
+          discount: 200,
+          insurance: 0,
+        },
+      });
+    } else if (onNavigate) {
+      onNavigate('checkout');
+    }
+  };
+
+  const handleApplyVisa = (visaItem: { country: string; type: string; price: number }) => {
+    if (onInitiateCheckout) {
+      onInitiateCheckout({
+        serviceType: 'VISA',
+        title: `${visaItem.country} ${visaItem.type}`,
+        subtitle: '100% Online Document Upload · Dedicated Visa Officer · 99.4% Approval',
+        routeInfo: `${visaItem.country} (Express 48h Processing)`,
+        pricing: {
+          baseAmount: visaItem.price,
+          taxes: Math.round(visaItem.price * 0.18),
+          discount: 500,
+          insurance: 0,
+        },
+      });
+    } else if (onNavigate) {
+      onNavigate('checkout');
+    }
+  };
+
+  const handleBuyInsurance = (ins: { planName: string; cover: string; price: number }) => {
+    if (onInitiateCheckout) {
+      onInitiateCheckout({
+        serviceType: 'INSURANCE',
+        title: ins.planName,
+        subtitle: `${ins.cover} · Cashless Hospitalization · COVID-19 & Baggage Protection`,
+        routeInfo: 'Worldwide Coverage (Single Trip)',
+        pricing: {
+          baseAmount: ins.price,
+          taxes: Math.round(ins.price * 0.18),
+          discount: 100,
+          insurance: 0,
+        },
+      });
+    } else if (onNavigate) {
+      onNavigate('checkout');
+    }
+  };
+
   const filteredAirports = popularAirports.filter(a => 
     a.city.toLowerCase().includes(searchQuery.toLowerCase()) || 
     a.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -289,15 +413,19 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
         {/* Category Navigation Ribbon (Floating White Pill Card) */}
         <nav 
           aria-label="Service Categories"
-          className="bg-white rounded-xl shadow-lg border border-gray-100 px-4 sm:px-8 py-2.5 mb-4 max-w-[1040px] mx-auto flex items-center justify-between overflow-x-auto no-scrollbar gap-2"
+          className="bg-white rounded-2xl shadow-[0_6px_24px_rgba(0,0,0,0.08)] border border-gray-100 px-2 sm:px-6 py-2.5 mb-4 max-w-[1180px] mx-auto flex items-center justify-between overflow-x-auto no-scrollbar gap-1 sm:gap-2 select-none"
         >
           {([
-            { id: 'flights' as const, label: 'Flights', icon: 'flight_takeoff', sub: 'Domestic & Intl' },
-            { id: 'hotels' as const, label: 'Hotels', icon: 'hotel', sub: 'Best Rates' },
-            { id: 'holidays' as const, label: 'Holidays', icon: 'luggage', badge: '-25%', sub: 'Packages' },
-            { id: 'trains' as const, label: 'Trains', icon: 'train', sub: 'IRCTC Authorized' },
-            { id: 'buses' as const, label: 'Buses', icon: 'directions_bus', sub: 'AC Sleeper' },
-            { id: 'cabs' as const, label: 'Cabs', icon: 'local_taxi', sub: 'Outstation & Airport' },
+            { id: 'flights' as const, label: 'Flights', Icon: FlightsIsometricIcon },
+            { id: 'hotels' as const, label: 'Hotels', Icon: HotelsIsometricIcon },
+            { id: 'villas' as const, label: 'Villas & Homestays', Icon: VillasIsometricIcon },
+            { id: 'holidays' as const, label: 'Holiday Packages', Icon: HolidaysIsometricIcon },
+            { id: 'trains' as const, label: 'Trains', Icon: TrainsIsometricIcon },
+            { id: 'buses' as const, label: 'Buses', Icon: BusesIsometricIcon },
+            { id: 'cabs' as const, label: 'Cabs', Icon: CabsIsometricIcon },
+            { id: 'tours' as const, label: 'Tours & Attractions', Icon: ToursIsometricIcon },
+            { id: 'visa' as const, label: 'Visa', Icon: VisaIsometricIcon },
+            { id: 'insurance' as const, label: 'Travel Insurance', Icon: InsuranceIsometricIcon },
           ]).map((item) => {
             const isActive = searchMode === item.id;
             return (
@@ -305,23 +433,23 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => { setSearchMode(item.id); setActiveDropdown(null); }}
-                className={`flex flex-col items-center min-w-[76px] py-1 px-3 border-b-2 transition-all cursor-pointer relative group ${
+                className={`flex flex-col items-center justify-between min-w-[70px] sm:min-w-[84px] py-1 px-1 sm:px-1.5 transition-all cursor-pointer relative group ${
                   isActive 
-                    ? 'border-[#008cff] text-[#008cff] font-bold' 
-                    : 'border-transparent text-gray-600 hover:text-[#008cff] hover:border-gray-200'
+                    ? 'text-[#008cff]' 
+                    : 'text-gray-700 hover:text-[#008cff]'
                 }`}
               >
-                <div className="relative">
-                  <span className={`material-symbols-outlined text-[24px] mb-0.5 transition-transform group-hover:scale-110 ${isActive ? 'text-[#008cff]' : 'text-gray-500'}`}>
-                    {item.icon}
-                  </span>
-                  {item.badge && (
-                    <span className="absolute -top-1.5 -right-3 bg-[#eb2026] text-white text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase tracking-tight shadow-xs">
-                      {item.badge}
-                    </span>
-                  )}
+                <div className="relative flex items-center justify-center h-10 w-10 mb-1">
+                  <item.Icon active={isActive} className="w-9 h-9" />
                 </div>
-                <span className="text-[12px] whitespace-nowrap">{item.label}</span>
+                <span className={`text-[11px] sm:text-[11.5px] leading-tight text-center max-w-[90px] ${
+                  isActive ? 'font-black text-[#008cff]' : 'font-semibold text-gray-700 group-hover:text-[#008cff]'
+                }`}>
+                  {item.label}
+                </span>
+                {isActive && (
+                  <span className="absolute -bottom-2.5 left-2 right-2 h-[3px] bg-[#008cff] rounded-t-full shadow-xs" />
+                )}
               </button>
             );
           })}
@@ -332,48 +460,158 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
           ref={dropdownRef}
           className="relative bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] pt-6 pb-12 px-6 lg:px-8 border border-gray-100"
         >
-          {/* Radio Trip Type Bar */}
-          <div className="flex flex-wrap items-center justify-between border-b border-gray-100 pb-3 mb-4 text-xs font-semibold">
-            <div className="flex items-center space-x-6 text-gray-700">
-              <label className="flex items-center space-x-2 cursor-pointer select-none">
-                <input 
-                  type="radio" 
-                  name="trip-type" 
-                  checked={tripType === 'oneway'} 
-                  onChange={() => { setTripType('oneway'); setHasReturnDate(false); }} 
-                  className="accent-[#008cff] w-4 h-4 cursor-pointer"
-                />
-                <span className={tripType === 'oneway' ? 'font-bold text-gray-900' : 'text-gray-600'}>One Way</span>
-              </label>
+          {/* Radio Trip Type Bar - shown for flights */}
+          {searchMode === 'flights' && (
+            <div className="flex flex-wrap items-center justify-between border-b border-gray-100 pb-3 mb-4 text-xs font-semibold">
+              <div className="flex items-center space-x-6 text-gray-700">
+                <label className="flex items-center space-x-2 cursor-pointer select-none">
+                  <input 
+                    type="radio" 
+                    name="trip-type" 
+                    checked={tripType === 'oneway'} 
+                    onChange={() => { setTripType('oneway'); setHasReturnDate(false); }} 
+                    className="accent-[#008cff] w-4 h-4 cursor-pointer"
+                  />
+                  <span className={tripType === 'oneway' ? 'font-bold text-gray-900' : 'text-gray-600'}>One Way</span>
+                </label>
 
-              <label className="flex items-center space-x-2 cursor-pointer select-none">
-                <input 
-                  type="radio" 
-                  name="trip-type" 
-                  checked={tripType === 'roundtrip'} 
-                  onChange={() => { setTripType('roundtrip'); setHasReturnDate(true); }} 
-                  className="accent-[#008cff] w-4 h-4 cursor-pointer"
-                />
-                <span className={tripType === 'roundtrip' ? 'font-bold text-gray-900' : 'text-gray-600'}>Round Trip</span>
-              </label>
+                <label className="flex items-center space-x-2 cursor-pointer select-none">
+                  <input 
+                    type="radio" 
+                    name="trip-type" 
+                    checked={tripType === 'roundtrip'} 
+                    onChange={() => { setTripType('roundtrip'); setHasReturnDate(true); }} 
+                    className="accent-[#008cff] w-4 h-4 cursor-pointer"
+                  />
+                  <span className={tripType === 'roundtrip' ? 'font-bold text-gray-900' : 'text-gray-600'}>Round Trip</span>
+                </label>
 
-              <label className="flex items-center space-x-2 cursor-pointer select-none">
-                <input 
-                  type="radio" 
-                  name="trip-type" 
-                  checked={tripType === 'multicity'} 
-                  onChange={() => { setTripType('multicity'); setHasReturnDate(false); }} 
-                  className="accent-[#008cff] w-4 h-4 cursor-pointer"
-                />
-                <span className={tripType === 'multicity' ? 'font-bold text-gray-900' : 'text-gray-600'}>Multi City</span>
-              </label>
+                <label className="flex items-center space-x-2 cursor-pointer select-none">
+                  <input 
+                    type="radio" 
+                    name="trip-type" 
+                    checked={tripType === 'multicity'} 
+                    onChange={() => { setTripType('multicity'); setHasReturnDate(false); }} 
+                    className="accent-[#008cff] w-4 h-4 cursor-pointer"
+                  />
+                  <span className={tripType === 'multicity' ? 'font-bold text-gray-900' : 'text-gray-600'}>Multi City</span>
+                </label>
+              </div>
+
+              <div className="text-gray-500 font-medium text-xs hidden sm:flex items-center space-x-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Book Domestic &amp; International Flights with Special Student &amp; Armed Fares</span>
+              </div>
             </div>
+          )}
 
-            <div className="text-gray-500 font-medium text-xs hidden sm:flex items-center space-x-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Book Domestic &amp; International Cheap Travel with Instant Booking</span>
+          {searchMode === 'hotels' && (
+            <div className="flex flex-wrap items-center justify-between border-b border-gray-100 pb-3 mb-4 text-xs font-semibold">
+              <div className="flex items-center space-x-3 text-gray-700">
+                <span className="font-bold text-gray-900">Book Hotels &amp; Boutique Stays</span>
+                <span className="bg-blue-50 text-[#008cff] px-2 py-0.5 rounded text-[11px] font-bold">Upto 40% OFF</span>
+              </div>
+              <div className="text-gray-500 text-[11px] hidden sm:block">
+                Free Cancellation on Select Rates
+              </div>
             </div>
-          </div>
+          )}
+
+          {searchMode === 'villas' && (
+            <div className="flex flex-wrap items-center justify-between border-b border-gray-100 pb-3 mb-4 text-xs font-semibold">
+              <div className="flex items-center space-x-3 text-gray-700">
+                <span className="font-bold text-gray-900">Villas, Homestays &amp; Vacation Rentals</span>
+                <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[11px] font-bold">Entire Home with Private Pool</span>
+              </div>
+              <div className="text-gray-500 text-[11px] hidden sm:block">
+                Pet-Friendly &amp; Verified Hosts
+              </div>
+            </div>
+          )}
+
+          {searchMode === 'holidays' && (
+            <div className="flex flex-wrap items-center justify-between border-b border-gray-100 pb-3 mb-4 text-xs font-semibold">
+              <div className="flex items-center space-x-3 text-gray-700">
+                <span className="font-bold text-gray-900">Customized Holiday Packages</span>
+                <span className="bg-rose-50 text-rose-700 px-2 py-0.5 rounded text-[11px] font-bold">Flights + 5-Star Hotel + Sightseeing</span>
+              </div>
+              <div className="text-gray-500 text-[11px] hidden sm:block">
+                Zero Cost EMI Available
+              </div>
+            </div>
+          )}
+
+          {searchMode === 'trains' && (
+            <div className="flex flex-wrap items-center justify-between border-b border-gray-100 pb-3 mb-4 text-xs font-semibold">
+              <div className="flex items-center space-x-3 text-gray-700">
+                <span className="font-bold text-gray-900">IRCTC Authorized Train Ticket Booking</span>
+                <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[11px] font-bold">Zero Gateway Charges</span>
+              </div>
+              <div className="text-gray-500 text-[11px] hidden sm:block">
+                Live PNR &amp; Seat Availability Status
+              </div>
+            </div>
+          )}
+
+          {searchMode === 'buses' && (
+            <div className="flex flex-wrap items-center justify-between border-b border-gray-100 pb-3 mb-4 text-xs font-semibold">
+              <div className="flex items-center space-x-3 text-gray-700">
+                <span className="font-bold text-gray-900">Online Bus Ticket Booking</span>
+                <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-[11px] font-bold">AC Sleeper &amp; Volvo Electric</span>
+              </div>
+              <div className="text-gray-500 text-[11px] hidden sm:block">
+                Live GPS Tracking &amp; Sanitized Fleet
+              </div>
+            </div>
+          )}
+
+          {searchMode === 'cabs' && (
+            <div className="flex flex-wrap items-center justify-between border-b border-gray-100 pb-3 mb-4 text-xs font-semibold">
+              <div className="flex items-center space-x-3 text-gray-700">
+                <span className="font-bold text-gray-900">Airport &amp; Outstation Cab Booking</span>
+                <span className="bg-amber-50 text-amber-800 px-2 py-0.5 rounded text-[11px] font-bold">Zero Surge Pricing</span>
+              </div>
+              <div className="text-gray-500 text-[11px] hidden sm:block">
+                Professional Chauffeurs &amp; Clean AC Cars
+              </div>
+            </div>
+          )}
+
+          {searchMode === 'tours' && (
+            <div className="flex flex-wrap items-center justify-between border-b border-gray-100 pb-3 mb-4 text-xs font-semibold">
+              <div className="flex items-center space-x-3 text-gray-700">
+                <span className="font-bold text-gray-900">Tours, Activities &amp; Sightseeing Attractions</span>
+                <span className="bg-sky-50 text-sky-700 px-2 py-0.5 rounded text-[11px] font-bold">Skip-the-Line E-Tickets</span>
+              </div>
+              <div className="text-gray-500 text-[11px] hidden sm:block">
+                Instant Confirmation &amp; Best Price Guarantee
+              </div>
+            </div>
+          )}
+
+          {searchMode === 'visa' && (
+            <div className="flex flex-wrap items-center justify-between border-b border-gray-100 pb-3 mb-4 text-xs font-semibold">
+              <div className="flex items-center space-x-3 text-gray-700">
+                <span className="font-bold text-gray-900">Hassle-Free Online Tourist Visa Services</span>
+                <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[11px] font-bold">99.4% Approval Rate</span>
+              </div>
+              <div className="text-gray-500 text-[11px] hidden sm:block">
+                Dedicated Visa Expert &amp; Document Review
+              </div>
+            </div>
+          )}
+
+          {searchMode === 'insurance' && (
+            <div className="flex flex-wrap items-center justify-between border-b border-gray-100 pb-3 mb-4 text-xs font-semibold">
+              <div className="flex items-center space-x-3 text-gray-700">
+                <span className="font-bold text-gray-900">International &amp; Domestic Travel Insurance</span>
+                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[11px] font-bold">Embassy &amp; Schengen Compliant</span>
+              </div>
+              <div className="text-gray-500 text-[11px] hidden sm:block">
+                Instant Policy PDF in 2 Minutes
+              </div>
+            </div>
+          )}
 
           {/* ── MODE 1: FLIGHTS SEGMENTED INPUT GRID ── */}
           {searchMode === 'flights' && (
@@ -835,77 +1073,288 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
             </div>
           )}
 
-          {/* Special Fare Selection Row */}
-          <div className="mt-4 pt-3 flex flex-wrap items-center gap-2.5 text-xs border-t border-gray-100">
-            <span className="font-bold text-gray-700 text-[11px]">Select A Special Fare:</span>
-            {[
-              { id: 'regular', label: 'Regular Fares' },
-              { id: 'student', label: 'Student Fares' },
-              { id: 'senior', label: 'Senior Citizen' },
-              { id: 'forces', label: 'Armed Forces' },
-              { id: 'medical', label: 'Doctors & Nurses' },
-            ].map(f => (
-              <label 
-                key={f.id}
-                onClick={() => setSpecialFare(f.id)}
-                className={`flex items-center space-x-1.5 px-3 py-1 rounded-full cursor-pointer text-[11px] transition ${
-                  specialFare === f.id
-                    ? 'border border-[#008cff] bg-blue-50/70 text-[#008cff] font-bold'
-                    : 'border border-gray-200 hover:border-gray-300 text-gray-600 font-medium'
-                }`}
-              >
-                <input 
-                  type="radio" 
-                  name="special-fare" 
-                  checked={specialFare === f.id} 
-                  onChange={() => setSpecialFare(f.id)}
-                  className="accent-[#008cff] w-3 h-3" 
-                />
-                <span>{f.label}</span>
-              </label>
-            ))}
-          </div>
+          {/* ── MODE 7: VILLAS & HOMESTAYS ── */}
+          {searchMode === 'villas' && (
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-12 border border-gray-200 rounded-xl overflow-hidden p-4 bg-emerald-50/40">
+                <div className="md:col-span-5">
+                  <span className="text-[12px] text-emerald-800 font-bold uppercase tracking-wider block">Destination / City</span>
+                  <span className="text-2xl font-extrabold text-gray-900 block">North &amp; South Goa</span>
+                  <span className="text-[11px] text-gray-500">Candolim, Anjuna, Calangute, Assagao</span>
+                </div>
+                <div className="md:col-span-4 border-t md:border-t-0 md:border-l border-emerald-200 pl-0 md:pl-4">
+                  <span className="text-[12px] text-emerald-800 font-bold uppercase tracking-wider block">Check-in / Check-out</span>
+                  <span className="text-2xl font-extrabold text-gray-900 block">Nov 04 - Nov 08</span>
+                  <span className="text-[11px] text-gray-500">4 Nights · 4 Guests</span>
+                </div>
+                <div className="md:col-span-3 border-t md:border-t-0 md:border-l border-emerald-200 pl-0 md:pl-4">
+                  <span className="text-[12px] text-emerald-800 font-bold uppercase tracking-wider block">Property Type</span>
+                  <span className="text-2xl font-extrabold text-gray-900 block">Private Pool Villa</span>
+                  <span className="text-[11px] text-emerald-700 font-semibold">Chef &amp; Housekeeping Included</span>
+                </div>
+              </div>
 
-          {/* Trending Searches Row */}
-          <div className="mt-3 flex flex-wrap items-center justify-between text-xs text-gray-500 pt-2">
-            <div className="flex items-center flex-wrap gap-2 text-xs">
-              <span className="font-bold text-gray-700 text-[11px]">Trending Searches:</span>
-              {[
-                { from: 'Delhi', to: 'Mumbai', fromCode: 'DEL', toCode: 'BOM' },
-                { from: 'Bengaluru', to: 'Goa', fromCode: 'BLR', toCode: 'DPS' },
-                { from: 'San Francisco', to: 'Tokyo', fromCode: 'SFO', toCode: 'HND' },
-              ].map(route => (
-                <button
-                  key={`${route.from}-${route.to}`}
-                  type="button"
-                  onClick={() => {
-                    const fromApt = popularAirports.find(a => a.code === route.fromCode) || popularAirports[0];
-                    const toApt = popularAirports.find(a => a.code === route.toCode) || popularAirports[1];
-                    setOriginAirport(fromApt);
-                    setDestinationAirport(toApt);
-                  }}
-                  className="inline-flex items-center px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-[11px] font-medium transition cursor-pointer"
-                >
-                  {route.from} <span className="text-[#008cff] mx-1">→</span> {route.to}
-                </button>
-              ))}
+              {/* Fast Available Villa Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                {[
+                  { name: 'Villa Sol Candolim - 4BHK Private Pool Villa', location: 'Candolim, Goa · 200m from Beach', price: 14500, highlight: 'Private Pool · Chef on Demand · 4.9 ★' },
+                  { name: 'Whispering Pines Luxury Chalet & Orchard', location: 'Old Manali, HP · Snow Peaks View', price: 7200, highlight: 'Fireplace · Private Lawn · 4.8 ★' },
+                ].map((villa) => (
+                  <div key={villa.name} className="border border-gray-200 rounded-xl p-3 bg-white flex items-center justify-between hover:shadow-md transition">
+                    <div>
+                      <span className="text-xs font-extrabold text-gray-900 block">{villa.name}</span>
+                      <span className="text-[11px] text-gray-500">{villa.location}</span>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded mt-1 inline-block">{villa.highlight}</span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-base font-extrabold text-gray-900">₹{villa.price.toLocaleString('en-IN')}<span className="text-[10px] text-gray-500 font-normal">/night</span></span>
+                      <button 
+                        type="button"
+                        onClick={() => handleBookVilla({ name: villa.name, location: villa.location, price: villa.price })}
+                        className="mt-1 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg cursor-pointer transition shadow-xs"
+                      >
+                        Book Villa
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
+          )}
 
-            <div className="flex items-center space-x-1.5 border border-gray-200 rounded-full px-3 py-1 bg-white mt-2 sm:mt-0 shadow-xs">
-              <span className="material-symbols-outlined text-[14px] text-[#008cff]">radar</span>
-              <span className="font-bold text-gray-800 text-[11px]">Flight Tracker</span>
-              <span className="bg-purple-100 text-purple-700 font-extrabold text-[8px] px-1.5 py-0.2 rounded uppercase">LIVE</span>
+          {/* ── MODE 8: TOURS & ATTRACTIONS ── */}
+          {searchMode === 'tours' && (
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-12 border border-gray-200 rounded-xl overflow-hidden p-4 bg-sky-50/40">
+                <div className="md:col-span-5">
+                  <span className="text-[12px] text-sky-800 font-bold uppercase tracking-wider block">Destination / City</span>
+                  <span className="text-2xl font-extrabold text-gray-900 block">Dubai, United Arab Emirates</span>
+                  <span className="text-[11px] text-gray-500">Theme Parks, Sightseeing, Desert Safari</span>
+                </div>
+                <div className="md:col-span-4 border-t md:border-t-0 md:border-l border-sky-200 pl-0 md:pl-4">
+                  <span className="text-[12px] text-sky-800 font-bold uppercase tracking-wider block">Activity Date</span>
+                  <span className="text-2xl font-extrabold text-gray-900 block">Instant E-Voucher</span>
+                  <span className="text-[11px] text-gray-500">Flexible 30 Days Validity</span>
+                </div>
+                <div className="md:col-span-3 border-t md:border-t-0 md:border-l border-sky-200 pl-0 md:pl-4">
+                  <span className="text-[12px] text-sky-800 font-bold uppercase tracking-wider block">Experience Type</span>
+                  <span className="text-2xl font-extrabold text-sky-700 block">Skip The Line</span>
+                  <span className="text-[11px] text-sky-600 font-semibold">100% Guaranteed Entry</span>
+                </div>
+              </div>
+
+              {/* Fast Available Attraction Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                {[
+                  { name: 'Burj Khalifa: At The Top (124th + 125th Floor)', city: 'Dubai, UAE', price: 3850, highlight: 'Instant Mobile Ticket · Sky Views · 4.9 ★' },
+                  { name: 'Universal Studios Singapore One-Day Pass', city: 'Sentosa, Singapore', price: 5400, highlight: 'Direct Barcode Entry · All Rides Access · 4.8 ★' },
+                ].map((act) => (
+                  <div key={act.name} className="border border-gray-200 rounded-xl p-3 bg-white flex items-center justify-between hover:shadow-md transition">
+                    <div>
+                      <span className="text-xs font-extrabold text-gray-900 block">{act.name}</span>
+                      <span className="text-[11px] text-gray-500">{act.city}</span>
+                      <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded mt-1 inline-block">{act.highlight}</span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-base font-extrabold text-gray-900">₹{act.price.toLocaleString('en-IN')}<span className="text-[10px] text-gray-500 font-normal">/person</span></span>
+                      <button 
+                        type="button"
+                        onClick={() => handleBookAttraction({ name: act.name, city: act.city, price: act.price })}
+                        className="mt-1 px-3 py-1 bg-[#008cff] hover:bg-[#0075d7] text-white text-xs font-bold rounded-lg cursor-pointer transition shadow-xs"
+                      >
+                        Book Ticket
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* ── MODE 9: VISA SERVICES ── */}
+          {searchMode === 'visa' && (
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-12 border border-gray-200 rounded-xl overflow-hidden p-4 bg-emerald-50/40">
+                <div className="md:col-span-5">
+                  <span className="text-[12px] text-emerald-800 font-bold uppercase tracking-wider block">Destination Country</span>
+                  <span className="text-2xl font-extrabold text-gray-900 block">Dubai (United Arab Emirates)</span>
+                  <span className="text-[11px] text-gray-500">Also available: Thailand, Singapore, Schengen, Vietnam</span>
+                </div>
+                <div className="md:col-span-4 border-t md:border-t-0 md:border-l border-emerald-200 pl-0 md:pl-4">
+                  <span className="text-[12px] text-emerald-800 font-bold uppercase tracking-wider block">Visa Category</span>
+                  <span className="text-2xl font-extrabold text-gray-900 block">30-Days Express Tourist eVisa</span>
+                  <span className="text-[11px] text-gray-500">100% Online · No Embassy Visit</span>
+                </div>
+                <div className="md:col-span-3 border-t md:border-t-0 md:border-l border-emerald-200 pl-0 md:pl-4">
+                  <span className="text-[12px] text-emerald-800 font-bold uppercase tracking-wider block">Approval Rate</span>
+                  <span className="text-2xl font-extrabold text-emerald-600 block">99.7% Success</span>
+                  <span className="text-[11px] text-emerald-700 font-semibold">Free Re-Application Guarantee</span>
+                </div>
+              </div>
+
+              {/* Fast Available Visa Options */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                {[
+                  { country: 'Dubai (UAE)', type: '30-Days Express Tourist eVisa', speed: 'Processed in 48 Hours', price: 6499, highlight: 'Only Passport Scan & Photo Needed' },
+                  { country: 'Thailand', type: 'Fast-Track eVisa on Arrival', speed: 'Processed in 24 Hours', price: 2999, highlight: 'Skip Long Airport Immigration Lines' },
+                ].map((visaItem) => (
+                  <div key={visaItem.country} className="border border-gray-200 rounded-xl p-3 bg-white flex items-center justify-between hover:shadow-md transition">
+                    <div>
+                      <span className="text-xs font-extrabold text-gray-900 block">{visaItem.country} · {visaItem.type}</span>
+                      <span className="text-[11px] text-gray-500">{visaItem.speed}</span>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded mt-1 inline-block">{visaItem.highlight}</span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-base font-extrabold text-gray-900">₹{visaItem.price.toLocaleString('en-IN')}</span>
+                      <button 
+                        type="button"
+                        onClick={() => handleApplyVisa({ country: visaItem.country, type: visaItem.type, price: visaItem.price })}
+                        className="mt-1 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg cursor-pointer transition shadow-xs"
+                      >
+                        Apply Now
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── MODE 10: TRAVEL INSURANCE ── */}
+          {searchMode === 'insurance' && (
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-12 border border-gray-200 rounded-xl overflow-hidden p-4 bg-blue-50/40">
+                <div className="md:col-span-5">
+                  <span className="text-[12px] text-blue-800 font-bold uppercase tracking-wider block">Travel Coverage Destination</span>
+                  <span className="text-2xl font-extrabold text-gray-900 block">International (Worldwide)</span>
+                  <span className="text-[11px] text-gray-500">Includes USA, Canada &amp; 27 Schengen European Countries</span>
+                </div>
+                <div className="md:col-span-4 border-t md:border-t-0 md:border-l border-blue-200 pl-0 md:pl-4">
+                  <span className="text-[12px] text-blue-800 font-bold uppercase tracking-wider block">Medical Sum Insured</span>
+                  <span className="text-2xl font-extrabold text-gray-900 block">Up to $500,000 Cover</span>
+                  <span className="text-[11px] text-gray-500">Zero Deductibles · Cashless Hospitals</span>
+                </div>
+                <div className="md:col-span-3 border-t md:border-t-0 md:border-l border-blue-200 pl-0 md:pl-4">
+                  <span className="text-[12px] text-blue-800 font-bold uppercase tracking-wider block">Policy Delivery</span>
+                  <span className="text-2xl font-extrabold text-[#008cff] block">Instant PDF</span>
+                  <span className="text-[11px] text-blue-700 font-semibold">100% Embassy &amp; Visa Approved</span>
+                </div>
+              </div>
+
+              {/* Fast Available Insurance Plans */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                {[
+                  { planName: 'Global Travel Shield Platinum ($250k Cover)', cover: 'Worldwide Medical & Baggage Protection', price: 850, highlight: 'COVID-19 Cover + Baggage Loss + Flight Delay' },
+                  { planName: 'Schengen Visa Travel Shield (€50,000 Cover)', cover: '100% European Embassy Approved', price: 590, highlight: 'Instant PDF for Visa Submission' },
+                ].map((ins) => (
+                  <div key={ins.planName} className="border border-gray-200 rounded-xl p-3 bg-white flex items-center justify-between hover:shadow-md transition">
+                    <div>
+                      <span className="text-xs font-extrabold text-gray-900 block">{ins.planName}</span>
+                      <span className="text-[11px] text-gray-500">{ins.cover}</span>
+                      <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded mt-1 inline-block">{ins.highlight}</span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-base font-extrabold text-gray-900">₹{ins.price.toLocaleString('en-IN')}<span className="text-[10px] text-gray-500 font-normal">/trip</span></span>
+                      <button 
+                        type="button"
+                        onClick={() => handleBuyInsurance({ planName: ins.planName, cover: ins.cover, price: ins.price })}
+                        className="mt-1 px-3 py-1 bg-[#008cff] hover:bg-[#0075d7] text-white text-xs font-bold rounded-lg cursor-pointer transition shadow-xs"
+                      >
+                        Buy Policy
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Special Fare Selection Row - only for Flights */}
+          {searchMode === 'flights' && (
+            <>
+              <div className="mt-4 pt-3 flex flex-wrap items-center gap-2.5 text-xs border-t border-gray-100">
+                <span className="font-bold text-gray-700 text-[11px]">Select A Special Fare:</span>
+                {[
+                  { id: 'regular', label: 'Regular Fares' },
+                  { id: 'student', label: 'Student Fares' },
+                  { id: 'senior', label: 'Senior Citizen' },
+                  { id: 'forces', label: 'Armed Forces' },
+                  { id: 'medical', label: 'Doctors & Nurses' },
+                ].map(f => (
+                  <label 
+                    key={f.id}
+                    onClick={() => setSpecialFare(f.id)}
+                    className={`flex items-center space-x-1.5 px-3 py-1 rounded-full cursor-pointer text-[11px] transition ${
+                      specialFare === f.id
+                        ? 'border border-[#008cff] bg-blue-50/70 text-[#008cff] font-bold'
+                        : 'border border-gray-200 hover:border-gray-300 text-gray-600 font-medium'
+                    }`}
+                  >
+                    <input 
+                      type="radio" 
+                      name="special-fare" 
+                      checked={specialFare === f.id} 
+                      onChange={() => setSpecialFare(f.id)}
+                      className="accent-[#008cff] w-3 h-3" 
+                    />
+                    <span>{f.label}</span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Trending Searches Row */}
+              <div className="mt-3 flex flex-wrap items-center justify-between text-xs text-gray-500 pt-2">
+                <div className="flex items-center flex-wrap gap-2 text-xs">
+                  <span className="font-bold text-gray-700 text-[11px]">Trending Searches:</span>
+                  {[
+                    { from: 'Delhi', to: 'Mumbai', fromCode: 'DEL', toCode: 'BOM' },
+                    { from: 'Bengaluru', to: 'Goa', fromCode: 'BLR', toCode: 'DPS' },
+                    { from: 'San Francisco', to: 'Tokyo', fromCode: 'SFO', toCode: 'HND' },
+                  ].map(route => (
+                    <button
+                      key={`${route.from}-${route.to}`}
+                      type="button"
+                      onClick={() => {
+                        const fromApt = popularAirports.find(a => a.code === route.fromCode) || popularAirports[0];
+                        const toApt = popularAirports.find(a => a.code === route.toCode) || popularAirports[1];
+                        setOriginAirport(fromApt);
+                        setDestinationAirport(toApt);
+                      }}
+                      className="inline-flex items-center px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-[11px] font-medium transition cursor-pointer"
+                    >
+                      {route.from} <span className="text-[#008cff] mx-1">→</span> {route.to}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center space-x-1.5 border border-gray-200 rounded-full px-3 py-1 bg-white mt-2 sm:mt-0 shadow-xs">
+                  <span className="material-symbols-outlined text-[14px] text-[#008cff]">radar</span>
+                  <span className="font-bold text-gray-800 text-[11px]">Flight Tracker</span>
+                  <span className="bg-purple-100 text-purple-700 font-extrabold text-[8px] px-1.5 py-0.2 rounded uppercase">LIVE</span>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* ── BIG FLOATING CENTERED GRADIENT SEARCH BUTTON ── */}
           <div className="absolute left-1/2 -bottom-6 -translate-x-1/2 z-30">
             <button 
               type="button"
               onClick={handleMasterSearch}
-              className="bg-gradient-to-r from-[#53b2fe] to-[#065af3] hover:from-[#44a6f4] hover:to-[#0050e0] text-white text-base font-extrabold uppercase px-16 py-3.5 rounded-full shadow-[0_4px_16px_rgba(0,140,255,0.45)] tracking-wider hover:brightness-105 active:scale-[0.98] transition cursor-pointer flex items-center space-x-2"
+              className="bg-gradient-to-r from-[#53b2fe] to-[#065af3] hover:from-[#44a6f4] hover:to-[#0050e0] text-white text-base font-extrabold uppercase px-14 py-3.5 rounded-full shadow-[0_4px_16px_rgba(0,140,255,0.45)] tracking-wider hover:brightness-105 active:scale-[0.98] transition cursor-pointer flex items-center space-x-2"
             >
-              <span>SEARCH</span>
+              <span>
+                {searchMode === 'flights' && 'SEARCH FLIGHTS'}
+                {searchMode === 'hotels' && 'SEARCH HOTELS'}
+                {searchMode === 'villas' && 'SEARCH VILLAS'}
+                {searchMode === 'holidays' && 'EXPLORE PACKAGES'}
+                {searchMode === 'trains' && 'SEARCH TRAINS'}
+                {searchMode === 'buses' && 'SEARCH BUSES'}
+                {searchMode === 'cabs' && 'SEARCH CABS'}
+                {searchMode === 'tours' && 'EXPLORE ATTRACTIONS'}
+                {searchMode === 'visa' && 'APPLY VISA'}
+                {searchMode === 'insurance' && 'VIEW INSURANCE PLANS'}
+              </span>
               <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
             </button>
           </div>

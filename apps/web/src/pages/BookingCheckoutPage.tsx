@@ -11,7 +11,7 @@ import {
 } from '../services/api';
 
 export interface WebCheckoutItem {
-  serviceType: 'FLIGHT' | 'HOTEL' | 'TRAIN' | 'BUS' | 'CAB' | 'PACKAGE';
+  serviceType: 'FLIGHT' | 'HOTEL' | 'TRAIN' | 'BUS' | 'CAB' | 'PACKAGE' | 'ACTIVITY' | 'VISA' | 'INSURANCE';
   itemId?: string;
   title: string;
   subtitle: string;

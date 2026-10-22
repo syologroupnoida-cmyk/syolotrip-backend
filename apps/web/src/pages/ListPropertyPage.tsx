@@ -64,12 +64,12 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate }
       <div className="bg-[#071426] border-b border-white/10 text-white/90 text-xs py-2 px-4 select-none">
         <div className="max-w-[1240px] mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center space-x-2">
-            {/* <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
               Partner Extranet
             </span>
             <span className="text-gray-300 hidden sm:inline">
               Welcome to <strong>SS Journey Connect</strong> — Official Partner Portal
-            </span> */}
+            </span>
           </div>
           <div className="flex items-center space-x-6 text-gray-300">
             <a href="tel:18001234567" className="flex items-center space-x-1.5 hover:text-white transition">
@@ -78,7 +78,7 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate }
             </a>
             <button 
               onClick={() => onNavigate('explore')}
-              className="text-xs text-blue-300 hover:text-white transition font-medium flex items-center space-x-1"
+              className="text-xs text-blue-300 hover:text-white transition font-medium flex items-center space-x-1 cursor-pointer"
             >
               <span>Back to Travel Site</span>
               <ArrowRight className="w-3 h-3" />
