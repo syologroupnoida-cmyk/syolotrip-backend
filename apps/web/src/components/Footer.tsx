@@ -1,7 +1,11 @@
 import React from 'react';
 import { Instagram, Facebook, Phone, Mail, MapPin } from 'lucide-react';
 
-export const Footer: React.FC = () => {
+interface FooterProps {
+  onNavigate?: (screen: any) => void;
+}
+
+export const Footer: React.FC<FooterProps> = () => {
   return (
     <footer className="bg-[#071426] text-gray-300 mt-20 border-t border-white/10 select-none">
       <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-10">
