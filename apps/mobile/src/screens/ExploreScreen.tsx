@@ -14,7 +14,6 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing, BorderRadius, Shadows, formatINR } from '../theme/theme';
 import { ScreenName, CategoryMode, TripBookingState } from '../types/travel';
-import { Footer } from '../components/Footer';
 
 const { width } = Dimensions.get('window');
 
@@ -725,9 +724,6 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
           ))}
         </View>
       </View>
-
-      {/* Footer */}
-      <Footer />
     </ScrollView>
   );
 };
