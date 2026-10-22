@@ -4,7 +4,14 @@ Usage:
     python -m backend.create_admin --email admin@example.com --name "Super Admin" --password "SecurePass123"
 """
 
+import os
 import sys
+
+# Ensure repository root is on sys.path so 'backend.app' is always importable
+repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
+
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
