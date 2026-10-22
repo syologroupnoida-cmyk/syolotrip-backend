@@ -32,6 +32,8 @@ class BookingServiceType(str, enum.Enum):
     HOTEL = "HOTEL"
     BUS = "BUS"
     PACKAGE = "PACKAGE"
+    TRAIN = "TRAIN"
+    CAB = "CAB"
     COMBO = "COMBO"
 
 

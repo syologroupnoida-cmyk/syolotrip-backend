@@ -1,6 +1,6 @@
 export type ScreenName = 'explore' | 'flights' | 'hotels' | 'checkout' | 'trips';
 
-export type CategoryMode = 'flights' | 'hotels' | 'packages';
+export type CategoryMode = 'flights' | 'hotels' | 'packages' | 'trains' | 'buses' | 'cabs';
 
 export interface DestinationCard {
   id: string;
@@ -54,7 +54,70 @@ export interface HotelOption {
   lng: number;
 }
 
+export interface TrainOption {
+  id: string;
+  trainNumber: string;
+  trainName: string;
+  trainType: string;
+  fromStationCode: string;
+  fromStationName: string;
+  toStationCode: string;
+  toStationName: string;
+  departureTime: string;
+  arrivalTime: string;
+  duration: string;
+  trainClass: string;
+  availableSeats: number;
+  price: number;
+  rating: number;
+}
+
+export interface BusOption {
+  id: string;
+  operatorName: string;
+  busType: string;
+  fromCity: string;
+  toCity: string;
+  boardingPoint: string;
+  droppingPoint: string;
+  departureTime: string;
+  arrivalTime: string;
+  duration: string;
+  availableSeats: number;
+  price: number;
+  rating: number;
+}
+
+export interface CabOption {
+  id: string;
+  cabType: string;
+  vehicleModel: string;
+  city: string;
+  pickupArea: string;
+  dropArea: string;
+  driverName: string;
+  driverRating: number;
+  capacity: number;
+  price: number;
+  etaMinutes: number;
+  features: string[];
+}
+
+export interface PackageOption {
+  id: string;
+  title: string;
+  destination: string;
+  durationDays: number;
+  durationNights: number;
+  overview: string;
+  inclusions: string[];
+  price: number;
+  rating: number;
+  image: string;
+}
+
 export interface TripBookingState {
+  serviceType?: 'FLIGHT' | 'HOTEL' | 'BUS' | 'PACKAGE' | 'TRAIN' | 'CAB';
   originCode: string;
   originCity: string;
   destCode: string;
@@ -63,6 +126,10 @@ export interface TripBookingState {
   travelersText: string;
   selectedFlight?: FlightOption;
   selectedHotel?: HotelOption;
+  selectedTrain?: TrainOption;
+  selectedBus?: BusOption;
+  selectedCab?: CabOption;
+  selectedPackage?: PackageOption;
   seat: string;
   hasInsurance: boolean;
   travelerName: string;

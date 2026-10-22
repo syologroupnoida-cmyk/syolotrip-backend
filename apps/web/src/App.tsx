@@ -5,7 +5,7 @@ import { Footer } from './components/Footer';
 import { ExplorePage, FlightSearchParams, HotelSearchParams } from './pages/ExplorePage';
 import { FlightSearchPage } from './pages/FlightSearchPage';
 import { HotelSearchPage } from './pages/HotelSearchPage';
-import { BookingCheckoutPage } from './pages/BookingCheckoutPage';
+import { BookingCheckoutPage, WebCheckoutItem } from './pages/BookingCheckoutPage';
 import { MyTripsPage } from './pages/MyTripsPage';
 import { AuthModal } from './components/AuthModal';
 import { getCurrentUserApi, logoutApi, UserProfile } from './services/api';
@@ -23,6 +23,7 @@ export const App: React.FC = () => {
   const [activeScreen, setActiveScreen] = useState<ScreenType>('explore');
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [checkoutItem, setCheckoutItem] = useState<WebCheckoutItem | null>(null);
 
   // Search parameters passed from ExplorePage to search pages
   const [flightSearchParams, setFlightSearchParams] = useState<FlightSearchParams>({
@@ -61,6 +62,11 @@ export const App: React.FC = () => {
     setActiveScreen('hotels');
   };
 
+  const handleInitiateCheckout = (item: WebCheckoutItem) => {
+    setCheckoutItem(item);
+    setActiveScreen('checkout');
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen flex flex-col bg-background font-sans text-on-surface">
@@ -80,6 +86,7 @@ export const App: React.FC = () => {
               onNavigate={setActiveScreen} 
               onSearchFlights={handleSearchFlights}
               onSearchHotels={handleSearchHotels}
+              onInitiateCheckout={handleInitiateCheckout}
             />
           )}
           {activeScreen === 'flights' && (
@@ -95,7 +102,10 @@ export const App: React.FC = () => {
             />
           )}
           {activeScreen === 'checkout' && (
-            <BookingCheckoutPage onNavigate={setActiveScreen} />
+            <BookingCheckoutPage 
+              onNavigate={setActiveScreen} 
+              bookingItem={checkoutItem || undefined}
+            />
           )}
           {activeScreen === 'trips' && (
             <MyTripsPage 

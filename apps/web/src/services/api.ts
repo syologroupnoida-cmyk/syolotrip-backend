@@ -64,6 +64,70 @@ export const searchHotelsApi = async (params?: {
   }
 };
 
+// ================= Trains API =================
+export const searchTrainsApi = async (params?: {
+  from_city?: string;
+  to_city?: string;
+  from_station?: string;
+  to_station?: string;
+  train_class?: string;
+  max_price?: number;
+}): Promise<any[]> => {
+  try {
+    const res = await apiClient.get<ApiResponse<{ items: any[] }>>('/trains', { params });
+    return res.data.data.items;
+  } catch (err) {
+    console.warn('Train API error, falling back', err);
+    return [];
+  }
+};
+
+// ================= Buses API =================
+export const searchBusesApi = async (params?: {
+  from_city?: string;
+  to_city?: string;
+  max_price?: number;
+}): Promise<any[]> => {
+  try {
+    const res = await apiClient.get<ApiResponse<{ items: any[] }>>('/buses', { params });
+    return res.data.data.items;
+  } catch (err) {
+    console.warn('Bus API error, falling back', err);
+    return [];
+  }
+};
+
+// ================= Cabs API =================
+export const searchCabsApi = async (params?: {
+  city?: string;
+  cab_type?: string;
+  max_price?: number;
+}): Promise<any[]> => {
+  try {
+    const res = await apiClient.get<ApiResponse<{ items: any[] }>>('/cabs', { params });
+    return res.data.data.items;
+  } catch (err) {
+    console.warn('Cab API error, falling back', err);
+    return [];
+  }
+};
+
+// ================= Holiday Packages API =================
+export const searchPackagesApi = async (params?: {
+  destination?: string;
+  max_price?: number;
+  min_days?: number;
+  max_days?: number;
+}): Promise<any[]> => {
+  try {
+    const res = await apiClient.get<ApiResponse<{ items: any[] }>>('/packages', { params });
+    return res.data.data.items;
+  } catch (err) {
+    console.warn('Package API error, falling back', err);
+    return [];
+  }
+};
+
 // ================= Bookings API =================
 export const createBookingApi = async (payload: {
   service_type: string;

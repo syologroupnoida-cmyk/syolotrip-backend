@@ -14,13 +14,21 @@ if hasattr(sys.stdout, "reconfigure"):
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from backend.app.core.database import AsyncSessionLocal
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from backend.app.core.database import AsyncSessionLocal, engine
+from backend.app.models.base import Base
 from backend.app.core.security import hash_password
 from backend.app.models.user import User, UserRole
-from backend.app.models.travel import Flight, Hotel, HotelRoom, Bus, HolidayPackage
+from backend.app.models.travel import Flight, Hotel, HotelRoom, Bus, HolidayPackage, Train, Cab
 
 
 async def seed_data():
+    # Ensure all tables exist in database (including newly added trains and cabs)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
     async with AsyncSessionLocal() as session:
         print("[SEED] Starting idempotent seed process for SS Journey...")
 
@@ -480,6 +488,170 @@ async def seed_data():
                 session.add(pkg)
                 pkg_count += 1
         print(f"  [+] Added {pkg_count} new holiday packages (idempotent)")
+
+        # 5. Seed Trains
+        demo_trains = [
+            {
+                "train_number": "22436",
+                "train_name": "Vande Bharat Express",
+                "train_type": "Semi-High Speed",
+                "from_station_code": "NDLS",
+                "from_station_name": "New Delhi Railway Station",
+                "from_city": "Delhi",
+                "to_station_code": "BSB",
+                "to_station_name": "Varanasi Junction",
+                "to_city": "Varanasi",
+                "departure_time": "06:00",
+                "arrival_time": "14:00",
+                "duration_minutes": 480,
+                "train_class": "Executive Chair Car (EC)",
+                "available_seats": 54,
+                "base_fare": 3310.00,
+                "rating": 4.9,
+                "currency": "INR",
+            },
+            {
+                "train_number": "12002",
+                "train_name": "Bhopal Shatabdi Express",
+                "train_type": "Shatabdi Superfast",
+                "from_station_code": "NDLS",
+                "from_station_name": "New Delhi Railway Station",
+                "from_city": "Delhi",
+                "to_station_code": "AGC",
+                "to_station_name": "Agra Cantt",
+                "to_city": "Agra",
+                "departure_time": "06:00",
+                "arrival_time": "07:50",
+                "duration_minutes": 110,
+                "train_class": "AC Chair Car (CC)",
+                "available_seats": 88,
+                "base_fare": 750.00,
+                "rating": 4.8,
+                "currency": "INR",
+            },
+            {
+                "train_number": "12952",
+                "train_name": "Mumbai Rajdhani Express",
+                "train_type": "Rajdhani Superfast",
+                "from_station_code": "NDLS",
+                "from_station_name": "New Delhi Railway Station",
+                "from_city": "Delhi",
+                "to_station_code": "MMCT",
+                "to_station_name": "Mumbai Central",
+                "to_city": "Mumbai",
+                "departure_time": "16:55",
+                "arrival_time": "08:35+1",
+                "duration_minutes": 940,
+                "train_class": "AC 2-Tier (2A)",
+                "available_seats": 32,
+                "base_fare": 4120.00,
+                "rating": 4.85,
+                "currency": "INR",
+            },
+            {
+                "train_number": "20608",
+                "train_name": "Mysuru - Chennai Vande Bharat",
+                "train_type": "Semi-High Speed",
+                "from_station_code": "SBC",
+                "from_station_name": "KSR Bengaluru",
+                "from_city": "Bengaluru",
+                "to_station_code": "MAS",
+                "to_station_name": "Chennai Central",
+                "to_city": "Chennai",
+                "departure_time": "14:50",
+                "arrival_time": "19:20",
+                "duration_minutes": 270,
+                "train_class": "AC Chair Car (CC)",
+                "available_seats": 96,
+                "base_fare": 995.00,
+                "rating": 4.9,
+                "currency": "INR",
+            },
+        ]
+
+        train_count = 0
+        for t_data in demo_trains:
+            res = await session.execute(
+                select(Train).where(Train.train_number == t_data["train_number"])
+            )
+            if not res.scalar_one_or_none():
+                train = Train(**t_data, is_simulated=True, is_active=True)
+                session.add(train)
+                train_count += 1
+        print(f"  [+] Added {train_count} new trains (idempotent)")
+
+        # 6. Seed Cabs
+        demo_cabs = [
+            {
+                "cab_type": "Sedan Prime",
+                "vehicle_model": "Honda City / Maruti Dzire",
+                "city": "Delhi",
+                "pickup_area": "IGI Airport Terminal 3",
+                "drop_area": "Connaught Place / Central Delhi",
+                "driver_name": "Vikram Singh (Verified)",
+                "driver_rating": 4.92,
+                "capacity": 4,
+                "base_fare": 850.00,
+                "currency": "INR",
+                "eta_minutes": 8,
+                "features": ["AC", "Zero Cancellation Fee", "Clean Cab Guarantee"],
+            },
+            {
+                "cab_type": "SUV XL Executive",
+                "vehicle_model": "Toyota Innova Crysta",
+                "city": "Delhi",
+                "pickup_area": "IGI Airport Terminal 3",
+                "drop_area": "Noida / Greater Noida",
+                "driver_name": "Harpreet Singh (Top Rated)",
+                "driver_rating": 4.96,
+                "capacity": 6,
+                "base_fare": 1650.00,
+                "currency": "INR",
+                "eta_minutes": 12,
+                "features": ["AC", "Extra Luggage Boot", "Chauffeur Driven", "Free Bottled Water"],
+            },
+            {
+                "cab_type": "Sedan Prime",
+                "vehicle_model": "Hyundai Verna",
+                "city": "Mumbai",
+                "pickup_area": "Chhatrapati Shivaji Maharaj Airport (T2)",
+                "drop_area": "Bandra Kurla Complex (BKC)",
+                "driver_name": "Ramesh Patil",
+                "driver_rating": 4.88,
+                "capacity": 4,
+                "base_fare": 650.00,
+                "currency": "INR",
+                "eta_minutes": 6,
+                "features": ["AC", "FastTAG Included", "Live GPS Tracking"],
+            },
+            {
+                "cab_type": "Luxury Electric EV",
+                "vehicle_model": "BYD Seal / Ioniq 5",
+                "city": "Bengaluru",
+                "pickup_area": "Kempegowda International Airport (BLR)",
+                "drop_area": "Indiranagar / Koramangala",
+                "driver_name": "Naveen Gowda",
+                "driver_rating": 4.98,
+                "capacity": 4,
+                "base_fare": 1850.00,
+                "currency": "INR",
+                "eta_minutes": 10,
+                "features": ["Zero Emissions EV", "Silent Cabin", "Premium Audio", "Refreshments"],
+            },
+        ]
+
+        cab_count = 0
+        for c_data in demo_cabs:
+            res = await session.execute(
+                select(Cab).where(
+                    (Cab.city == c_data["city"]) & (Cab.vehicle_model == c_data["vehicle_model"])
+                )
+            )
+            if not res.scalar_one_or_none():
+                cab = Cab(**c_data, is_simulated=True, is_active=True)
+                session.add(cab)
+                cab_count += 1
+        print(f"  [+] Added {cab_count} new cabs (idempotent)")
 
         await session.commit()
         print("[SUCCESS] Database seed completed successfully!")

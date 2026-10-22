@@ -8,81 +8,32 @@ import {
   Image,
   Animated,
   Dimensions,
+  ImageBackground,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Circle } from 'react-native-svg';
 import { Colors, Spacing, BorderRadius, Shadows, formatINR } from '../theme/theme';
-import { ScreenName, CategoryMode, DestinationCard } from '../types/travel';
+import { ScreenName, CategoryMode, TripBookingState } from '../types/travel';
 
 const { width } = Dimensions.get('window');
 
 interface ExploreScreenProps {
   onNavigate: (screen: ScreenName) => void;
-  onSelectDestination?: (dest: DestinationCard) => void;
+  onInitiateBooking?: (booking: TripBookingState) => void;
 }
-
-const POPULAR_ESCAPES: DestinationCard[] = [
-  {
-    id: 'tokyo',
-    city: 'Tokyo',
-    country: 'Japan',
-    flightType: 'Nonstop available',
-    price: 64890,
-    weather: '21°C Mild',
-    tag: 'Flash Deal',
-    tagType: 'flash',
-    image:
-      'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=600&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'paris',
-    city: 'Paris',
-    country: 'France',
-    flightType: '1 stop available',
-    price: 42200,
-    weather: '17°C Fresh',
-    tag: 'Autumn Foliage',
-    tagType: 'seasonal',
-    image:
-      'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=600&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'bali',
-    city: 'Bali',
-    country: 'Indonesia',
-    flightType: 'Tropical Retreat',
-    price: 34450,
-    weather: '29°C Warm',
-    tag: 'Resort Included',
-    tagType: 'resort',
-    image:
-      'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=600&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'rome',
-    city: 'Rome',
-    country: 'Italy',
-    flightType: 'Direct routes',
-    price: 48500,
-    weather: '24°C Sunny',
-    tag: 'Culinary Season',
-    tagType: 'seasonal',
-    image:
-      'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=600&auto=format&fit=crop&q=80',
-  },
-];
 
 export const ExploreScreen: React.FC<ExploreScreenProps> = ({
   onNavigate,
-  onSelectDestination,
+  onInitiateBooking,
 }) => {
   const [activeCategory, setActiveCategory] = useState<CategoryMode>('flights');
-  const [originCode, setOriginCode] = useState('SFO');
-  const [originCity, setOriginCity] = useState('San Francisco, United States');
-  const [destCode, setDestCode] = useState('HND');
-  const [destCity, setDestCity] = useState('Tokyo Haneda, Japan');
-  const [favorites, setFavorites] = useState<Record<string, boolean>>({});
+  const [tripType, setTripType] = useState<'oneway' | 'roundtrip' | 'multicity'>('oneway');
+  const [originCode, setOriginCode] = useState('DEL');
+  const [originCity, setOriginCity] = useState('New Delhi, India');
+  const [destCode, setDestCode] = useState('BOM');
+  const [destCity, setDestCity] = useState('Mumbai, India');
+  const [specialFare, setSpecialFare] = useState('regular');
+  const [offersTab, setOffersTab] = useState<'all' | 'flights' | 'hotels' | 'holidays' | 'trains'>('all');
 
   const swapAnim = useState(new Animated.Value(0))[0];
 
@@ -90,7 +41,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
     Animated.sequence([
       Animated.timing(swapAnim, {
         toValue: 1,
-        duration: 250,
+        duration: 220,
         useNativeDriver: true,
       }),
       Animated.timing(swapAnim, {
@@ -108,8 +59,66 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
     setDestCity(tempCity);
   };
 
-  const toggleFavorite = (id: string) => {
-    setFavorites((prev) => ({ ...prev, [id]: !prev[id] }));
+  const handleSearchPress = () => {
+    if (activeCategory === 'hotels') {
+      onNavigate('hotels');
+    } else if (activeCategory === 'flights') {
+      onNavigate('flights');
+    } else if (activeCategory === 'trains') {
+      handleBookItem('TRAIN', 'Vande Bharat Express (20172)', 1750);
+    } else if (activeCategory === 'buses') {
+      handleBookItem('BUS', 'Zingbus Luxury Multi-Axle Volvo AC', 950);
+    } else if (activeCategory === 'cabs') {
+      handleBookItem('CAB', 'Airport Prime Sedan (IGI T3)', 650);
+    } else if (activeCategory === 'packages') {
+      handleBookItem('PACKAGE', 'Goa Beachfront & Heritage Holiday (5D/4N)', 18500);
+    }
+  };
+
+  const handleBookItem = (
+    serviceType: 'FLIGHT' | 'HOTEL' | 'BUS' | 'PACKAGE' | 'TRAIN' | 'CAB',
+    title: string,
+    price: number
+  ) => {
+    const booking: TripBookingState = {
+      serviceType,
+      originCode,
+      originCity,
+      destCode,
+      destCity,
+      datesText: 'Oct 24 - Oct 31, 2026',
+      travelersText: '1 Traveler, Economy',
+      seat: '12B',
+      hasInsurance: true,
+      travelerName: 'Alexander Vanderbilt',
+      dob: '10/14/1988',
+      passportNumber: 'A94821038',
+      frequentFlyer: 'SSJ-ELITE',
+      selectedFlight: serviceType === 'FLIGHT' ? {
+        id: 'flight-del-bom',
+        airline: 'IndiGo Airlines',
+        flightCode: '6E-2041',
+        aircraft: 'Airbus A321neo',
+        originCode,
+        originTerminal: 'Terminal 3',
+        departureTime: '08:00 AM',
+        destCode,
+        destTerminal: 'Terminal 2',
+        arrivalTime: '10:15 AM',
+        duration: '2h 15m',
+        isNextDay: false,
+        stopsText: 'Non-stop',
+        isDirect: true,
+        price,
+        perks: ['Free carry-on', 'Snack box', 'USB power'],
+      } : undefined,
+    };
+
+    if (onInitiateBooking) {
+      onInitiateBooking(booking);
+    } else {
+      onNavigate('checkout');
+    }
   };
 
   const spin = swapAnim.interpolate({
@@ -123,409 +132,582 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
     >
-      {/* Wanderlust Mode Greeting */}
-      <View style={styles.heroSection}>
-        <View style={styles.heroRow}>
-          <View>
-            <Text style={styles.eyebrow}>Wanderlust Mode</Text>
-            <Text style={styles.headline}>Where to next, Alex?</Text>
-          </View>
-          <View style={styles.ecoBadge}>
-            <MaterialIcons name="eco" size={14} color={Colors.tertiary} />
-            <Text style={styles.ecoText}>Eco Pilot</Text>
-          </View>
-        </View>
-
-        {/* Category Mode Pills */}
-        <View style={styles.categoryPillsWrapper}>
-          <TouchableOpacity
-            style={[
-              styles.categoryPill,
-              activeCategory === 'flights' && styles.categoryPillActive,
-            ]}
-            onPress={() => setActiveCategory('flights')}
-            activeOpacity={0.8}
-          >
-            <MaterialIcons
-              name="flight"
-              size={16}
-              color={activeCategory === 'flights' ? Colors.primary : Colors.onSurfaceVariant}
-            />
-            <Text
-              style={[
-                styles.categoryText,
-                activeCategory === 'flights' && styles.categoryTextActive,
-              ]}
-            >
-              Flights
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.categoryPill,
-              activeCategory === 'hotels' && styles.categoryPillActive,
-            ]}
-            onPress={() => setActiveCategory('hotels')}
-            activeOpacity={0.8}
-          >
-            <MaterialIcons
-              name="hotel"
-              size={16}
-              color={activeCategory === 'hotels' ? Colors.primary : Colors.onSurfaceVariant}
-            />
-            <Text
-              style={[
-                styles.categoryText,
-                activeCategory === 'hotels' && styles.categoryTextActive,
-              ]}
-            >
-              Hotels
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.categoryPill,
-              activeCategory === 'packages' && styles.categoryPillActive,
-            ]}
-            onPress={() => setActiveCategory('packages')}
-            activeOpacity={0.8}
-          >
-            <MaterialIcons
-              name="inventory-2"
-              size={16}
-              color={activeCategory === 'packages' ? Colors.primary : Colors.onSurfaceVariant}
-            />
-            <Text
-              style={[
-                styles.categoryText,
-                activeCategory === 'packages' && styles.categoryTextActive,
-              ]}
-            >
-              Packages
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Compact Mobile Booking Card */}
-      <View style={styles.bookingCard}>
-        <View style={styles.routeContainer}>
-          {/* Origin */}
-          <View style={styles.routeSegment}>
-            <View style={styles.routeIconWrapper}>
-              <MaterialIcons name="flight-takeoff" size={18} color={Colors.primary} />
-            </View>
-            <View style={styles.routeInfo}>
-              <View style={styles.codeRow}>
-                <Text style={styles.routeCode}>{originCode}</Text>
-                <Text style={styles.routeLabel}>Origin</Text>
-              </View>
-              <Text style={styles.routeCity} numberOfLines={1}>
-                {originCity}
-              </Text>
-            </View>
-          </View>
-
-          {/* Swap Floating Button */}
-          <TouchableOpacity
-            style={styles.swapBtn}
-            onPress={handleSwapRoutes}
-            activeOpacity={0.8}
-          >
-            <Animated.View style={{ transform: [{ rotate: spin }] }}>
-              <MaterialIcons name="swap-vert" size={20} color={Colors.primary} />
-            </Animated.View>
-          </TouchableOpacity>
-
-          {/* Destination */}
-          <View style={styles.routeSegment}>
-            <View style={[styles.routeIconWrapper, styles.destIconWrapper]}>
-              <MaterialIcons name="flight-land" size={18} color={Colors.secondary} />
-            </View>
-            <View style={styles.routeInfo}>
-              <View style={styles.codeRow}>
-                <Text style={styles.routeCode}>{destCode}</Text>
-                <Text style={[styles.routeLabel, { color: Colors.secondary }]}>
-                  Destination
-                </Text>
-              </View>
-              <Text style={styles.routeCity} numberOfLines={1}>
-                {destCity}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Date & Travelers Selectors */}
-        <View style={styles.selectorsGrid}>
-          <TouchableOpacity style={styles.selectorTile} activeOpacity={0.7}>
-            <MaterialIcons name="calendar-month" size={18} color={Colors.primary} />
-            <View style={styles.selectorMeta}>
-              <Text style={styles.selectorLabel}>Dates</Text>
-              <Text style={styles.selectorValue}>Oct 14 - 24</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.selectorTile} activeOpacity={0.7}>
-            <MaterialIcons name="person" size={18} color={Colors.primary} />
-            <View style={styles.selectorMeta}>
-              <Text style={styles.selectorLabel}>Travelers</Text>
-              <Text style={styles.selectorValue}>1 Adult, Econ</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Primary CTA Button */}
-        <TouchableOpacity
-          style={styles.findDealsBtn}
-          onPress={() => onNavigate(activeCategory === 'hotels' ? 'hotels' : 'flights')}
-          activeOpacity={0.85}
+      {/* ── 1. TROPICAL SKY HERO BACKDROP (From Stitch) ── */}
+      <View style={styles.heroWrapper}>
+        <ImageBackground
+          source={{
+            uri: 'https://lh3.googleusercontent.com/aida/AEtjO1X9V_cXH-OdTKknVPk8LYIh5cdklptUrc0Qzr0TIp4lO1EW6FbuV9r7ONNQuR6U013te9Qiyu8zP0NjOXUMBSKt_nB050jMOdZRMUrPE_av2lsl_uMUcs-vg1mGAOGPq2g4qT7_r3TKQRGgzZW_sBWgdaRJhOi-O6xWRCKsp_tgN2nuwqNb73oJCPnPp_CWPqdrJGPl_LyxkpnmyJvqxk3UOtHtHhKf2ONHfNKFSKRWIYcW-Mo--IBA7XM',
+          }}
+          style={styles.heroBackground}
+          resizeMode="cover"
         >
-          <Text style={styles.findDealsText}>Find Best Deals</Text>
-          <MaterialIcons name="arrow-forward" size={18} color="#ffffff" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Live Fare Watch Banner */}
-      <View style={styles.fareDropCard}>
-        <View style={styles.fareLeft}>
-          <View style={styles.fareIconBadge}>
-            <MaterialIcons name="trending-down" size={20} color={Colors.tertiary} />
-          </View>
-          <View style={styles.fareDetails}>
-            <View style={styles.fareTagRow}>
-              <View style={styles.fareDropPill}>
-                <Text style={styles.fareDropPillText}>Fare Drop</Text>
+          <LinearGradient
+            colors={['rgba(0,92,171,0.65)', 'rgba(0,92,171,0.3)', '#fbf9f8']}
+            style={styles.heroGradient}
+          >
+            {/* Top Micro Badges */}
+            <View style={styles.heroTopRow}>
+              <View style={styles.dealsPill}>
+                <MaterialIcons name="travel-explore" size={14} color="#005cab" />
+                <Text style={styles.dealsPillText}>Explore Global Deals</Text>
               </View>
-              <Text style={styles.fareSavings}>Save up to ₹12,500</Text>
+              <View style={styles.specialPill}>
+                <MaterialIcons name="local-fire-department" size={13} color="#ffffff" />
+                <Text style={styles.specialPillText}>SPECIALS</Text>
+              </View>
             </View>
-            <Text style={styles.fareDescription} numberOfLines={1}>
-              Tokyo flights at 3-week lowest right now
-            </Text>
-          </View>
-        </View>
 
-        {/* Sparkline Visual */}
-        <View style={styles.sparklineContainer}>
-          <Svg width={56} height={24} viewBox="0 0 64 28">
-            <Path
-              d="M2 18L16 14L30 20L44 8L62 3"
-              stroke="#007167"
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-            />
-            <Circle cx={62} cy={3} r={3} fill="#007167" />
-          </Svg>
-          <Text style={styles.sparklineLabel}>-18% vs avg</Text>
-        </View>
+            {/* Hero Wanderlust Copy */}
+            <View style={styles.heroCopy}>
+              <Text style={styles.heroTitle}>Where to next?</Text>
+              <Text style={styles.heroSubtitle}>
+                Book cheap domestic &amp; international travel
+              </Text>
+            </View>
+          </LinearGradient>
+        </ImageBackground>
       </View>
 
-      {/* Recent Searches */}
-      <View style={styles.recentSection}>
-        <View style={styles.recentHeader}>
-          <Text style={styles.recentTitle}>Recent Inquiries</Text>
-          <TouchableOpacity activeOpacity={0.6}>
-            <Text style={styles.recentClear}>Clear</Text>
-          </TouchableOpacity>
-        </View>
-
+      {/* ── 2. CATEGORY NAV PILLS CAROUSEL (Floating) ── */}
+      <View style={styles.categoryCarouselWrapper}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.recentScroll}
+          contentContainerStyle={styles.categoryCarousel}
         >
-          <TouchableOpacity
-            style={styles.recentChip}
-            onPress={() => {
-              setOriginCode('SFO');
-              setDestCode('HND');
-              onNavigate('flights');
-            }}
-            activeOpacity={0.7}
-          >
-            <MaterialIcons name="history" size={15} color={Colors.onSurfaceVariant} />
-            <Text style={styles.recentRoute}>SFO → HND</Text>
-            <Text style={styles.recentDate}>· Oct 14</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.recentChip}
-            onPress={() => {
-              setOriginCode('LAX');
-              setDestCode('CDG');
-              onNavigate('flights');
-            }}
-            activeOpacity={0.7}
-          >
-            <MaterialIcons name="history" size={15} color={Colors.onSurfaceVariant} />
-            <Text style={styles.recentRoute}>LAX → CDG</Text>
-            <Text style={styles.recentDate}>· Nov 02</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.recentChip}
-            onPress={() => {
-              setOriginCode('JFK');
-              setDestCode('FCO');
-              onNavigate('flights');
-            }}
-            activeOpacity={0.7}
-          >
-            <MaterialIcons name="history" size={15} color={Colors.onSurfaceVariant} />
-            <Text style={styles.recentRoute}>JFK → FCO</Text>
-            <Text style={styles.recentDate}>· Dec 19</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-
-      {/* Popular Escapes Carousel */}
-      <View style={styles.escapesSection}>
-        <View style={styles.escapesHeader}>
-          <View>
-            <Text style={styles.escapesTitle}>Popular Escapes</Text>
-            <Text style={styles.escapesSubtitle}>
-              Top curated getaways tailored to your travel style
-            </Text>
-          </View>
-          <TouchableOpacity onPress={() => onNavigate('flights')} activeOpacity={0.7}>
-            <Text style={styles.seeAllText}>See all</Text>
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.escapesScroll}
-        >
-          {POPULAR_ESCAPES.map((item) => {
-            const isFav = !!favorites[item.id];
+          {([
+            { id: 'flights' as const, label: 'Flights', icon: 'flight-takeoff' as const },
+            { id: 'hotels' as const, label: 'Hotels', icon: 'hotel' as const },
+            { id: 'packages' as const, label: 'Holidays', icon: 'beach-access' as const, badge: '-25%' },
+            { id: 'trains' as const, label: 'Trains', icon: 'train' as const },
+            { id: 'buses' as const, label: 'Buses', icon: 'directions-bus' as const },
+            { id: 'cabs' as const, label: 'Cabs', icon: 'local-taxi' as const },
+          ]).map((item) => {
+            const isActive = activeCategory === item.id;
             return (
               <TouchableOpacity
                 key={item.id}
-                style={styles.escapeCard}
-                onPress={() => {
-                  setDestCode(item.city === 'Tokyo' ? 'HND' : item.city.slice(0, 3).toUpperCase());
-                  setDestCity(`${item.city}, ${item.country}`);
-                  if (onSelectDestination) onSelectDestination(item);
-                  onNavigate('flights');
-                }}
-                activeOpacity={0.9}
+                style={[
+                  styles.categoryPill,
+                  isActive && styles.categoryPillActive,
+                ]}
+                onPress={() => setActiveCategory(item.id)}
+                activeOpacity={0.85}
               >
-                <View style={styles.escapeImgWrapper}>
-                  <Image source={{ uri: item.image }} style={styles.escapeImg} />
-                  <View style={styles.weatherTag}>
-                    <MaterialIcons name="wb-sunny" size={12} color={Colors.secondary} />
-                    <Text style={styles.weatherText}>{item.weather}</Text>
+                <MaterialIcons
+                  name={item.icon}
+                  size={18}
+                  color={isActive ? '#ffffff' : '#005cab'}
+                />
+                <Text
+                  style={[
+                    styles.categoryPillText,
+                    isActive && styles.categoryPillTextActive,
+                  ]}
+                >
+                  {item.label}
+                </Text>
+                {item.badge && (
+                  <View style={styles.categoryBadge}>
+                    <Text style={styles.categoryBadgeText}>{item.badge}</Text>
                   </View>
-
-                  <TouchableOpacity
-                    style={styles.favBtn}
-                    onPress={() => toggleFavorite(item.id)}
-                    activeOpacity={0.7}
-                  >
-                    <MaterialIcons
-                      name={isFav ? 'favorite' : 'favorite-border'}
-                      size={16}
-                      color={isFav ? Colors.error : Colors.onSurface}
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.escapeMeta}>
-                  <View style={styles.escapeTopRow}>
-                    <View>
-                      <Text style={styles.escapeCity}>{item.city}</Text>
-                      <Text style={styles.escapeCountry}>
-                        {item.country} · {item.flightType}
-                      </Text>
-                    </View>
-                    <View style={styles.escapePriceBlock}>
-                      <Text style={styles.fromLabel}>from</Text>
-                      <Text style={styles.escapePrice}>{formatINR(item.price)}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.escapeFooter}>
-                    <View style={styles.flashBadge}>
-                      <MaterialIcons name="bolt" size={13} color={Colors.tertiary} />
-                      <Text style={styles.flashText}>{item.tag}</Text>
-                    </View>
-
-                    <View style={styles.viewFlightsRow}>
-                      <Text style={styles.viewFlightsText}>View flights</Text>
-                      <MaterialIcons name="chevron-right" size={14} color={Colors.primary} />
-                    </View>
-                  </View>
-                </View>
+                )}
               </TouchableOpacity>
             );
           })}
         </ScrollView>
       </View>
 
-      {/* Bundle & Save 25% Promo Banner */}
-      <TouchableOpacity
-        style={styles.promoBanner}
-        onPress={() => onNavigate('checkout')}
-        activeOpacity={0.9}
-      >
-        <LinearGradient
-          colors={['#071a3d', '#0c2d6b', '#143d8a']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.promoGradient}
-        >
-          <View style={styles.promoContent}>
-            <View style={styles.promoTagRow}>
-              <View style={styles.saveTag}>
-                <Text style={styles.saveTagText}>SAVE 25%</Text>
-              </View>
-              <Text style={styles.promoLimited}>Limited Period</Text>
-            </View>
-            <Text style={styles.promoTitle}>Bundle Flight + Hotel</Text>
-            <Text style={styles.promoDesc} numberOfLines={2}>
-              Unlock secret rates and free airport transfer when booked together.
-            </Text>
-          </View>
-
-          <View style={styles.promoArrowBtn}>
-            <MaterialIcons name="arrow-forward" size={20} color={Colors.primary} />
-          </View>
-        </LinearGradient>
-      </TouchableOpacity>
-
-      {/* Travel Perks */}
-      <View style={styles.perksRow}>
-        <View style={styles.perkCard}>
-          <View style={styles.perkIconWrapper}>
-            <MaterialIcons name="verified" size={18} color={Colors.primary} />
-          </View>
-          <View style={styles.perkTextGroup}>
-            <Text style={styles.perkTitle} numberOfLines={1}>
-              Price Guarantee
-            </Text>
-            <Text style={styles.perkSub} numberOfLines={1}>
-              We match any fare
-            </Text>
-          </View>
+      {/* ── 3. SEARCH ENGINE CONSOLE WIDGET CARD (Stitch Replica) ── */}
+      <View style={styles.searchCard}>
+        {/* Trip Mode Radio Bar */}
+        <View style={styles.tripTypeRow}>
+          {(['oneway', 'roundtrip', 'multicity'] as const).map((mode) => {
+            const isSelected = tripType === mode;
+            return (
+              <TouchableOpacity
+                key={mode}
+                style={[
+                  styles.tripTypeTab,
+                  isSelected && styles.tripTypeTabSelected,
+                ]}
+                onPress={() => setTripType(mode)}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.radioCircle,
+                    isSelected && styles.radioCircleSelected,
+                  ]}
+                >
+                  {isSelected && <View style={styles.radioInner} />}
+                </View>
+                <Text
+                  style={[
+                    styles.tripTypeText,
+                    isSelected && styles.tripTypeTextSelected,
+                  ]}
+                >
+                  {mode === 'oneway' ? 'One Way' : mode === 'roundtrip' ? 'Round Trip' : 'Multi City'}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        <View style={styles.perkCard}>
-          <View style={[styles.perkIconWrapper, { backgroundColor: Colors.tertiaryFixed }]}>
-            <MaterialIcons name="support-agent" size={18} color={Colors.tertiary} />
+        {/* FROM & TO Segment with Centered Swap Icon */}
+        <View style={styles.routeContainer}>
+          {/* FROM Input */}
+          <TouchableOpacity
+            style={styles.routeBox}
+            onPress={() => {
+              if (originCode === 'DEL') {
+                setOriginCode('SFO');
+                setOriginCity('San Francisco, USA');
+              } else {
+                setOriginCode('DEL');
+                setOriginCity('New Delhi, India');
+              }
+            }}
+            activeOpacity={0.8}
+          >
+            <View style={styles.routeMeta}>
+              <Text style={styles.routeLabel}>FROM</Text>
+              <View style={styles.codeRow}>
+                <Text style={styles.airportCode}>{originCode}</Text>
+                <Text style={styles.cityName} numberOfLines={1}>{originCity.split(',')[0]}</Text>
+              </View>
+              <Text style={styles.subAirport} numberOfLines={1}>{originCity}</Text>
+            </View>
+            <MaterialIcons name="flight-takeoff" size={20} color="#707785" />
+          </TouchableOpacity>
+
+          {/* Swap Floating Button */}
+          <View style={styles.swapDivider}>
+            <View style={styles.dividerLine} />
+            <TouchableOpacity
+              style={styles.swapFab}
+              onPress={handleSwapRoutes}
+              activeOpacity={0.8}
+            >
+              <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                <MaterialIcons name="sync-alt" size={18} color="#005cab" />
+              </Animated.View>
+            </TouchableOpacity>
           </View>
-          <View style={styles.perkTextGroup}>
-            <Text style={styles.perkTitle} numberOfLines={1}>
-              24/7 Concierge
+
+          {/* TO Input */}
+          <TouchableOpacity
+            style={styles.routeBox}
+            onPress={() => {
+              if (destCode === 'BOM') {
+                setDestCode('HND');
+                setDestCity('Tokyo Haneda, Japan');
+              } else {
+                setDestCode('BOM');
+                setDestCity('Mumbai, India');
+              }
+            }}
+            activeOpacity={0.8}
+          >
+            <View style={styles.routeMeta}>
+              <Text style={styles.routeLabel}>TO</Text>
+              <View style={styles.codeRow}>
+                <Text style={styles.airportCode}>{destCode}</Text>
+                <Text style={styles.cityName} numberOfLines={1}>{destCity.split(',')[0]}</Text>
+              </View>
+              <Text style={styles.subAirport} numberOfLines={1}>{destCity}</Text>
+            </View>
+            <MaterialIcons name="flight-land" size={20} color="#707785" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Departure & Return Grid */}
+        <View style={styles.dateGrid}>
+          <TouchableOpacity style={styles.dateCell} activeOpacity={0.8}>
+            <Text style={styles.routeLabel}>DEPARTURE DATE</Text>
+            <View style={styles.dateNumberRow}>
+              <Text style={styles.dateDayNumber}>24</Text>
+              <Text style={styles.dateMonth}>Oct'26</Text>
+            </View>
+            <Text style={styles.dateDayName}>Saturday</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.dateCell} activeOpacity={0.8}>
+            <View style={styles.returnHeader}>
+              <MaterialIcons name="add-circle" size={14} color="#005cab" />
+              <Text style={[styles.routeLabel, { color: '#005cab' }]}>RETURN DATE</Text>
+            </View>
+            <Text style={styles.returnPrompt}>Tap to add return for bigger savings</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Travellers & Class */}
+        <TouchableOpacity style={styles.travellersBox} activeOpacity={0.8}>
+          <View>
+            <Text style={styles.routeLabel}>TRAVELLERS &amp; CLASS</Text>
+            <View style={styles.travellersValueRow}>
+              <Text style={styles.travellersCount}>1 Traveller</Text>
+              <Text style={styles.travellersClass}>• Economy / Premium</Text>
+            </View>
+          </View>
+          <MaterialIcons name="arrow-forward-ios" size={14} color="#707785" />
+        </TouchableOpacity>
+
+        {/* Special Fares Selection */}
+        <View style={styles.specialFaresSection}>
+          <View style={styles.specialFaresHeader}>
+            <Text style={styles.specialFaresTitle}>Special Fares (Optional):</Text>
+            <Text style={styles.savingsTag}>Extra Savings Active</Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.specialFaresRow}
+          >
+            {[
+              { id: 'regular', label: 'Regular Fares' },
+              { id: 'student', label: 'Student Fares' },
+              { id: 'senior', label: 'Senior Citizen' },
+              { id: 'armed', label: 'Armed Forces' },
+              { id: 'medical', label: 'Doctors & Nurses' },
+            ].map((f) => (
+              <TouchableOpacity
+                key={f.id}
+                style={[
+                  styles.fareChip,
+                  specialFare === f.id && styles.fareChipSelected,
+                ]}
+                onPress={() => setSpecialFare(f.id)}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.fareChipText,
+                    specialFare === f.id && styles.fareChipTextSelected,
+                  ]}
+                >
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Trending shortcuts */}
+        <View style={styles.trendingRow}>
+          <Text style={styles.trendingLabel}>Trending:</Text>
+          <TouchableOpacity
+            style={styles.trendingChip}
+            onPress={() => {
+              setOriginCode('DEL');
+              setDestCode('BOM');
+            }}
+          >
+            <Text style={styles.trendingChipText}>DEL → BOM</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.trendingChip}
+            onPress={() => {
+              setOriginCode('SFO');
+              setDestCode('HND');
+            }}
+          >
+            <Text style={styles.trendingChipText}>SFO → HND</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Big Vibrant Gradient Search Button */}
+        <TouchableOpacity
+          style={styles.searchButton}
+          onPress={handleSearchPress}
+          activeOpacity={0.9}
+        >
+          <LinearGradient
+            colors={['#008cff', '#005cab']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.searchButtonGradient}
+          >
+            <MaterialIcons name="search" size={20} color="#ffffff" />
+            <Text style={styles.searchButtonText}>
+              {activeCategory === 'flights' ? 'SEARCH FLIGHTS' :
+               activeCategory === 'hotels' ? 'SEARCH HOTELS' :
+               activeCategory === 'trains' ? 'BOOK TRAIN' :
+               activeCategory === 'buses' ? 'BOOK BUS' :
+               activeCategory === 'cabs' ? 'RESERVE CAB' : 'EXPLORE HOLIDAYS'}
             </Text>
-            <Text style={styles.perkSub} numberOfLines={1}>
-              Live agent assist
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+
+      {/* ── 4. FIRST BOOKING WELCOME BANNER ── */}
+      <View style={styles.welcomeBanner}>
+        <LinearGradient
+          colors={['#0a58ca', '#005cab']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.welcomeBannerGradient}
+        >
+          <View style={styles.welcomeLeft}>
+            <View style={styles.welcomeBadge}>
+              <Text style={styles.welcomeBadgeText}>NEW USER PERK</Text>
+            </View>
+            <Text style={styles.welcomeTitle}>Up to 25% OFF on Your 1st Booking</Text>
+            <Text style={styles.welcomeCode}>
+              Use code <Text style={styles.welcomeCodeBold}>MMTWELCOME</Text> at checkout
             </Text>
           </View>
+          <TouchableOpacity
+            style={styles.welcomeClaimBtn}
+            onPress={handleSearchPress}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.welcomeClaimText}>Claim</Text>
+          </TouchableOpacity>
+        </LinearGradient>
+      </View>
+
+      {/* ── 5. SUPER OFFERS SECTION (Horizontal Carousel) ── */}
+      <View style={styles.offersSection}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleRow}>
+            <Text style={styles.sectionTitle}>Super Offers</Text>
+            <View style={styles.saveBigBadge}>
+              <Text style={styles.saveBigText}>SAVE BIG</Text>
+            </View>
+          </View>
+          <TouchableOpacity onPress={() => onNavigate('flights')}>
+            <Text style={styles.viewAllText}>View All</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Offers Category Pills */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.offersTabRow}
+        >
+          {(['all', 'flights', 'hotels', 'holidays', 'trains'] as const).map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              style={[
+                styles.offersTab,
+                offersTab === tab && styles.offersTabActive,
+              ]}
+              onPress={() => setOffersTab(tab)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.offersTabText,
+                  offersTab === tab && styles.offersTabTextActive,
+                ]}
+              >
+                {tab === 'all' ? 'All Offers' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Horizontal Deals Carousel */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.dealsCarousel}
+        >
+          {/* Deal 1: Flights */}
+          <View style={styles.dealCard}>
+            <View style={styles.dealImageWrapper}>
+              <Image
+                source={{
+                  uri: 'https://lh3.googleusercontent.com/aida/AEtjO1Uis5Wh0S6j6qQCBNKOs9FHJYibkM5dGxlmO1HOm259BCUiDVdL8saLZpPSsPc1EmrmYFMdtbj3fDQO5-XLnGCX8ekv7HgR6IrezYn5LuT_NrkdqYLiTIVoL5Z6H3WJXmzOwmdEHXeLIAiEmFP98ZNmB0CHQoun_WZjpHM4FAK9Yv_7CCfops9oG8w0dk91-kClbekjwH5f5C77VtHgICb-2hadNl7-1d6ADqOWwrsX95nCR0AyXlyR1Ys',
+                }}
+                style={styles.dealImage}
+              />
+              <View style={styles.dealCategoryTag}>
+                <Text style={styles.dealCategoryText}>FLIGHTS</Text>
+              </View>
+              <View style={styles.dealDiscountTag}>
+                <Text style={styles.dealDiscountText}>FLAT 8% OFF</Text>
+              </View>
+            </View>
+            <Text style={styles.dealTitle} numberOfLines={1}>
+              Savings Alert: Get FLAT 8% OFF*
+            </Text>
+            <Text style={styles.dealSubtitle} numberOfLines={2}>
+              Book domestic and international flights starting from top cities.
+            </Text>
+            <View style={styles.dealFooter}>
+              <View style={styles.dealCodeBadge}>
+                <Text style={styles.dealCodeText}>CODE: MMTFLY</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => onNavigate('flights')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.dealBookNow}>BOOK NOW</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Deal 2: Hotels */}
+          <View style={styles.dealCard}>
+            <View style={styles.dealImageWrapper}>
+              <Image
+                source={{
+                  uri: 'https://lh3.googleusercontent.com/aida/AEtjO1UrJrpEZbh7LenpwQV6uAuuPI27RonzV-sXFIlqnlDHJvwWIyZW8B32vGNoUU2Q4DBWEC-ojckB7ANiWAHfUomVPFHghtWTMeCXlCknHQ85bj6If--xjw7a8xePxhaEj4rvUggwK7t-8FxOqRJUJ6ViONcCuqgn9F6ko1Qj2yHXkLWZfyTUptDmhBuUt97B9PaCaQdVsM46C0E3nBSVJem5qF9APA3lvNtpc9yo1rBsJQg7B731bLgLAzs',
+                }}
+                style={styles.dealImage}
+              />
+              <View style={[styles.dealCategoryTag, { backgroundColor: '#0a58ca' }]}>
+                <Text style={styles.dealCategoryText}>HOTELS</Text>
+              </View>
+              <View style={styles.dealDiscountTag}>
+                <Text style={styles.dealDiscountText}>UP TO 25% OFF</Text>
+              </View>
+            </View>
+            <Text style={styles.dealTitle} numberOfLines={1}>
+              Instant savings: Up to 25% OFF*
+            </Text>
+            <Text style={styles.dealSubtitle} numberOfLines={2}>
+              Complimentary breakfast and free cancellation across top luxury stays.
+            </Text>
+            <View style={styles.dealFooter}>
+              <View style={styles.dealCodeBadge}>
+                <Text style={styles.dealCodeText}>CODE: MMTSTAY</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => onNavigate('hotels')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.dealBookNow}>BOOK NOW</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Deal 3: Holidays */}
+          <View style={styles.dealCard}>
+            <View style={styles.dealImageWrapper}>
+              <Image
+                source={{
+                  uri: 'https://lh3.googleusercontent.com/aida/AEtjO1VTYbPagZqdRtQbVAJ2ECGyQPnAIFVdnzDXOlE9GOIi7KgGttsEX1WLZrlVqwHjlVxzNLDffHUlsCle8vDRIhMlTItAVnsuwVw18KwRVObLkiMM4FUG8aoaiZjEkUYwTjaq-TjTCKXxhlM9TIV5-HwAKePhl735_tGGn2xRKe2QVQAAKbwYpJDdi09km43vW2Yfvd5bulTpcVlJq02rVqj5p5AobAsiR35A-bxx53GXcwkCxZCsiehu39w',
+                }}
+                style={styles.dealImage}
+              />
+              <View style={[styles.dealCategoryTag, { backgroundColor: '#1A7F37' }]}>
+                <Text style={styles.dealCategoryText}>HOLIDAYS</Text>
+              </View>
+              <View style={styles.dealDiscountTag}>
+                <Text style={styles.dealDiscountText}>35% OFF</Text>
+              </View>
+            </View>
+            <Text style={styles.dealTitle} numberOfLines={1}>
+              BIG SAVINGS ON HOLIDAYS
+            </Text>
+            <Text style={styles.dealSubtitle} numberOfLines={2}>
+              Curated all-inclusive packages to Goa, Kerala, Kashmir &amp; Dubai.
+            </Text>
+            <View style={styles.dealFooter}>
+              <View style={styles.dealCodeBadge}>
+                <Text style={styles.dealCodeText}>CODE: MMTHOLIDAY</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => handleBookItem('PACKAGE', 'Goa Beachfront & Heritage Package', 18500)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.dealBookNow}>BOOK NOW</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+
+      {/* ── 6. HANDPICKED TRAVEL COLLECTIONS (2x2 Grid) ── */}
+      <View style={styles.collectionsSection}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>Handpicked Collections</Text>
+            <Text style={styles.collectionsSubtitle}>Curated styles tailored for wanderers</Text>
+          </View>
+          <TouchableOpacity onPress={() => onNavigate('flights')}>
+            <Text style={styles.viewAllText}>Explore All</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.collectionsGrid}>
+          {[
+            {
+              title: 'Island Escapes',
+              price: 'From ₹18,500/pkg',
+              badge: 'VISA-FREE',
+              img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBUwq_xPgxAv6lbOMiJJZW4lqUa7h9B-QuvK74MkYiNpsu1B79ZDluZj-oaAqbM8pvrTefYnteGW8drifvks_MueTPsOWZksbbjs7Z0PH5PQnTy86V8gq1-6ELukrC7Bjlu6KBx9b29WneKlGxp22sHo-AdgGzETFLM39-XqN_LQVYohTBnW2Ob6HG6ji5Tj4iLEeOKd53fKdjwADCVeLzNPf3Lxl8enIrFWO09dExH9aZkH7vD03WO',
+            },
+            {
+              title: 'Beach Resorts',
+              price: 'From ₹6,490/night',
+              badge: 'BEACHFRONT',
+              img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCZL3FnIM9sWSZXOM9_7yEof5GRgScVLdrxNVjcDYZofZR3jGxmRAPXPyJqf_j7oi7BpKd-ooslPytaL2TWQsFBjz8mYSr1zkpC-oMUBWlqmLjH2U2Wy5UmzTtYt7cM-vwMgtYGNwhYNeVEAG7oMhUe0SjnDSFnvOT_ntqJWcUSh8Cgllt4m0Xof0geozpf3p7RPqig0Nls9GgAYvgg0DHIj0ugtVnHUOPtOHiJmf70NqCoT9D8KS7k',
+            },
+            {
+              title: 'Honeymoon Trips',
+              price: 'From ₹34,990/pkg',
+              badge: 'COUPLES',
+              img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCUloYo_gaPu80WDMb1Se_qsfR1vpiNdsh-18_Kwq_SzD1g9wFxd46V9A8CCjuZtjm4LfpAyhjX3TO6nIL-ySonU81chCkRP0qhjerOLEEieGReSkMLT2Up_WnDLiMh10RjInK2bCdwibDgVkqdL400KdXj0Q7-G2mQQiOdOVrh-hOAT86ycwx0w2m6O_69QSBpWEr7sKObFCfxfJAjC4F96uiTBpMqAtuPFUaxE3YTD2geijcgObU7',
+            },
+            {
+              title: 'Villa Retreats',
+              price: 'From ₹8,990/night',
+              badge: 'PRIVATE POOL',
+              img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDa6xP2ZAQX9Scr3kpAwkl3lP-GVVshoimgaBM7nuIWRHyJsAuApEfzzEAJB5WyRgAbrxeTa1m6ClAYLt15WLdo14qrdyDpS95LLc_J2iPB2evzatqze7yUAxYethrCSd6a0pYEj3k9aaGP5HH_BdJpwdOqb2P1uXMUzuFG0QHx315qo8W7U3VW4zdFBz22xG_h5GTG2GwERo8AmWiR_nfQM3gOKD2nIIcotM1Y4QTiaFrqKLa60X4-',
+            },
+          ].map((col) => (
+            <TouchableOpacity
+              key={col.title}
+              style={styles.collectionTile}
+              onPress={() => onNavigate('flights')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.collectionImageContainer}>
+                <Image source={{ uri: col.img }} style={styles.collectionImage} />
+                <View style={styles.collectionBadge}>
+                  <Text style={styles.collectionBadgeText}>{col.badge}</Text>
+                </View>
+              </View>
+              <View style={styles.collectionMeta}>
+                <Text style={styles.collectionTitle} numberOfLines={1}>
+                  {col.title}
+                </Text>
+                <Text style={styles.collectionPrice}>{col.price}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* ── 7. VALUE PROPOSITIONS STRIP ── */}
+      <View style={styles.trustSection}>
+        <Text style={styles.trustTitle}>Why Book with SS Journey?</Text>
+        <Text style={styles.trustSubtitle}>
+          Trusted by over 500,000+ happy travelers across India &amp; abroad
+        </Text>
+        <View style={styles.trustGrid}>
+          {[
+            { icon: 'support-agent' as const, title: '24*7 Support', sub: 'Response under 2 min' },
+            { icon: 'security' as const, title: 'Secure Pay', sub: 'UPI, Cards & NetBanking' },
+            { icon: 'price-check' as const, title: 'Lowest Fares', sub: 'Zero hidden surcharges' },
+            { icon: 'sync' as const, title: 'Easy Refunds', sub: 'Instant cancellation credits' },
+          ].map((item) => (
+            <View key={item.title} style={styles.trustItem}>
+              <View style={styles.trustIconCircle}>
+                <MaterialIcons name={item.icon} size={18} color="#005cab" />
+              </View>
+              <View style={styles.trustMeta}>
+                <Text style={styles.trustItemTitle}>{item.title}</Text>
+                <Text style={styles.trustItemSub}>{item.sub}</Text>
+              </View>
+            </View>
+          ))}
         </View>
       </View>
     </ScrollView>
@@ -535,532 +717,719 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#fbf9f8',
   },
   contentContainer: {
     paddingBottom: 40,
   },
-  heroSection: {
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.xs,
-  },
-  heroRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: Spacing.md,
-  },
-  eyebrow: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.primary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  headline: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: Colors.onSurface,
-    marginTop: 2,
-  },
-  ecoBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.surfaceContainerHigh,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: BorderRadius.full,
-  },
-  ecoText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.onSurfaceVariant,
-  },
-  categoryPillsWrapper: {
-    flexDirection: 'row',
-    backgroundColor: Colors.surfaceContainer,
-    borderRadius: BorderRadius.full,
-    padding: 3,
-    maxWidth: 320,
-    ...Shadows.sm,
-  },
-  categoryPill: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-    borderRadius: BorderRadius.full,
-  },
-  categoryPillActive: {
-    backgroundColor: Colors.surfaceContainerLowest,
-    ...Shadows.sm,
-  },
-  categoryText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.onSurfaceVariant,
-  },
-  categoryTextActive: {
-    color: Colors.primary,
-    fontWeight: '800',
-  },
-  bookingCard: {
-    marginHorizontal: Spacing.md,
-    marginTop: Spacing.xs,
-    backgroundColor: Colors.surfaceContainerLowest,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.md,
-    ...Shadows.md,
-    position: 'relative',
-  },
-  routeContainer: {
-    position: 'relative',
-    gap: Spacing.xs,
-  },
-  routeSegment: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.surfaceContainerLow,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.sm + 2,
-  },
-  routeIconWrapper: {
-    width: 34,
-    height: 34,
-    borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(0, 80, 125, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  destIconWrapper: {
-    backgroundColor: 'rgba(253, 118, 26, 0.15)',
-  },
-  routeInfo: {
-    flex: 1,
-  },
-  codeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  routeCode: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: Colors.onSurface,
-  },
-  routeLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.onSurfaceVariant,
-    textTransform: 'uppercase',
-  },
-  routeCity: {
-    fontSize: 12,
-    color: Colors.onSurfaceVariant,
-    marginTop: 1,
-  },
-  swapBtn: {
-    position: 'absolute',
-    right: 14,
-    top: '50%',
-    marginTop: -18,
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.surfaceContainerLowest,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadows.md,
-    zIndex: 10,
-  },
-  selectorsGrid: {
-    flexDirection: 'row',
-    gap: Spacing.xs,
-    marginTop: Spacing.sm,
-  },
-  selectorTile: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    backgroundColor: Colors.surfaceContainerLow,
-    padding: Spacing.sm + 2,
-    borderRadius: BorderRadius.md,
-  },
-  selectorMeta: {
-    flex: 1,
-  },
-  selectorLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: Colors.onSurfaceVariant,
-  },
-  selectorValue: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.onSurface,
-    marginTop: 1,
-  },
-  findDealsBtn: {
-    backgroundColor: Colors.secondaryContainer,
-    borderRadius: BorderRadius.lg,
-    paddingVertical: 14,
-    marginTop: Spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    ...Shadows.md,
-  },
-  findDealsText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  fareDropCard: {
-    marginHorizontal: Spacing.md,
-    marginTop: Spacing.md,
-    backgroundColor: Colors.surfaceContainerHigh,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.sm + 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    ...Shadows.sm,
-  },
-  fareLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    flex: 1,
-    marginRight: Spacing.sm,
-  },
-  fareIconBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.md,
-    backgroundColor: 'rgba(0, 86, 79, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fareDetails: {
-    flex: 1,
-  },
-  fareTagRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  fareDropPill: {
-    backgroundColor: Colors.tertiary,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.full,
-  },
-  fareDropPillText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
-  fareSavings: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.tertiary,
-  },
-  fareDescription: {
-    fontSize: 11,
-    color: Colors.onSurface,
-    marginTop: 2,
-  },
-  sparklineContainer: {
-    alignItems: 'flex-end',
-  },
-  sparklineLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: Colors.onSurfaceVariant,
-    marginTop: 2,
-  },
-  recentSection: {
-    marginTop: Spacing.lg,
-  },
-  recentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    marginBottom: Spacing.xs,
-  },
-  recentTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: Colors.onSurfaceVariant,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  recentClear: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  recentScroll: {
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.sm,
-  },
-  recentChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.surfaceContainerLowest,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: BorderRadius.full,
-    ...Shadows.sm,
-  },
-  recentRoute: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.onSurface,
-  },
-  recentDate: {
-    fontSize: 11,
-    color: Colors.onSurfaceVariant,
-  },
-  escapesSection: {
-    marginTop: Spacing.lg,
-  },
-  escapesHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    paddingHorizontal: Spacing.md,
-    marginBottom: Spacing.sm,
-  },
-  escapesTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: Colors.onSurface,
-  },
-  escapesSubtitle: {
-    fontSize: 11,
-    color: Colors.onSurfaceVariant,
-    marginTop: 1,
-  },
-  seeAllText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  escapesScroll: {
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.md,
-  },
-  escapeCard: {
-    width: 250,
-    backgroundColor: Colors.surfaceContainerLowest,
-    borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
-    ...Shadows.md,
-  },
-  escapeImgWrapper: {
-    height: 135,
+  heroWrapper: {
     width: '100%',
-    position: 'relative',
-    backgroundColor: Colors.surfaceContainerHigh,
+    height: 190,
   },
-  escapeImg: {
+  heroBackground: {
     width: '100%',
     height: '100%',
   },
-  weatherTag: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
+  heroGradient: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    justifyContent: 'space-between',
+    paddingBottom: 24,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dealsPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: BorderRadius.full,
+    borderRadius: 20,
     ...Shadows.sm,
   },
-  weatherText: {
+  dealsPillText: {
     fontSize: 10,
     fontWeight: '700',
-    color: Colors.onSurface,
+    color: '#005cab',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  favBtn: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 30,
-    height: 30,
-    borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadows.sm,
-  },
-  escapeMeta: {
-    padding: Spacing.sm + 4,
-  },
-  escapeTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  escapeCity: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: Colors.onSurface,
-  },
-  escapeCountry: {
-    fontSize: 11,
-    color: Colors.onSurfaceVariant,
-    marginTop: 1,
-  },
-  escapePriceBlock: {
-    alignItems: 'flex-end',
-  },
-  fromLabel: {
-    fontSize: 10,
-    color: Colors.onSurfaceVariant,
-  },
-  escapePrice: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: Colors.primary,
-  },
-  escapeFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: Colors.surfaceContainerLow,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: BorderRadius.md,
-    marginTop: Spacing.sm,
-  },
-  flashBadge: {
+  specialPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
+    backgroundColor: '#e41d27',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
   },
-  flashText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: Colors.tertiary,
+  specialPillText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 0.5,
   },
-  viewFlightsRow: {
+  heroCopy: {
+    marginBottom: 4,
+  },
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#ffffff',
+    textShadowColor: 'rgba(0, 0, 0, 0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  heroSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.95)',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  categoryCarouselWrapper: {
+    marginTop: -22,
+    zIndex: 10,
+  },
+  categoryCarousel: {
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  categoryPill: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 24,
+    backgroundColor: '#ffffff',
+    ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: '#E7EBF0',
   },
-  viewFlightsText: {
-    fontSize: 10,
+  categoryPillActive: {
+    backgroundColor: '#005cab',
+    borderColor: '#005cab',
+  },
+  categoryPillText: {
+    fontSize: 12,
     fontWeight: '700',
-    color: Colors.primary,
+    color: '#525f71',
   },
-  promoBanner: {
-    marginHorizontal: Spacing.md,
-    marginTop: Spacing.xl,
-    borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
+  categoryPillTextActive: {
+    color: '#ffffff',
+  },
+  categoryBadge: {
+    backgroundColor: '#e41d27',
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  categoryBadgeText: {
+    color: '#ffffff',
+    fontSize: 8,
+    fontWeight: '800',
+  },
+  searchCard: {
+    marginHorizontal: 12,
+    marginTop: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 14,
     ...Shadows.md,
+    borderWidth: 1,
+    borderColor: '#E7EBF0',
+    gap: 10,
   },
-  promoGradient: {
+  tripTypeRow: {
+    flexDirection: 'row',
+    backgroundColor: '#F2F4F8',
+    borderRadius: 8,
+    padding: 3,
+    gap: 4,
+  },
+  tripTypeTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  tripTypeTabSelected: {
+    backgroundColor: '#ffffff',
+    ...Shadows.sm,
+  },
+  radioCircle: {
+    width: 13,
+    height: 13,
+    borderRadius: 7,
+    borderWidth: 1.5,
+    borderColor: '#707785',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioCircleSelected: {
+    borderColor: '#005cab',
+  },
+  radioInner: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#005cab',
+  },
+  tripTypeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#525f71',
+  },
+  tripTypeTextSelected: {
+    color: '#005cab',
+    fontWeight: '700',
+  },
+  routeContainer: {
+    backgroundColor: '#F2F4F8',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    position: 'relative',
+  },
+  routeBox: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: Spacing.md,
   },
-  promoContent: {
+  routeMeta: {
     flex: 1,
-    marginRight: Spacing.sm,
   },
-  promoTagRow: {
+  routeLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#707785',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  codeRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+    marginTop: 1,
+  },
+  airportCode: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#1b1c1c',
+  },
+  cityName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1b1c1c',
+    flex: 1,
+  },
+  subAirport: {
+    fontSize: 11,
+    color: '#707785',
+    marginTop: 1,
+  },
+  swapDivider: {
+    position: 'relative',
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dividerLine: {
+    width: '100%',
+    height: 1,
+    backgroundColor: '#c0c7d6',
+  },
+  swapFab: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: '#E7EBF0',
+  },
+  dateGrid: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  dateCell: {
+    flex: 1,
+    backgroundColor: '#F2F4F8',
+    borderRadius: 10,
+    padding: 10,
+    justifyContent: 'center',
+  },
+  dateNumberRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+    marginTop: 2,
+  },
+  dateDayNumber: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1b1c1c',
+  },
+  dateMonth: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1b1c1c',
+  },
+  dateDayName: {
+    fontSize: 10,
+    color: '#707785',
+    marginTop: 1,
+  },
+  returnHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  returnPrompt: {
+    fontSize: 10,
+    color: '#707785',
+    marginTop: 3,
+    lineHeight: 13,
+  },
+  travellersBox: {
+    backgroundColor: '#F2F4F8',
+    borderRadius: 10,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  travellersValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  travellersCount: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1b1c1c',
+  },
+  travellersClass: {
+    fontSize: 11,
+    color: '#707785',
+  },
+  specialFaresSection: {
+    gap: 6,
+    paddingTop: 2,
+  },
+  specialFaresHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  specialFaresTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#525f71',
+    textTransform: 'uppercase',
+  },
+  savingsTag: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#1A7F37',
+  },
+  specialFaresRow: {
+    gap: 6,
+  },
+  fareChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    backgroundColor: '#F2F4F8',
+  },
+  fareChipSelected: {
+    backgroundColor: '#d3e1f6',
+  },
+  fareChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#525f71',
+  },
+  fareChipTextSelected: {
+    color: '#005cab',
+    fontWeight: '700',
+  },
+  trendingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingTop: 2,
+  },
+  trendingLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#707785',
+  },
+  trendingChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: '#F2F4F8',
+    borderRadius: 6,
+  },
+  trendingChipText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#1b1c1c',
+  },
+  searchButton: {
+    marginTop: 4,
+    borderRadius: 12,
+    overflow: 'hidden',
+    ...Shadows.md,
+  },
+  searchButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 13,
+  },
+  searchButtonText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 0.8,
+  },
+  welcomeBanner: {
+    marginHorizontal: 12,
+    marginTop: 12,
+    borderRadius: 14,
+    overflow: 'hidden',
+    ...Shadows.sm,
+  },
+  welcomeBannerGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+  },
+  welcomeLeft: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  welcomeBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#1A7F37',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginBottom: 3,
+  },
+  welcomeBadgeText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 0.5,
+  },
+  welcomeTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  welcomeCode: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginTop: 2,
+  },
+  welcomeCodeBold: {
+    fontWeight: '800',
+    textDecorationLine: 'underline',
+  },
+  welcomeClaimBtn: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    ...Shadows.sm,
+  },
+  welcomeClaimText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#005cab',
+  },
+  offersSection: {
+    marginTop: 18,
+    gap: 8,
+  },
+  sectionHeader: {
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  saveTag: {
-    backgroundColor: Colors.secondaryContainer,
-    paddingHorizontal: 8,
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1b1c1c',
+  },
+  saveBigBadge: {
+    backgroundColor: '#e41d27',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+  },
+  saveBigText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  viewAllText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#005cab',
+  },
+  offersTabRow: {
+    paddingHorizontal: 12,
+    gap: 6,
+  },
+  offersTab: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 16,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#E7EBF0',
+  },
+  offersTabActive: {
+    backgroundColor: '#005cab',
+    borderColor: '#005cab',
+  },
+  offersTabText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#525f71',
+  },
+  offersTabTextActive: {
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  dealsCarousel: {
+    paddingHorizontal: 12,
+    gap: 10,
+    paddingBottom: 4,
+  },
+  dealCard: {
+    width: 250,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 10,
+    ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: '#E7EBF0',
+    gap: 4,
+  },
+  dealImageWrapper: {
+    width: '100%',
+    height: 105,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+    marginBottom: 4,
+  },
+  dealImage: {
+    width: '100%',
+    height: '100%',
+  },
+  dealCategoryTag: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    backgroundColor: '#bb0017',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  dealCategoryText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  dealDiscountTag: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  dealDiscountText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#1A7F37',
+  },
+  dealTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1b1c1c',
+  },
+  dealSubtitle: {
+    fontSize: 10,
+    color: '#707785',
+    lineHeight: 13,
+  },
+  dealFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#efeded',
+    marginTop: 4,
+  },
+  dealCodeBadge: {
+    backgroundColor: '#F2F4F8',
+    paddingHorizontal: 6,
     paddingVertical: 3,
     borderRadius: 4,
   },
-  saveTagText: {
-    color: '#ffffff',
+  dealCodeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#1b1c1c',
+  },
+  dealBookNow: {
     fontSize: 10,
-    fontWeight: '900',
+    fontWeight: '800',
+    color: '#005cab',
+    letterSpacing: 0.5,
   },
-  promoLimited: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Colors.primaryFixed,
+  collectionsSection: {
+    marginTop: 18,
+    gap: 8,
   },
-  promoTitle: {
-    fontSize: 16,
+  collectionsSubtitle: {
+    fontSize: 10,
+    color: '#707785',
+  },
+  collectionsGrid: {
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  collectionTile: {
+    width: (width - 32) / 2,
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    overflow: 'hidden',
+    ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: '#E7EBF0',
+  },
+  collectionImageContainer: {
+    width: '100%',
+    height: 90,
+    position: 'relative',
+  },
+  collectionImage: {
+    width: '100%',
+    height: '100%',
+  },
+  collectionBadge: {
+    position: 'absolute',
+    top: 5,
+    left: 5,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  collectionBadgeText: {
+    fontSize: 8,
     fontWeight: '800',
     color: '#ffffff',
-    marginTop: 4,
   },
-  promoDesc: {
+  collectionMeta: {
+    padding: 8,
+  },
+  collectionTitle: {
     fontSize: 11,
-    color: Colors.primaryFixedDim,
-    marginTop: 2,
-    lineHeight: 16,
-  },
-  promoArrowBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.full,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadows.md,
-  },
-  perksRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    marginTop: Spacing.md,
-  },
-  perkCard: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.surfaceContainerLow,
-    padding: Spacing.sm + 2,
-    borderRadius: BorderRadius.lg,
-  },
-  perkIconWrapper: {
-    width: 32,
-    height: 32,
-    borderRadius: BorderRadius.full,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadows.sm,
-  },
-  perkTextGroup: {
-    flex: 1,
-  },
-  perkTitle: {
-    fontSize: 12,
     fontWeight: '700',
-    color: Colors.onSurface,
+    color: '#1b1c1c',
   },
-  perkSub: {
+  collectionPrice: {
     fontSize: 10,
-    color: Colors.onSurfaceVariant,
+    color: '#707785',
     marginTop: 1,
+  },
+  trustSection: {
+    marginTop: 18,
+    marginHorizontal: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 14,
+    ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: '#E7EBF0',
+    gap: 8,
+  },
+  trustTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1b1c1c',
+    textAlign: 'center',
+  },
+  trustSubtitle: {
+    fontSize: 10,
+    color: '#707785',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  trustGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  trustItem: {
+    width: (width - 60) / 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F2F4F8',
+    padding: 8,
+    borderRadius: 8,
+  },
+  trustIconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trustMeta: {
+    flex: 1,
+  },
+  trustItemTitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#1b1c1c',
+  },
+  trustItemSub: {
+    fontSize: 8,
+    color: '#707785',
   },
 });

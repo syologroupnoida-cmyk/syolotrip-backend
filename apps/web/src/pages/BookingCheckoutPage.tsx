@@ -1,8 +1,41 @@
 import React, { useState } from 'react';
-import { createBookingApi, payDemoBookingApi, searchFlightsApi } from '../services/api';
+import {
+  createBookingApi,
+  payDemoBookingApi,
+  searchFlightsApi,
+  searchHotelsApi,
+  searchTrainsApi,
+  searchBusesApi,
+  searchCabsApi,
+  searchPackagesApi,
+} from '../services/api';
 
-// ─── Mock Booking Data ───────────────────────────────────
-const bookingData = {
+export interface WebCheckoutItem {
+  serviceType: 'FLIGHT' | 'HOTEL' | 'TRAIN' | 'BUS' | 'CAB' | 'PACKAGE';
+  itemId?: string;
+  title: string;
+  subtitle: string;
+  routeInfo?: string;
+  badge?: string;
+  dates?: string;
+  pricing: {
+    baseAmount: number;
+    taxes: number;
+    discount?: number;
+    insurance?: number;
+    serviceFee?: number;
+  };
+  details?: Record<string, any>;
+  passengers?: Array<{
+    name: string;
+    type: string;
+    email: string;
+    phone: string;
+  }>;
+}
+
+// ─── Mock Fallback Booking Data ──────────────────────────
+const defaultBookingData = {
   flight: {
     airline: 'Japan Airlines',
     airlineCode: 'JAL',
@@ -55,32 +88,51 @@ const bookingData = {
     serviceFee: 0,
   },
   travellers: [
-    { name: 'John Doe', type: 'Adult', passport: '•••••1234', email: 'john@example.com', phone: '+1 (555) 123-4567' },
+    { name: 'John Doe', type: 'Adult', passport: '•••••1234', email: 'john@example.com', phone: '+91 98765 43210' },
   ],
 };
 
 interface BookingCheckoutPageProps {
   onNavigate?: (screen: 'explore' | 'flights' | 'hotels' | 'checkout' | 'trips') => void;
+  bookingItem?: WebCheckoutItem | null;
 }
 
 // ─── Component ───────────────────────────────────────────
-export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({ onNavigate }) => {
+export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({ 
+  onNavigate,
+  bookingItem,
+}) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'paypal' | 'apple'>('card');
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [hasInsurance, setHasInsurance] = useState(true);
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState<{
     reference: string;
     email: string;
     total: number;
+    serviceType: string;
   } | null>(null);
 
-  const p = bookingData.pricing;
-  const flightTotal = (p.flightBase + p.flightTaxes) * 2; // round trip
-  const hotelTotal = (p.hotelBase * p.hotelNights) + p.hotelTaxes;
-  const subtotal = flightTotal + hotelTotal;
-  const grandTotal = subtotal + p.bundleDiscount + p.insurance + p.serviceFee;
+  // Dynamic pricing calculations
+  const isCustomItem = Boolean(bookingItem);
+  const activeService = bookingItem?.serviceType || 'FLIGHT';
+
+  const defaultP = defaultBookingData.pricing;
+  const defaultFlightTotal = (defaultP.flightBase + defaultP.flightTaxes) * 2;
+  const defaultHotelTotal = (defaultP.hotelBase * defaultP.hotelNights) + defaultP.hotelTaxes;
+  const defaultSubtotal = defaultFlightTotal + defaultHotelTotal;
+  const defaultGrandTotal = defaultSubtotal + defaultP.bundleDiscount + (hasInsurance ? defaultP.insurance : 0);
+
+  const customBase = bookingItem?.pricing.baseAmount || 0;
+  const customTaxes = bookingItem?.pricing.taxes || 0;
+  const customDiscount = bookingItem?.pricing.discount || 0;
+  const insurancePrice = bookingItem?.pricing.insurance ?? 499;
+  const customInsurance = hasInsurance ? insurancePrice : 0;
+  const customGrandTotal = Math.max(0, customBase + customTaxes - customDiscount + customInsurance);
+
+  const grandTotal = isCustomItem ? customGrandTotal : defaultGrandTotal;
 
   const steps = [
     { num: 1, label: 'Review Itinerary' },
@@ -91,43 +143,82 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({ onNavi
   const handleConfirmAndPay = async () => {
     setIsProcessing(true);
     try {
-      const flights = await searchFlightsApi();
-      const flightId = flights.length > 0 ? flights[0].id : 'FL-001';
-      
-      const booking = await createBookingApi({
-        service_type: 'FLIGHT',
-        contact_email: 'customer@ssjourney.com',
-        contact_phone: '+919876543210',
-        has_insurance: true,
-        items: [
-          {
-            item_type: 'FLIGHT',
-            item_reference_id: flightId,
-            quantity: 1,
-            meta_data: { cabin_class: 'ECONOMY', seat_preference: 'WINDOW' }
-          }
-        ],
-        passengers: [
-          {
-            title: 'Mr',
-            first_name: 'John',
-            last_name: 'Doe',
-            passenger_type: 'ADULT',
-            passport_number: 'J1234567'
-          }
-        ]
-      });
+      const serviceType = bookingItem?.serviceType || 'FLIGHT';
+      let resolvedItemType: string = serviceType;
+      if (serviceType === 'HOTEL') resolvedItemType = 'HOTEL_ROOM';
 
-      await payDemoBookingApi({
-        booking_id: booking.id,
-        payment_method: paymentMethod === 'card' ? 'CREDIT_CARD' : 'UPI',
-        card_last_four: '4242'
-      });
+      let resolvedRefId = bookingItem?.itemId;
 
+      // Automatically resolve real backend inventory ID if not already provided
+      if (!resolvedRefId) {
+        if (serviceType === 'TRAIN') {
+          const trains = await searchTrainsApi();
+          resolvedRefId = trains[0]?.id;
+        } else if (serviceType === 'BUS') {
+          const buses = await searchBusesApi();
+          resolvedRefId = buses[0]?.id;
+        } else if (serviceType === 'CAB') {
+          const cabs = await searchCabsApi();
+          resolvedRefId = cabs[0]?.id;
+        } else if (serviceType === 'PACKAGE') {
+          const pkgs = await searchPackagesApi();
+          resolvedRefId = pkgs[0]?.id;
+        } else if (serviceType === 'HOTEL') {
+          const hotels = await searchHotelsApi();
+          resolvedRefId = hotels[0]?.rooms?.[0]?.id || hotels[0]?.id;
+        } else {
+          const flights = await searchFlightsApi();
+          resolvedRefId = flights[0]?.id;
+        }
+      }
+
+      if (resolvedRefId) {
+        const booking = await createBookingApi({
+          service_type: serviceType,
+          contact_email: 'customer@ssjourney.com',
+          contact_phone: '+919876543210',
+          has_insurance: hasInsurance,
+          items: [
+            {
+              item_type: resolvedItemType,
+              item_reference_id: resolvedRefId,
+              quantity: 1,
+              meta_data: bookingItem?.details || {},
+            },
+          ],
+          passengers: [
+            {
+              title: 'Mr',
+              first_name: 'John',
+              last_name: 'Doe',
+              passenger_type: 'ADULT',
+              passport_number: 'J1234567',
+            },
+          ],
+        });
+
+        await payDemoBookingApi({
+          booking_id: booking.id,
+          payment_method: paymentMethod === 'card' ? 'CREDIT_CARD' : 'UPI',
+          card_last_four: '4242',
+        });
+
+        setConfirmedBooking({
+          reference: booking.booking_reference,
+          email: booking.contact_email,
+          total: Number(booking.total_amount),
+          serviceType: booking.service_type,
+        });
+        setIsConfirmed(true);
+        return;
+      }
+
+      // Fallback
       setConfirmedBooking({
-        reference: booking.booking_reference,
-        email: booking.contact_email,
-        total: Number(booking.total_price)
+        reference: 'SSJ-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+        email: 'customer@ssjourney.com',
+        total: grandTotal,
+        serviceType,
       });
       setIsConfirmed(true);
     } catch (err) {
@@ -135,7 +226,8 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({ onNavi
       setConfirmedBooking({
         reference: 'SSJ-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
         email: 'customer@ssjourney.com',
-        total: grandTotal
+        total: grandTotal,
+        serviceType: activeService,
       });
       setIsConfirmed(true);
     } finally {
@@ -151,15 +243,21 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({ onNavi
             <span className="material-symbols-outlined text-[48px]">check_circle</span>
           </div>
           <span className="text-label-sm uppercase tracking-widest text-tertiary font-bold">Booking Confirmed!</span>
-          <h2 className="text-display-hero text-on-surface tracking-tight">You're going to Tokyo & Paris!</h2>
+          <h2 className="text-display-hero text-on-surface tracking-tight">
+            {bookingItem ? `Booking Confirmed: ${bookingItem.title}` : "You're going to Tokyo & Paris!"}
+          </h2>
           <p className="text-body-lg text-on-surface-variant max-w-lg">
-            Your booking reference is <strong className="text-primary font-mono text-headline-sm">{confirmedBooking?.reference || 'SSJ-849201'}</strong>. We have sent your e-tickets and reservation vouchers to <span className="text-on-surface font-semibold">{confirmedBooking?.email || 'customer@ssjourney.com'}</span>.
+            Your booking reference is <strong className="text-primary font-mono text-headline-sm">{confirmedBooking?.reference || 'SSJ-849201'}</strong>. We have sent your confirmed e-tickets and reservation vouchers to <span className="text-on-surface font-semibold">{confirmedBooking?.email || 'customer@ssjourney.com'}</span>.
           </p>
 
           <div className="w-full bg-surface-container-low rounded-xl p-space-md text-left my-space-sm flex flex-col gap-space-sm">
             <div className="flex items-center justify-between border-b border-outline-variant/30 pb-space-xs">
-              <span className="text-label-md text-on-surface-variant">Itinerary</span>
-              <span className="text-label-md font-bold text-on-surface">Japan Airlines + Grand Hôtel</span>
+              <span className="text-label-md text-on-surface-variant">Service Type</span>
+              <span className="text-label-md font-bold text-primary">{confirmedBooking?.serviceType || activeService}</span>
+            </div>
+            <div className="flex items-center justify-between border-b border-outline-variant/30 pb-space-xs">
+              <span className="text-label-md text-on-surface-variant">Item / Route</span>
+              <span className="text-label-md font-bold text-on-surface">{bookingItem?.title || 'Japan Airlines + Grand Hôtel'}</span>
             </div>
             <div className="flex items-center justify-between border-b border-outline-variant/30 pb-space-xs">
               <span className="text-label-md text-on-surface-variant">Booking Reference</span>
@@ -227,136 +325,194 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({ onNavi
             {/* Step 1: Itinerary Review */}
             {step >= 1 && (
               <>
-                {/* Flight Outbound */}
-                <div className="bg-surface-container-lowest rounded-xl shadow-card overflow-hidden">
-                  <div className="bg-primary/5 border-b border-outline-variant/20 px-space-md py-space-sm flex items-center justify-between">
-                    <div className="flex items-center gap-space-sm">
-                      <span className="material-symbols-outlined text-primary text-[20px]">flight_takeoff</span>
-                      <span className="text-label-lg text-on-surface font-bold">Outbound Flight</span>
-                      <span className="text-label-md text-on-surface-variant">{bookingData.flight.outbound.date}</span>
-                    </div>
-                    <span className="bg-tertiary/10 text-tertiary text-label-sm px-space-sm py-0.5 rounded-full font-bold">Confirmed</span>
-                  </div>
-                  <div className="p-space-md">
-                    <div className="flex items-center gap-space-md mb-space-sm">
-                      <div className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center flex-shrink-0">
-                        <span className="text-label-lg text-primary font-bold">{bookingData.flight.airlineCode}</span>
-                      </div>
-                      <div>
-                        <span className="text-label-lg text-on-surface font-bold">{bookingData.flight.airline}</span>
-                        <span className="text-label-sm text-on-surface-variant block">{bookingData.flight.flightNumber} · {bookingData.flight.aircraft}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-space-lg justify-between">
-                      <div className="text-center">
-                        <span className="text-headline-md text-on-surface font-bold tabular-nums block">{bookingData.flight.outbound.departure}</span>
-                        <span className="text-label-lg text-on-surface font-bold">{bookingData.flight.outbound.from.code}</span>
-                        <span className="text-body-sm text-on-surface-variant block">{bookingData.flight.outbound.from.name}</span>
-                      </div>
-                      <div className="flex flex-col items-center flex-1 max-w-[250px]">
-                        <span className="text-label-sm text-on-surface-variant">{bookingData.flight.outbound.duration}</span>
-                        <div className="w-full flex items-center gap-1 my-1">
-                          <div className="h-[2px] flex-1 bg-outline-variant" />
-                          <span className="material-symbols-outlined text-primary text-[16px]">flight</span>
-                          <div className="h-[2px] flex-1 bg-outline-variant" />
-                        </div>
-                        <span className="text-label-sm text-tertiary font-bold">{bookingData.flight.outbound.stops}</span>
-                      </div>
-                      <div className="text-center">
-                        <span className="text-headline-md text-on-surface font-bold tabular-nums block">{bookingData.flight.outbound.arrival}</span>
-                        <span className="text-label-lg text-on-surface font-bold">{bookingData.flight.outbound.to.code}</span>
-                        <span className="text-body-sm text-on-surface-variant block">{bookingData.flight.outbound.to.name}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-space-md mt-space-sm text-body-sm text-on-surface-variant flex-wrap">
-                      <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">airline_seat_recline_extra</span>{bookingData.flight.outbound.cabin}</span>
-                      <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">luggage</span>{bookingData.flight.outbound.baggage}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Flight Return */}
-                <div className="bg-surface-container-lowest rounded-xl shadow-card overflow-hidden">
-                  <div className="bg-primary/5 border-b border-outline-variant/20 px-space-md py-space-sm flex items-center justify-between">
-                    <div className="flex items-center gap-space-sm">
-                      <span className="material-symbols-outlined text-primary text-[20px]">flight_land</span>
-                      <span className="text-label-lg text-on-surface font-bold">Return Flight</span>
-                      <span className="text-label-md text-on-surface-variant">{bookingData.flight.return.date}</span>
-                    </div>
-                    <span className="bg-tertiary/10 text-tertiary text-label-sm px-space-sm py-0.5 rounded-full font-bold">Confirmed</span>
-                  </div>
-                  <div className="p-space-md">
-                    <div className="flex items-center gap-space-md mb-space-sm">
-                      <div className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center flex-shrink-0">
-                        <span className="text-label-lg text-primary font-bold">{bookingData.flight.airlineCode}</span>
-                      </div>
-                      <div>
-                        <span className="text-label-lg text-on-surface font-bold">{bookingData.flight.airline}</span>
-                        <span className="text-label-sm text-on-surface-variant block">{bookingData.flight.flightNumber} · {bookingData.flight.aircraft}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-space-lg justify-between">
-                      <div className="text-center">
-                        <span className="text-headline-md text-on-surface font-bold tabular-nums block">{bookingData.flight.return.departure}</span>
-                        <span className="text-label-lg text-on-surface font-bold">{bookingData.flight.return.from.code}</span>
-                        <span className="text-body-sm text-on-surface-variant block">{bookingData.flight.return.from.name}</span>
-                      </div>
-                      <div className="flex flex-col items-center flex-1 max-w-[250px]">
-                        <span className="text-label-sm text-on-surface-variant">{bookingData.flight.return.duration}</span>
-                        <div className="w-full flex items-center gap-1 my-1">
-                          <div className="h-[2px] flex-1 bg-outline-variant" />
-                          <span className="material-symbols-outlined text-primary text-[16px] rotate-180">flight</span>
-                          <div className="h-[2px] flex-1 bg-outline-variant" />
-                        </div>
-                        <span className="text-label-sm text-tertiary font-bold">{bookingData.flight.return.stops}</span>
-                      </div>
-                      <div className="text-center">
-                        <span className="text-headline-md text-on-surface font-bold tabular-nums block">{bookingData.flight.return.arrival}</span>
-                        <span className="text-label-lg text-on-surface font-bold">{bookingData.flight.return.to.code}</span>
-                        <span className="text-body-sm text-on-surface-variant block">{bookingData.flight.return.to.name}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Hotel Booking Card */}
-                <div className="bg-surface-container-lowest rounded-xl shadow-card overflow-hidden">
-                  <div className="bg-primary/5 border-b border-outline-variant/20 px-space-md py-space-sm flex items-center justify-between">
-                    <div className="flex items-center gap-space-sm">
-                      <span className="material-symbols-outlined text-primary text-[20px]">hotel</span>
-                      <span className="text-label-lg text-on-surface font-bold">Hotel Stay</span>
-                      <span className="text-label-md text-on-surface-variant">{bookingData.hotel.nights} nights</span>
-                    </div>
-                    <span className="bg-tertiary/10 text-tertiary text-label-sm px-space-sm py-0.5 rounded-full font-bold">Reserved</span>
-                  </div>
-                  <div className="p-space-md flex flex-col md:flex-row gap-space-md">
-                    <div className="w-full md:w-48 h-36 rounded-lg overflow-hidden flex-shrink-0">
-                      <img src={bookingData.hotel.img} alt={bookingData.hotel.name} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-1 flex flex-col gap-space-xs">
-                      <h3 className="text-headline-sm text-on-surface font-bold">{bookingData.hotel.name}</h3>
-                      <div className="flex items-center gap-space-xs text-body-sm text-on-surface-variant">
-                        <span className="material-symbols-outlined text-[14px]">location_on</span>
-                        <span>{bookingData.hotel.location}</span>
-                      </div>
+                {bookingItem ? (
+                  /* Dynamic Service Review Card */
+                  <div className="bg-surface-container-lowest rounded-xl shadow-card overflow-hidden border border-outline-variant/30">
+                    <div className="bg-primary/5 border-b border-outline-variant/20 px-space-md py-space-sm flex items-center justify-between">
                       <div className="flex items-center gap-space-sm">
-                        <span className="bg-tertiary text-on-tertiary px-space-sm py-space-xs rounded-lg text-label-lg font-bold tabular-nums">{bookingData.hotel.rating}</span>
-                        <span className="text-label-lg text-on-surface font-bold">{bookingData.hotel.ratingLabel}</span>
+                        <span className="material-symbols-outlined text-primary text-[22px]">
+                          {bookingItem.serviceType === 'TRAIN' ? 'train' :
+                           bookingItem.serviceType === 'BUS' ? 'directions_bus' :
+                           bookingItem.serviceType === 'CAB' ? 'local_taxi' :
+                           bookingItem.serviceType === 'PACKAGE' ? 'beach_access' : 'travel'}
+                        </span>
+                        <span className="text-label-lg text-on-surface font-bold">{bookingItem.title}</span>
+                        <span className="text-label-md text-on-surface-variant">{bookingItem.dates || 'Upcoming Trip'}</span>
                       </div>
-                      <div className="grid grid-cols-2 gap-space-sm text-body-sm text-on-surface-variant mt-space-xs">
-                        <div className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">calendar_today</span>Check-in: {bookingData.hotel.checkIn}</div>
-                        <div className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">calendar_month</span>Check-out: {bookingData.hotel.checkOut}</div>
-                        <div className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">bed</span>{bookingData.hotel.room}</div>
-                        <div className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">group</span>{bookingData.hotel.guests}</div>
+                      <span className="bg-tertiary/10 text-tertiary text-label-sm px-space-sm py-0.5 rounded-full font-bold">
+                        {bookingItem.badge || 'Confirmed'}
+                      </span>
+                    </div>
+
+                    <div className="p-space-md flex flex-col gap-space-md">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
+                        <div>
+                          <h3 className="text-headline-sm text-on-surface font-bold">{bookingItem.title}</h3>
+                          <p className="text-body-md text-on-surface-variant font-medium">{bookingItem.subtitle}</p>
+                        </div>
+                        <div className="sm:text-right">
+                          <span className="text-headline-md text-primary font-bold tabular-nums">
+                            ₹{bookingItem.pricing.baseAmount.toLocaleString('en-IN')}
+                          </span>
+                          <span className="text-body-sm text-on-surface-variant block">Base Fare</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-space-xs flex-wrap mt-space-xs">
-                        {bookingData.hotel.amenities.map((a, i) => (
-                          <span key={i} className="bg-surface-container text-on-surface-variant text-label-sm px-space-sm py-0.5 rounded-full">{a}</span>
-                        ))}
-                      </div>
+
+                      {bookingItem.routeInfo && (
+                        <div className="bg-surface-container-low rounded-lg p-space-sm flex items-center gap-space-sm text-body-md text-on-surface font-semibold border border-outline-variant/30">
+                          <span className="material-symbols-outlined text-primary text-[18px]">alt_route</span>
+                          <span>{bookingItem.routeInfo}</span>
+                        </div>
+                      )}
+
+                      {bookingItem.details && Object.keys(bookingItem.details).length > 0 && (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-space-sm text-body-sm text-on-surface-variant pt-space-xs">
+                          {Object.entries(bookingItem.details).map(([k, v]) => (
+                            <div key={k} className="bg-surface-container-low rounded-lg p-2.5 border border-outline-variant/20">
+                              <span className="text-[11px] uppercase tracking-wider text-on-surface-variant/80 block font-semibold">
+                                {k.replace(/_/g, ' ')}
+                              </span>
+                              <span className="font-bold text-on-surface text-label-md">{String(v)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    {/* Flight Outbound */}
+                    <div className="bg-surface-container-lowest rounded-xl shadow-card overflow-hidden">
+                      <div className="bg-primary/5 border-b border-outline-variant/20 px-space-md py-space-sm flex items-center justify-between">
+                        <div className="flex items-center gap-space-sm">
+                          <span className="material-symbols-outlined text-primary text-[20px]">flight_takeoff</span>
+                          <span className="text-label-lg text-on-surface font-bold">Outbound Flight</span>
+                          <span className="text-label-md text-on-surface-variant">{defaultBookingData.flight.outbound.date}</span>
+                        </div>
+                        <span className="bg-tertiary/10 text-tertiary text-label-sm px-space-sm py-0.5 rounded-full font-bold">Confirmed</span>
+                      </div>
+                      <div className="p-space-md">
+                        <div className="flex items-center gap-space-md mb-space-sm">
+                          <div className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center flex-shrink-0">
+                            <span className="text-label-lg text-primary font-bold">{defaultBookingData.flight.airlineCode}</span>
+                          </div>
+                          <div>
+                            <span className="text-label-lg text-on-surface font-bold">{defaultBookingData.flight.airline}</span>
+                            <span className="text-label-sm text-on-surface-variant block">{defaultBookingData.flight.flightNumber} · {defaultBookingData.flight.aircraft}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-space-lg justify-between">
+                          <div className="text-center">
+                            <span className="text-headline-md text-on-surface font-bold tabular-nums block">{defaultBookingData.flight.outbound.departure}</span>
+                            <span className="text-label-lg text-on-surface font-bold">{defaultBookingData.flight.outbound.from.code}</span>
+                            <span className="text-body-sm text-on-surface-variant block">{defaultBookingData.flight.outbound.from.name}</span>
+                          </div>
+                          <div className="flex flex-col items-center flex-1 max-w-[250px]">
+                            <span className="text-label-sm text-on-surface-variant">{defaultBookingData.flight.outbound.duration}</span>
+                            <div className="w-full flex items-center gap-1 my-1">
+                              <div className="h-[2px] flex-1 bg-outline-variant" />
+                              <span className="material-symbols-outlined text-primary text-[16px]">flight</span>
+                              <div className="h-[2px] flex-1 bg-outline-variant" />
+                            </div>
+                            <span className="text-label-sm text-tertiary font-bold">{defaultBookingData.flight.outbound.stops}</span>
+                          </div>
+                          <div className="text-center">
+                            <span className="text-headline-md text-on-surface font-bold tabular-nums block">{defaultBookingData.flight.outbound.arrival}</span>
+                            <span className="text-label-lg text-on-surface font-bold">{defaultBookingData.flight.outbound.to.code}</span>
+                            <span className="text-body-sm text-on-surface-variant block">{defaultBookingData.flight.outbound.to.name}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-space-md mt-space-sm text-body-sm text-on-surface-variant flex-wrap">
+                          <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">airline_seat_recline_extra</span>{defaultBookingData.flight.outbound.cabin}</span>
+                          <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">luggage</span>{defaultBookingData.flight.outbound.baggage}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Flight Return */}
+                    <div className="bg-surface-container-lowest rounded-xl shadow-card overflow-hidden">
+                      <div className="bg-primary/5 border-b border-outline-variant/20 px-space-md py-space-sm flex items-center justify-between">
+                        <div className="flex items-center gap-space-sm">
+                          <span className="material-symbols-outlined text-primary text-[20px]">flight_land</span>
+                          <span className="text-label-lg text-on-surface font-bold">Return Flight</span>
+                          <span className="text-label-md text-on-surface-variant">{defaultBookingData.flight.return.date}</span>
+                        </div>
+                        <span className="bg-tertiary/10 text-tertiary text-label-sm px-space-sm py-0.5 rounded-full font-bold">Confirmed</span>
+                      </div>
+                      <div className="p-space-md">
+                        <div className="flex items-center gap-space-md mb-space-sm">
+                          <div className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center flex-shrink-0">
+                            <span className="text-label-lg text-primary font-bold">{defaultBookingData.flight.airlineCode}</span>
+                          </div>
+                          <div>
+                            <span className="text-label-lg text-on-surface font-bold">{defaultBookingData.flight.airline}</span>
+                            <span className="text-label-sm text-on-surface-variant block">{defaultBookingData.flight.flightNumber} · {defaultBookingData.flight.aircraft}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-space-lg justify-between">
+                          <div className="text-center">
+                            <span className="text-headline-md text-on-surface font-bold tabular-nums block">{defaultBookingData.flight.return.departure}</span>
+                            <span className="text-label-lg text-on-surface font-bold">{defaultBookingData.flight.return.from.code}</span>
+                            <span className="text-body-sm text-on-surface-variant block">{defaultBookingData.flight.return.from.name}</span>
+                          </div>
+                          <div className="flex flex-col items-center flex-1 max-w-[250px]">
+                            <span className="text-label-sm text-on-surface-variant">{defaultBookingData.flight.return.duration}</span>
+                            <div className="w-full flex items-center gap-1 my-1">
+                              <div className="h-[2px] flex-1 bg-outline-variant" />
+                              <span className="material-symbols-outlined text-primary text-[16px] rotate-180">flight</span>
+                              <div className="h-[2px] flex-1 bg-outline-variant" />
+                            </div>
+                            <span className="text-label-sm text-tertiary font-bold">{defaultBookingData.flight.return.stops}</span>
+                          </div>
+                          <div className="text-center">
+                            <span className="text-headline-md text-on-surface font-bold tabular-nums block">{defaultBookingData.flight.return.arrival}</span>
+                            <span className="text-label-lg text-on-surface font-bold">{defaultBookingData.flight.return.to.code}</span>
+                            <span className="text-body-sm text-on-surface-variant block">{defaultBookingData.flight.return.to.name}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Hotel Booking Card */}
+                    <div className="bg-surface-container-lowest rounded-xl shadow-card overflow-hidden">
+                      <div className="bg-primary/5 border-b border-outline-variant/20 px-space-md py-space-sm flex items-center justify-between">
+                        <div className="flex items-center gap-space-sm">
+                          <span className="material-symbols-outlined text-primary text-[20px]">hotel</span>
+                          <span className="text-label-lg text-on-surface font-bold">Hotel Stay</span>
+                          <span className="text-label-md text-on-surface-variant">{defaultBookingData.hotel.nights} nights</span>
+                        </div>
+                        <span className="bg-tertiary/10 text-tertiary text-label-sm px-space-sm py-0.5 rounded-full font-bold">Reserved</span>
+                      </div>
+                      <div className="p-space-md flex flex-col md:flex-row gap-space-md">
+                        <div className="w-full md:w-48 h-36 rounded-lg overflow-hidden flex-shrink-0">
+                          <img src={defaultBookingData.hotel.img} alt={defaultBookingData.hotel.name} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-1 flex flex-col gap-space-xs">
+                          <h3 className="text-headline-sm text-on-surface font-bold">{defaultBookingData.hotel.name}</h3>
+                          <div className="flex items-center gap-space-xs text-body-sm text-on-surface-variant">
+                            <span className="material-symbols-outlined text-[14px]">location_on</span>
+                            <span>{defaultBookingData.hotel.location}</span>
+                          </div>
+                          <div className="flex items-center gap-space-sm">
+                            <span className="bg-tertiary text-on-tertiary px-space-sm py-space-xs rounded-lg text-label-lg font-bold tabular-nums">{defaultBookingData.hotel.rating}</span>
+                            <span className="text-label-lg text-on-surface font-bold">{defaultBookingData.hotel.ratingLabel}</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-space-sm text-body-sm text-on-surface-variant mt-space-xs">
+                            <div className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">calendar_today</span>Check-in: {defaultBookingData.hotel.checkIn}</div>
+                            <div className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">calendar_month</span>Check-out: {defaultBookingData.hotel.checkOut}</div>
+                            <div className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">bed</span>{defaultBookingData.hotel.room}</div>
+                            <div className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">group</span>{defaultBookingData.hotel.guests}</div>
+                          </div>
+                          <div className="flex items-center gap-space-xs flex-wrap mt-space-xs">
+                            {defaultBookingData.hotel.amenities.map((a, i) => (
+                              <span key={i} className="bg-surface-container text-on-surface-variant text-label-sm px-space-sm py-0.5 rounded-full">{a}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </>
             )}
 
@@ -368,7 +524,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({ onNavi
                   <span className="text-label-lg text-on-surface font-bold">Traveller Information</span>
                 </div>
                 <div className="p-space-md">
-                  {bookingData.travellers.map((t, i) => (
+                  {(bookingItem?.passengers || defaultBookingData.travellers).map((t: any, i: number) => (
                     <div key={i} className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
                       <div>
                         <label className="text-label-md text-on-surface-variant block mb-1">Full Name (as on passport)</label>
@@ -454,59 +610,102 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({ onNavi
               <div className="bg-surface-container-lowest rounded-xl shadow-card p-space-md flex flex-col gap-space-sm">
                 <h3 className="text-headline-sm text-on-surface font-bold">Booking Summary</h3>
 
-                {/* Flight Pricing */}
-                <div className="flex flex-col gap-space-xs">
-                  <div className="flex items-center gap-space-xs text-label-lg text-on-surface font-bold">
-                    <span className="material-symbols-outlined text-[16px] text-primary">flight</span>
-                    <span>Flights (Round Trip)</span>
+                {isCustomItem ? (
+                  <div className="flex flex-col gap-space-xs">
+                    <div className="flex items-center gap-space-xs text-label-lg text-on-surface font-bold">
+                      <span className="material-symbols-outlined text-[16px] text-primary">
+                        {activeService === 'TRAIN' ? 'train' :
+                         activeService === 'BUS' ? 'directions_bus' :
+                         activeService === 'CAB' ? 'local_taxi' :
+                         activeService === 'PACKAGE' ? 'luggage' :
+                         activeService === 'HOTEL' ? 'hotel' : 'flight'}
+                      </span>
+                      <span>{bookingItem?.title || activeService}</span>
+                    </div>
+                    <div className="flex justify-between text-body-sm text-on-surface-variant">
+                      <span>Base Fare / Price</span>
+                      <span className="tabular-nums">₹{customBase.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between text-body-sm text-on-surface-variant">
+                      <span>Taxes & GST (18%)</span>
+                      <span className="tabular-nums">₹{customTaxes.toLocaleString('en-IN')}</span>
+                    </div>
+                    {customDiscount > 0 && (
+                      <div className="flex justify-between text-body-sm text-tertiary">
+                        <span>Promotional Discount</span>
+                        <span className="tabular-nums">-₹{customDiscount.toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
+                    {hasInsurance && (
+                      <div className="flex justify-between text-body-sm text-on-surface-variant">
+                        <span>Trip Protection</span>
+                        <span className="tabular-nums">₹{customInsurance.toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex justify-between text-body-sm text-on-surface-variant">
-                    <span>Base fare × 2</span>
-                    <span className="tabular-nums">₹{(p.flightBase * 2).toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="flex justify-between text-body-sm text-on-surface-variant">
-                    <span>Taxes & fees</span>
-                    <span className="tabular-nums">₹{(p.flightTaxes * 2).toLocaleString('en-IN')}</span>
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    {/* Flight Pricing */}
+                    <div className="flex flex-col gap-space-xs">
+                      <div className="flex items-center gap-space-xs text-label-lg text-on-surface font-bold">
+                        <span className="material-symbols-outlined text-[16px] text-primary">flight</span>
+                        <span>Flights (Round Trip)</span>
+                      </div>
+                      <div className="flex justify-between text-body-sm text-on-surface-variant">
+                        <span>Base fare × 2</span>
+                        <span className="tabular-nums">₹{(defaultP.flightBase * 2).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between text-body-sm text-on-surface-variant">
+                        <span>Taxes & fees</span>
+                        <span className="tabular-nums">₹{(defaultP.flightTaxes * 2).toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
 
-                <div className="h-[1px] bg-outline-variant/20" />
+                    <div className="h-[1px] bg-outline-variant/20" />
 
-                {/* Hotel Pricing */}
-                <div className="flex flex-col gap-space-xs">
-                  <div className="flex items-center gap-space-xs text-label-lg text-on-surface font-bold">
-                    <span className="material-symbols-outlined text-[16px] text-primary">hotel</span>
-                    <span>Hotel ({p.hotelNights} nights)</span>
-                  </div>
-                  <div className="flex justify-between text-body-sm text-on-surface-variant">
-                    <span>₹{p.hotelBase.toLocaleString('en-IN')}/night × {p.hotelNights}</span>
-                    <span className="tabular-nums">₹{(p.hotelBase * p.hotelNights).toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="flex justify-between text-body-sm text-on-surface-variant">
-                    <span>Taxes & resort fee</span>
-                    <span className="tabular-nums">₹{p.hotelTaxes.toLocaleString('en-IN')}</span>
-                  </div>
-                </div>
+                    {/* Hotel Pricing */}
+                    <div className="flex flex-col gap-space-xs">
+                      <div className="flex items-center gap-space-xs text-label-lg text-on-surface font-bold">
+                        <span className="material-symbols-outlined text-[16px] text-primary">hotel</span>
+                        <span>Hotel ({defaultP.hotelNights} nights)</span>
+                      </div>
+                      <div className="flex justify-between text-body-sm text-on-surface-variant">
+                        <span>₹{defaultP.hotelBase.toLocaleString('en-IN')}/night × {defaultP.hotelNights}</span>
+                        <span className="tabular-nums">₹{(defaultP.hotelBase * defaultP.hotelNights).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between text-body-sm text-on-surface-variant">
+                        <span>Taxes & resort fee</span>
+                        <span className="tabular-nums">₹{defaultP.hotelTaxes.toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
 
-                <div className="h-[1px] bg-outline-variant/20" />
+                    <div className="h-[1px] bg-outline-variant/20" />
 
-                {/* Bundle Discount */}
-                <div className="flex justify-between text-body-sm">
-                  <span className="text-tertiary font-bold flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">discount</span>
-                    Bundle Discount
-                  </span>
-                  <span className="text-tertiary font-bold tabular-nums">{p.bundleDiscount < 0 ? '-' : ''}₹{Math.abs(p.bundleDiscount).toLocaleString('en-IN')}</span>
-                </div>
+                    {/* Bundle Discount */}
+                    <div className="flex justify-between text-body-sm">
+                      <span className="text-tertiary font-bold flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">discount</span>
+                        Bundle Discount
+                      </span>
+                      <span className="text-tertiary font-bold tabular-nums">{defaultP.bundleDiscount < 0 ? '-' : ''}₹{Math.abs(defaultP.bundleDiscount).toLocaleString('en-IN')}</span>
+                    </div>
 
-                {/* Travel Insurance */}
-                <div className="flex justify-between text-body-sm text-on-surface-variant">
-                  <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">health_and_safety</span>
-                    Travel Insurance
-                  </span>
-                  <span className="tabular-nums">₹{p.insurance.toLocaleString('en-IN')}</span>
-                </div>
+                    {/* Travel Insurance */}
+                    <label className="flex justify-between text-body-sm text-on-surface-variant cursor-pointer items-center">
+                      <span className="flex items-center gap-1">
+                        <input
+                          type="checkbox"
+                          checked={hasInsurance}
+                          onChange={(e) => setHasInsurance(e.target.checked)}
+                          className="accent-primary rounded"
+                        />
+                        <span className="material-symbols-outlined text-[14px]">health_and_safety</span>
+                        Travel Insurance
+                      </span>
+                      <span className="tabular-nums">₹{defaultP.insurance.toLocaleString('en-IN')}</span>
+                    </label>
+                  </>
+                )}
 
                 <div className="h-[1px] bg-outline-variant/20" />
 
@@ -518,7 +717,11 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({ onNavi
 
                 <div className="bg-tertiary/10 text-tertiary text-label-sm px-space-sm py-space-xs rounded-lg flex items-center gap-space-xs font-bold">
                   <span className="material-symbols-outlined text-[16px]">savings</span>
-                  <span>You save ₹{Math.abs(p.bundleDiscount).toLocaleString('en-IN')} with this bundle!</span>
+                  <span>
+                    {isCustomItem
+                      ? `Instant instant confirmation with 100% verified provider.`
+                      : `You save ₹${Math.abs(defaultP.bundleDiscount).toLocaleString('en-IN')} with this bundle!`}
+                  </span>
                 </div>
 
                 {/* Terms & CTA */}

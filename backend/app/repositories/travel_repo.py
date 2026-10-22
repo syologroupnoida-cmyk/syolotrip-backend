@@ -4,7 +4,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.orm import selectinload
 
-from backend.app.models.travel import Flight, Hotel, HotelRoom, Bus, HolidayPackage
+from backend.app.models.travel import (
+    Flight,
+    Hotel,
+    HotelRoom,
+    Bus,
+    HolidayPackage,
+    Train,
+    Cab,
+)
 
 
 class TravelRepository:
@@ -201,3 +209,104 @@ class TravelRepository:
         await self.db.flush()
         await self.db.refresh(package)
         return package
+
+    # ────────── Trains ──────────
+    async def search_trains(
+        self,
+        from_city: Optional[str] = None,
+        to_city: Optional[str] = None,
+        from_station: Optional[str] = None,
+        to_station: Optional[str] = None,
+        train_class: Optional[str] = None,
+        max_price: Optional[float] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[Train], int]:
+        filters = [Train.is_active.is_(True)]
+
+        if from_city:
+            filters.append(Train.from_city.ilike(f"%{from_city.strip()}%"))
+        if to_city:
+            filters.append(Train.to_city.ilike(f"%{to_city.strip()}%"))
+        if from_station:
+            filters.append(
+                or_(
+                    Train.from_station_code.ilike(f"%{from_station.strip()}%"),
+                    Train.from_station_name.ilike(f"%{from_station.strip()}%"),
+                )
+            )
+        if to_station:
+            filters.append(
+                or_(
+                    Train.to_station_code.ilike(f"%{to_station.strip()}%"),
+                    Train.to_station_name.ilike(f"%{to_station.strip()}%"),
+                )
+            )
+        if train_class:
+            filters.append(Train.train_class.ilike(f"%{train_class.strip()}%"))
+        if max_price:
+            filters.append(Train.base_fare <= max_price)
+
+        count_query = select(func.count(Train.id)).where(and_(*filters))
+        total = (await self.db.execute(count_query)).scalar_one()
+
+        query = (
+            select(Train)
+            .where(and_(*filters))
+            .order_by(Train.base_fare.asc())
+            .limit(limit)
+            .offset(offset)
+        )
+        items = list((await self.db.execute(query)).scalars().all())
+        return items, total
+
+    async def get_train_by_id(self, train_id: uuid.UUID) -> Optional[Train]:
+        query = select(Train).where(Train.id == train_id)
+        return (await self.db.execute(query)).scalar_one_or_none()
+
+    async def create_train(self, train: Train) -> Train:
+        self.db.add(train)
+        await self.db.flush()
+        await self.db.refresh(train)
+        return train
+
+    # ────────── Cabs ──────────
+    async def search_cabs(
+        self,
+        city: Optional[str] = None,
+        cab_type: Optional[str] = None,
+        max_price: Optional[float] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[Cab], int]:
+        filters = [Cab.is_active.is_(True)]
+
+        if city:
+            filters.append(Cab.city.ilike(f"%{city.strip()}%"))
+        if cab_type:
+            filters.append(Cab.cab_type.ilike(f"%{cab_type.strip()}%"))
+        if max_price:
+            filters.append(Cab.base_fare <= max_price)
+
+        count_query = select(func.count(Cab.id)).where(and_(*filters))
+        total = (await self.db.execute(count_query)).scalar_one()
+
+        query = (
+            select(Cab)
+            .where(and_(*filters))
+            .order_by(Cab.base_fare.asc())
+            .limit(limit)
+            .offset(offset)
+        )
+        items = list((await self.db.execute(query)).scalars().all())
+        return items, total
+
+    async def get_cab_by_id(self, cab_id: uuid.UUID) -> Optional[Cab]:
+        query = select(Cab).where(Cab.id == cab_id)
+        return (await self.db.execute(query)).scalar_one_or_none()
+
+    async def create_cab(self, cab: Cab) -> Cab:
+        self.db.add(cab)
+        await self.db.flush()
+        await self.db.refresh(cab)
+        return cab

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, Shadows, formatINR } from '../theme/theme';
-import { ScreenName, FlightOption, HotelOption } from '../types/travel';
+import { ScreenName, FlightOption, HotelOption, TripBookingState } from '../types/travel';
 import { SeatSelectionModal } from '../components/SeatSelectionModal';
 import { BookingSuccessModal } from '../components/BookingSuccessModal';
 import { submitMobileBookingApi } from '../services/api';
@@ -25,12 +25,14 @@ interface CheckoutScreenProps {
   onNavigate: (screen: ScreenName) => void;
   selectedFlight?: FlightOption;
   selectedHotel?: HotelOption;
+  bookingState?: TripBookingState;
 }
 
 export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   onNavigate,
   selectedFlight,
   selectedHotel,
+  bookingState,
 }) => {
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [hasInsurance, setHasInsurance] = useState(true);
@@ -41,16 +43,23 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form states
-  const [legalName, setLegalName] = useState('Alexander Vanderbilt');
-  const [dob, setDob] = useState('10 / 14 / 1988');
-  const [passport, setPassport] = useState('A94821038');
-  const [frequentFlyer, setFrequentFlyer] = useState('NH-Diamond Club #8892019');
+  const [legalName, setLegalName] = useState(bookingState?.travelerName || 'Alexander Vanderbilt');
+  const [dob, setDob] = useState(bookingState?.dob || '10 / 14 / 1988');
+  const [passport, setPassport] = useState(bookingState?.passportNumber || 'A94821038');
+  const [frequentFlyer, setFrequentFlyer] = useState(bookingState?.frequentFlyer || 'NH-Diamond Club #8892019');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'applepay' | 'upi'>('card');
 
-  const basePrice = selectedFlight ? selectedFlight.price : (selectedHotel ? selectedHotel.totalPrice : 168000);
+  const resolvedServiceType = bookingState?.serviceType || (selectedFlight ? 'FLIGHT' : selectedHotel ? 'HOTEL' : 'FLIGHT');
+
+  const basePrice = bookingState?.serviceType === 'TRAIN' ? (bookingState?.selectedTrain?.price ?? 1750) :
+    bookingState?.serviceType === 'BUS' ? (bookingState?.selectedBus?.price ?? 950) :
+    bookingState?.serviceType === 'CAB' ? (bookingState?.selectedCab?.price ?? 650) :
+    bookingState?.serviceType === 'PACKAGE' ? (bookingState?.selectedPackage?.price ?? 18500) :
+    selectedFlight ? selectedFlight.price : (selectedHotel ? selectedHotel.totalPrice : 168000);
+
   const taxes = Math.round(basePrice * 0.08);
   const discount = Math.round(basePrice * 0.05);
-  const insurancePrice = 3999;
+  const insurancePrice = 499;
 
   const currentTotal =
     basePrice + taxes - discount + (hasInsurance ? insurancePrice : 0);
@@ -64,8 +73,8 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
     setIsSubmitting(true);
     try {
       const res = await submitMobileBookingApi({
-        serviceType: selectedFlight ? 'FLIGHT' : 'HOTEL',
-        itemId: selectedFlight?.id || selectedHotel?.id,
+        serviceType: resolvedServiceType,
+        itemId: selectedFlight?.id || selectedHotel?.id || bookingState?.selectedTrain?.id || bookingState?.selectedBus?.id || bookingState?.selectedCab?.id || bookingState?.selectedPackage?.id,
         totalAmount: currentTotal,
         contactEmail: 'traveler@ssjourney.com',
         contactPhone: '+91 98765 43210',

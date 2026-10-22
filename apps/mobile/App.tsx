@@ -1,22 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from './src/components/Header';
 import { BottomNavigation } from './src/components/BottomNavigation';
 import { NotificationsModal } from './src/components/NotificationsModal';
+import { AuthModal } from './src/components/AuthModal';
 import { ExploreScreen } from './src/screens/ExploreScreen';
 import { FlightResultsScreen } from './src/screens/FlightResultsScreen';
 import { HotelListingsScreen } from './src/screens/HotelListingsScreen';
 import { CheckoutScreen } from './src/screens/CheckoutScreen';
-import { ScreenName, FlightOption, HotelOption } from './src/types/travel';
+import { MyTripsScreen } from './src/screens/MyTripsScreen';
+import { ScreenName, FlightOption, HotelOption, TripBookingState } from './src/types/travel';
+import { getCurrentUserMobileApi } from './src/services/api';
 import { Colors } from './src/theme/theme';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenName>('explore');
   const [selectedFlight, setSelectedFlight] = useState<FlightOption | undefined>();
   const [selectedHotel, setSelectedHotel] = useState<HotelOption | undefined>();
+  const [bookingState, setBookingState] = useState<TripBookingState | undefined>();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [user, setUser] = useState<any | null>(null);
+
+  useEffect(() => {
+    getCurrentUserMobileApi().then((u) => {
+      if (u) setUser(u);
+    });
+  }, []);
 
   const handleNavigate = (screen: ScreenName) => {
     setCurrentScreen(screen);
@@ -25,11 +37,16 @@ export default function App() {
   const handleGoBack = () => {
     if (currentScreen === 'checkout') {
       setCurrentScreen('flights');
-    } else if (currentScreen === 'flights' || currentScreen === 'hotels') {
+    } else if (currentScreen === 'flights' || currentScreen === 'hotels' || currentScreen === 'trips') {
       setCurrentScreen('explore');
     } else {
       setCurrentScreen('explore');
     }
+  };
+
+  const handleInitiateBooking = (state: TripBookingState) => {
+    setBookingState(state);
+    setCurrentScreen('checkout');
   };
 
   const canGoBack = currentScreen !== 'explore';
@@ -45,15 +62,17 @@ export default function App() {
           canGoBack={canGoBack}
           onNavigateBack={handleGoBack}
           onPressNotifications={() => setIsNotificationsOpen(true)}
-          onPressProfile={() => {
-            // Profile action: toggle to explore or show alert
-          }}
+          onPressProfile={() => setIsAuthOpen(true)}
+          user={user}
         />
 
         {/* Active Screen View */}
         <View style={styles.mainContent}>
           {currentScreen === 'explore' && (
-            <ExploreScreen onNavigate={handleNavigate} />
+            <ExploreScreen 
+              onNavigate={handleNavigate} 
+              onInitiateBooking={handleInitiateBooking}
+            />
           )}
 
           {currentScreen === 'flights' && (
@@ -75,6 +94,14 @@ export default function App() {
               onNavigate={handleNavigate}
               selectedFlight={selectedFlight}
               selectedHotel={selectedHotel}
+              bookingState={bookingState}
+            />
+          )}
+
+          {currentScreen === 'trips' && (
+            <MyTripsScreen
+              onNavigate={handleNavigate}
+              onOpenAuth={() => setIsAuthOpen(true)}
             />
           )}
         </View>
@@ -83,6 +110,15 @@ export default function App() {
         <BottomNavigation
           currentScreen={currentScreen}
           onSelectScreen={handleNavigate}
+        />
+
+        {/* Customer Auth Modal */}
+        <AuthModal
+          visible={isAuthOpen}
+          onClose={() => setIsAuthOpen(false)}
+          user={user}
+          onLoginSuccess={(loggedInUser) => setUser(loggedInUser)}
+          onLogout={() => setUser(null)}
         />
 
         {/* Notifications Modal Sheet */}

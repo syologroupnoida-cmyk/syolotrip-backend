@@ -146,6 +146,45 @@ export interface HolidayPackage {
   rating: number;
 }
 
+// ================= Train Models =================
+export interface TrainSchedule {
+  id: string;
+  trainNumber: string;
+  trainName: string;
+  trainType: string;
+  fromStationCode: string;
+  fromStationName: string;
+  fromCity: string;
+  toStationCode: string;
+  toStationName: string;
+  toCity: string;
+  departureTime: string;
+  arrivalTime: string;
+  durationMinutes: number;
+  trainClass: string;
+  availableSeats: number;
+  baseFare: number;
+  rating: number;
+  currency: string;
+}
+
+// ================= Cab Models =================
+export interface CabOption {
+  id: string;
+  cabType: string;
+  vehicleModel: string;
+  city: string;
+  pickupArea: string;
+  dropArea: string;
+  driverName: string;
+  driverRating: number;
+  capacity: number;
+  baseFare: number;
+  currency: string;
+  etaMinutes: number;
+  features: string[];
+}
+
 // ================= Booking Models =================
 export type BookingStatus =
   | 'PENDING'
@@ -153,7 +192,7 @@ export type BookingStatus =
   | 'CANCELLED'
   | 'FAILED';
 
-export type BookingServiceType = 'FLIGHT' | 'HOTEL' | 'BUS' | 'PACKAGE';
+export type BookingServiceType = 'FLIGHT' | 'HOTEL' | 'BUS' | 'PACKAGE' | 'TRAIN' | 'CAB';
 
 export interface PriceBreakdown {
   baseAmount: number;

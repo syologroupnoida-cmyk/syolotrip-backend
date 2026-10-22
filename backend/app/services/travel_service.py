@@ -3,7 +3,15 @@ from typing import Optional, List, Tuple
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.travel import Flight, Hotel, HotelRoom, Bus, HolidayPackage
+from backend.app.models.travel import (
+    Flight,
+    Hotel,
+    HotelRoom,
+    Bus,
+    HolidayPackage,
+    Train,
+    Cab,
+)
 from backend.app.repositories.travel_repo import TravelRepository
 from backend.app.schemas.flight import (
     FlightResponse,
@@ -26,6 +34,16 @@ from backend.app.schemas.package import (
     PackageResponse,
     PackageSearchParams,
     PackageCreate,
+)
+from backend.app.schemas.train import (
+    TrainResponse,
+    TrainSearchParams,
+    TrainCreate,
+)
+from backend.app.schemas.cab import (
+    CabResponse,
+    CabSearchParams,
+    CabCreate,
 )
 
 
@@ -263,3 +281,101 @@ class TravelService:
         if not p or not p.is_active:
             raise HTTPException(status_code=404, detail="Holiday package not found")
         return self._map_package(p)
+
+    # ────────── Train Methods ──────────
+    def _map_train(self, t: Train) -> TrainResponse:
+        return TrainResponse(
+            id=str(t.id),
+            train_number=t.train_number,
+            train_name=t.train_name,
+            train_type=t.train_type,
+            from_station_code=t.from_station_code,
+            from_station_name=t.from_station_name,
+            from_city=t.from_city,
+            to_station_code=t.to_station_code,
+            to_station_name=t.to_station_name,
+            to_city=t.to_city,
+            departure_time=t.departure_time,
+            arrival_time=t.arrival_time,
+            duration_minutes=t.duration_minutes,
+            train_class=t.train_class,
+            available_seats=t.available_seats,
+            base_fare=float(t.base_fare),
+            rating=float(t.rating),
+            currency=t.currency,
+            is_simulated=t.is_simulated,
+        )
+
+    async def search_trains(
+        self,
+        params: TrainSearchParams,
+        page: int = 1,
+        limit: int = 20,
+    ) -> Tuple[List[TrainResponse], int]:
+        offset = (page - 1) * limit
+        trains, total = await self.travel_repo.search_trains(
+            from_city=params.from_city,
+            to_city=params.to_city,
+            from_station=params.from_station,
+            to_station=params.to_station,
+            train_class=params.train_class,
+            max_price=params.max_price,
+            limit=limit,
+            offset=offset,
+        )
+        return [self._map_train(t) for t in trains], total
+
+    async def get_train(self, train_id: str) -> TrainResponse:
+        try:
+            t_uuid = uuid.UUID(train_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid train ID format")
+        t = await self.travel_repo.get_train_by_id(t_uuid)
+        if not t or not t.is_active:
+            raise HTTPException(status_code=404, detail="Train schedule not found")
+        return self._map_train(t)
+
+    # ────────── Cab Methods ──────────
+    def _map_cab(self, c: Cab) -> CabResponse:
+        return CabResponse(
+            id=str(c.id),
+            cab_type=c.cab_type,
+            vehicle_model=c.vehicle_model,
+            city=c.city,
+            pickup_area=c.pickup_area,
+            drop_area=c.drop_area,
+            driver_name=c.driver_name,
+            driver_rating=float(c.driver_rating),
+            capacity=c.capacity,
+            base_fare=float(c.base_fare),
+            currency=c.currency,
+            eta_minutes=c.eta_minutes,
+            features=c.features or [],
+            is_simulated=c.is_simulated,
+        )
+
+    async def search_cabs(
+        self,
+        params: CabSearchParams,
+        page: int = 1,
+        limit: int = 20,
+    ) -> Tuple[List[CabResponse], int]:
+        offset = (page - 1) * limit
+        cabs, total = await self.travel_repo.search_cabs(
+            city=params.city,
+            cab_type=params.cab_type,
+            max_price=params.max_price,
+            limit=limit,
+            offset=offset,
+        )
+        return [self._map_cab(c) for c in cabs], total
+
+    async def get_cab(self, cab_id: str) -> CabResponse:
+        try:
+            c_uuid = uuid.UUID(cab_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid cab ID format")
+        c = await self.travel_repo.get_cab_by_id(c_uuid)
+        if not c or not c.is_active:
+            raise HTTPException(status_code=404, detail="Cab option not found")
+        return self._map_cab(c)

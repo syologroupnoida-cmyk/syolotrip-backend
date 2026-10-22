@@ -12,6 +12,7 @@ interface HeaderProps {
   onPressNotifications?: () => void;
   onPressProfile?: () => void;
   unreadNotificationsCount?: number;
+  user?: any | null;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -21,6 +22,7 @@ export const Header: React.FC<HeaderProps> = ({
   onPressNotifications,
   onPressProfile,
   unreadNotificationsCount = 2,
+  user,
 }) => {
   const getScreenSubtitle = () => {
     switch (currentScreen) {
@@ -94,12 +96,15 @@ export const Header: React.FC<HeaderProps> = ({
             onPress={onPressProfile}
             activeOpacity={0.7}
           >
-            <Image
-              source={{
-                uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-              }}
-              style={styles.profileAvatar}
-            />
+            {user ? (
+              <View style={styles.userAvatarBadge}>
+                <Text style={styles.userAvatarText}>
+                  {(user.full_name || user.fullName || 'U').charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            ) : (
+              <MaterialIcons name="account-circle" size={28} color="#ffffff" />
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -208,5 +213,17 @@ const styles = StyleSheet.create({
   profileAvatar: {
     width: '100%',
     height: '100%',
+  },
+  userAvatarBadge: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#f28c1c',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userAvatarText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });

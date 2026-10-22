@@ -180,3 +180,62 @@ class HolidayPackage(Base, PrimaryKeyMixin, TimestampMixin):
     __table_args__ = (
         Index("idx_package_search", "destination", "is_active"),
     )
+
+
+class Train(Base, PrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "trains"
+
+    train_number: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    train_name: Mapped[str] = mapped_column(String(150), nullable=False, index=True)
+    train_type: Mapped[str] = mapped_column(String(100), default="Superfast Express", nullable=False)
+
+    from_station_code: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
+    from_station_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    from_city: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+
+    to_station_code: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
+    to_station_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    to_city: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+
+    departure_time: Mapped[str] = mapped_column(String(50), nullable=False)
+    arrival_time: Mapped[str] = mapped_column(String(50), nullable=False)
+    duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    train_class: Mapped[str] = mapped_column(String(50), default="AC Chair Car (CC)", nullable=False)
+    available_seats: Mapped[int] = mapped_column(Integer, default=120, nullable=False)
+    base_fare: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, index=True)
+    rating: Mapped[float] = mapped_column(Float, default=4.8, nullable=False)
+    currency: Mapped[str] = mapped_column(String(10), default="INR", nullable=False)
+
+    is_simulated: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    __table_args__ = (
+        Index("idx_train_search", "from_city", "to_city", "is_active"),
+        Index("idx_train_stations", "from_station_code", "to_station_code"),
+    )
+
+
+class Cab(Base, PrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "cabs"
+
+    cab_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)  # Sedan, SUV, Luxury, Hatchback
+    vehicle_model: Mapped[str] = mapped_column(String(150), nullable=False)        # Toyota Innova, Honda City
+    city: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    pickup_area: Mapped[str] = mapped_column(String(200), nullable=False)
+    drop_area: Mapped[str] = mapped_column(String(200), nullable=False)
+
+    driver_name: Mapped[str] = mapped_column(String(150), default="Verified Chauffeur", nullable=False)
+    driver_rating: Mapped[float] = mapped_column(Float, default=4.9, nullable=False)
+    capacity: Mapped[int] = mapped_column(Integer, default=4, nullable=False)
+    base_fare: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, index=True)
+    currency: Mapped[str] = mapped_column(String(10), default="INR", nullable=False)
+    eta_minutes: Mapped[int] = mapped_column(Integer, default=15, nullable=False)
+    features: Mapped[Optional[list]] = mapped_column(JSON, default=list, nullable=True)
+
+    is_simulated: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    __table_args__ = (
+        Index("idx_cab_search", "city", "cab_type", "is_active"),
+    )

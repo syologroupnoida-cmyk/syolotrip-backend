@@ -3,15 +3,10 @@ import { UserProfile } from '../services/api';
 import {
   FlightsIsometricIcon,
   HotelsIsometricIcon,
-  VillasIsometricIcon,
   HolidaysIsometricIcon,
   TrainsIsometricIcon,
   BusesIsometricIcon,
   CabsIsometricIcon,
-  ToursIsometricIcon,
-  VisaIsometricIcon,
-  ForexIsometricIcon,
-  InsuranceIsometricIcon,
 } from './TravelCategoryIcons';
 
 export type ScreenType = 'explore' | 'flights' | 'hotels' | 'checkout' | 'trips';
@@ -76,17 +71,6 @@ export const Header: React.FC<HeaderProps> = ({
       },
     },
     {
-      id: 'villas',
-      label: 'Villas & Homestays',
-      isActive: activeScreen === 'explore' && selectedCategoryId === 'villas',
-      icon: (active) => <VillasIsometricIcon active={active} className="w-10 h-10 sm:w-11 sm:h-11" />,
-      onClick: () => {
-        setSelectedCategoryId('villas');
-        setActiveScreen('hotels');
-        showToast('🏡 Villas & Homestays: Discover private villas, heritage stays, and beachside cottages.');
-      },
-    },
-    {
       id: 'holidays',
       label: 'Holiday Packages',
       badge: '-25%',
@@ -96,83 +80,40 @@ export const Header: React.FC<HeaderProps> = ({
       onClick: () => {
         setSelectedCategoryId('holidays');
         setActiveScreen('explore');
-        showToast('🏖️ Holiday Packages: Flight + Hotel bundles at wholesale rates with up to 25% discount.');
+        showToast('🏖️ Holiday Packages: Flight + Hotel bundles with wholesale pricing up to 25% off.');
       },
     },
     {
       id: 'trains',
       label: 'Trains',
-      badge: 'Soon',
-      badgeClass: 'bg-[#f28c1c] text-white',
       isActive: activeScreen === 'explore' && selectedCategoryId === 'trains',
       icon: (active) => <TrainsIsometricIcon active={active} className="w-10 h-10 sm:w-11 sm:h-11" />,
       onClick: () => {
         setSelectedCategoryId('trains');
-        showToast('🚆 IRCTC Train Booking launching soon! Live PNR status, Tatkal seat prediction & zero cancellation fees.');
+        setActiveScreen('explore');
+        showToast('🚆 IRCTC Train Booking: High-speed Vande Bharat, Shatabdi & Rajdhani express routes with live seat confirmation.');
       },
     },
     {
       id: 'buses',
       label: 'Buses',
-      badge: 'Soon',
-      badgeClass: 'bg-[#f28c1c] text-white',
       isActive: activeScreen === 'explore' && selectedCategoryId === 'buses',
       icon: (active) => <BusesIsometricIcon active={active} className="w-10 h-10 sm:w-11 sm:h-11" />,
       onClick: () => {
         setSelectedCategoryId('buses');
-        showToast('🚌 Intercity Bus Booking launching soon! Volvo Multi-Axle, AC Sleeper routes across 50,000+ paths.');
+        setActiveScreen('explore');
+        showToast('🚌 Intercity Bus Booking: Volvo Multi-Axle & AC Sleeper routes across top Indian corridors.');
       },
     },
     {
       id: 'cabs',
       label: 'Cabs',
-      badge: 'Soon',
-      badgeClass: 'bg-[#f28c1c] text-white',
       isActive: activeScreen === 'explore' && selectedCategoryId === 'cabs',
       icon: (active) => <CabsIsometricIcon active={active} className="w-10 h-10 sm:w-11 sm:h-11" />,
       onClick: () => {
         setSelectedCategoryId('cabs');
-        showToast('🚖 Airport & Outstation Cabs launching soon! Transparent fixed pricing with guaranteed on-time pickups.');
-      },
-    },
-    {
-      id: 'tours',
-      label: 'Tours & Attractions',
-      isActive: activeScreen === 'explore' && selectedCategoryId === 'tours',
-      icon: (active) => <ToursIsometricIcon active={active} className="w-10 h-10 sm:w-11 sm:h-11" />,
-      onClick: () => {
-        setSelectedCategoryId('tours');
-        showToast('🎈 Tours & Attractions launching soon! Skip-the-line museum tickets, adventure sports & guided tours.');
-      },
-    },
-    {
-      id: 'visa',
-      label: 'Visa',
-      isActive: activeScreen === 'explore' && selectedCategoryId === 'visa',
-      icon: (active) => <VisaIsometricIcon active={active} className="w-10 h-10 sm:w-11 sm:h-11" />,
-      onClick: () => {
-        setSelectedCategoryId('visa');
-        showToast('🛂 Travel Visa Services launching soon! Fast-track tourist eVisa processing for 70+ countries.');
-      },
-    },
-    {
-      id: 'forex',
-      label: 'Forex Card & Currency',
-      isActive: activeScreen === 'explore' && selectedCategoryId === 'forex',
-      icon: (active) => <ForexIsometricIcon active={active} className="w-10 h-10 sm:w-11 sm:h-11" />,
-      onClick: () => {
-        setSelectedCategoryId('forex');
-        showToast('💵 Forex Cards & Cash Currency launching soon! Zero markup multi-currency cards delivered to your doorstep.');
-      },
-    },
-    {
-      id: 'insurance',
-      label: 'Travel Insurance',
-      isActive: activeScreen === 'explore' && selectedCategoryId === 'insurance',
-      icon: (active) => <InsuranceIsometricIcon active={active} className="w-10 h-10 sm:w-11 sm:h-11" />,
-      onClick: () => {
-        setSelectedCategoryId('insurance');
-        showToast('🛡️ Comprehensive Travel Insurance launching soon! Medical emergencies, trip cancellation & lost luggage coverage.');
+        setActiveScreen('explore');
+        showToast('🚖 Airport & Outstation Cabs: Transparent fixed fares with guaranteed on-time pickups.');
       },
     },
   ];

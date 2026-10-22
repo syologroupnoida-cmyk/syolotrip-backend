@@ -5,6 +5,8 @@ from backend.app.api.v1.endpoints import (
     flights,
     hotels,
     buses,
+    trains,
+    cabs,
     packages,
     bookings,
     payments,
@@ -17,6 +19,8 @@ api_router.include_router(auth.router)
 api_router.include_router(flights.router)
 api_router.include_router(hotels.router)
 api_router.include_router(buses.router)
+api_router.include_router(trains.router)
+api_router.include_router(cabs.router)
 api_router.include_router(packages.router)
 api_router.include_router(bookings.router)
 api_router.include_router(payments.router)

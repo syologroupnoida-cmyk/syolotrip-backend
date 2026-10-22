@@ -19,7 +19,7 @@ const TABS: TabItem[] = [
   { id: 'explore', label: 'Explore', iconName: 'explore' },
   { id: 'flights', label: 'Flights', iconName: 'flight' },
   { id: 'hotels', label: 'Hotels', iconName: 'hotel' },
-  { id: 'checkout', label: 'Trips', iconName: 'luggage' },
+  { id: 'trips', label: 'My Trips', iconName: 'luggage' },
 ];
 
 export const BottomNavigation: React.FC<BottomNavigationProps> = ({

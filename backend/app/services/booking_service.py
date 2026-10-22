@@ -12,7 +12,7 @@ from backend.app.models.booking import (
     BookingStatus,
     BookingServiceType,
 )
-from backend.app.models.travel import Flight, HotelRoom, Bus, HolidayPackage
+from backend.app.models.travel import Flight, HotelRoom, Bus, HolidayPackage, Train, Cab
 from backend.app.repositories.booking_repo import BookingRepository
 from backend.app.repositories.travel_repo import TravelRepository
 from backend.app.schemas.booking import (
@@ -275,6 +275,73 @@ class BookingService:
                         unit_price=unit_base,
                         total_price=item_total,
                         meta_data={"title": pkg.title, "destination": pkg.destination},
+                    )
+                )
+                details_snapshot["items_summary"].append({"title": title, "total": item_total})
+
+            elif item_type == "TRAIN":
+                train = await self.travel_repo.get_train_by_id(ref_uuid)
+                if not train or not train.is_active:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Train schedule not found",
+                    )
+                if train.available_seats < item_req.quantity:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Requested number of train seats is unavailable",
+                    )
+                unit_base = float(train.base_fare)
+                item_total = unit_base * item_req.quantity
+                calculated_base += item_total
+                train.available_seats -= item_req.quantity
+
+                title = f"{train.train_name} ({train.train_number}) - {train.from_station_name} ➔ {train.to_station_name}"
+                booking_items_to_create.append(
+                    BookingItem(
+                        item_type=item_type,
+                        item_reference_id=str(train.id),
+                        title=title,
+                        quantity=item_req.quantity,
+                        unit_price=unit_base,
+                        total_price=item_total,
+                        meta_data={
+                            "train_number": train.train_number,
+                            "train_name": train.train_name,
+                            "train_class": train.train_class,
+                            "departure_time": train.departure_time,
+                        },
+                    )
+                )
+                details_snapshot["items_summary"].append({"title": title, "total": item_total})
+
+            elif item_type == "CAB":
+                cab = await self.travel_repo.get_cab_by_id(ref_uuid)
+                if not cab or not cab.is_active:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Cab option not found",
+                    )
+                unit_base = float(cab.base_fare)
+                item_total = unit_base * item_req.quantity
+                calculated_base += item_total
+
+                title = f"{cab.cab_type} ({cab.vehicle_model}) - {cab.pickup_area} ➔ {cab.drop_area}"
+                booking_items_to_create.append(
+                    BookingItem(
+                        item_type=item_type,
+                        item_reference_id=str(cab.id),
+                        title=title,
+                        quantity=item_req.quantity,
+                        unit_price=unit_base,
+                        total_price=item_total,
+                        meta_data={
+                            "cab_type": cab.cab_type,
+                            "vehicle_model": cab.vehicle_model,
+                            "driver_name": cab.driver_name,
+                            "driver_rating": cab.driver_rating,
+                            "eta_minutes": cab.eta_minutes,
+                        },
                     )
                 )
                 details_snapshot["items_summary"].append({"title": title, "total": item_total})
