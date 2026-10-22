@@ -39,7 +39,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         onClose();
       }
     } catch (err: any) {
-      const msg = err.response?.data?.detail || err.response?.data?.message || err.message || 'Authentication failed';
+      let msg = err.response?.data?.detail || err.response?.data?.message;
+      if (!msg && err.response?.status === 500) {
+        msg = 'Unable to connect to backend server on port 8000. Please ensure the backend server is running.';
+      } else if (!msg) {
+        msg = err.message || 'Authentication failed';
+      }
       setErrorMsg(typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
       setIsLoading(false);
