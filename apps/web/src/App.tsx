@@ -80,7 +80,7 @@ export const App: React.FC = () => {
         />
 
         {/* Active Screen View */}
-        <main className="flex-1">
+        <main className={`flex-1 ${activeScreen !== 'explore' ? 'pt-16 sm:pt-[70px]' : ''}`}>
           {activeScreen === 'explore' && (
             <ExplorePage 
               onNavigate={setActiveScreen} 
