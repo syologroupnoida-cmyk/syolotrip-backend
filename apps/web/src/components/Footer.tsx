@@ -16,7 +16,7 @@ export const Footer: React.FC<FooterProps> = () => {
             <img 
               src="/assets/ss-journey-emblem.png" 
               alt="SS Journey Logo" 
-              className="h-10 w-auto object-contain drop-shadow-sm" 
+              className="h-11 w-auto object-contain filter drop-shadow-[0_0_12px_rgba(255,255,255,0.65)] drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)]" 
             />
             <div>
               <div className="flex items-center space-x-2">

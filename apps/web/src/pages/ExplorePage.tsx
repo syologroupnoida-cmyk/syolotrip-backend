@@ -273,13 +273,14 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
   return (
     <div className="min-h-screen bg-[#f4f6f8] text-[#333333] font-sans antialiased">
       {/* ── 1. MAKEMYTRIP TROPICAL HERO BACKDROP ── */}
-      <div className="relative w-full h-[520px] overflow-hidden select-none">
+      <div className="relative w-full h-[540px] overflow-hidden select-none">
         <img 
-          src="https://lh3.googleusercontent.com/aida/AEtjO1X9V_cXH-OdTKknVPk8LYIh5cdklptUrc0Qzr0TIp4lO1EW6FbuV9r7ONNQuR6U013te9Qiyu8zP0NjOXUMBSKt_nB050jMOdZRMUrPE_av2lsl_uMUcs-vg1mGAOGPq2g4qT7_r3TKQRGgzZW_sBWgdaRJhOi-O6xWRCKsp_tgN2nuwqNb73oJCPnPp_CWPqdrJGPl_LyxkpnmyJvqxk3UOtHtHhKf2ONHfNKFSKRWIYcW-Mo--IBA7XM" 
-          alt="Tropical Palm Trees & Azure Beach Hero Backdrop" 
-          className="w-full h-full object-cover object-center filter brightness-95"
+          src="/assets/hero-bg-bright.jpg" 
+          alt="Crystal Clear Sunny Tropical Beach & Azure Sky Hero Backdrop" 
+          className="w-full h-full object-cover object-top filter brightness-105 contrast-105 saturate-110"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/35 to-[#f4f6f8]" />
+        {/* Soft, bright atmospheric gradient that preserves sky clarity */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-[#f4f6f8] pointer-events-none" />
       </div>
 
       {/* ── 2. MAIN FLOATING CONTAINER OVERLAY ── */}

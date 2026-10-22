@@ -34,7 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
               <img 
                 src="/assets/ss-journey-emblem.png" 
                 alt="SS Journey Logo" 
-                className="h-9 sm:h-10 w-auto object-contain group-hover:scale-105 transition-all duration-300 drop-shadow-sm"
+                className="h-10 sm:h-11 w-auto object-contain group-hover:scale-105 transition-all duration-300 filter drop-shadow-[0_0_12px_rgba(255,255,255,0.65)] drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)]"
               />
             </div>
             <div className="flex flex-col">

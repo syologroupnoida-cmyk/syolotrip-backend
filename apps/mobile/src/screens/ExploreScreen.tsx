@@ -133,17 +133,15 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
     >
-      {/* ── 1. TROPICAL SKY HERO BACKDROP (From Stitch) ── */}
+      {/* ── 1. TROPICAL SKY HERO BACKDROP ── */}
       <View style={styles.heroWrapper}>
         <ImageBackground
-          source={{
-            uri: 'https://lh3.googleusercontent.com/aida/AEtjO1X9V_cXH-OdTKknVPk8LYIh5cdklptUrc0Qzr0TIp4lO1EW6FbuV9r7ONNQuR6U013te9Qiyu8zP0NjOXUMBSKt_nB050jMOdZRMUrPE_av2lsl_uMUcs-vg1mGAOGPq2g4qT7_r3TKQRGgzZW_sBWgdaRJhOi-O6xWRCKsp_tgN2nuwqNb73oJCPnPp_CWPqdrJGPl_LyxkpnmyJvqxk3UOtHtHhKf2ONHfNKFSKRWIYcW-Mo--IBA7XM',
-          }}
+          source={require('../../assets/hero-bg-bright.jpg')}
           style={styles.heroBackground}
           resizeMode="cover"
         >
           <LinearGradient
-            colors={['rgba(0,92,171,0.65)', 'rgba(0,92,171,0.3)', '#fbf9f8']}
+            colors={['rgba(0,40,90,0.25)', 'transparent', '#fbf9f8']}
             style={styles.heroGradient}
           >
             {/* Top Micro Badges */}
