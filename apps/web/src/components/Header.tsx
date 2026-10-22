@@ -63,9 +63,9 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}>
                   SS JOURNEY
                 </span>
-                <span className="text-[9px] text-[#f28c1c] tracking-[0.2em] font-black uppercase bg-[#f28c1c]/15 px-1.5 py-0.2 rounded border border-[#f28c1c]/30">
+                {/* <span className="text-[9px] text-[#f28c1c] tracking-[0.2em] font-black uppercase bg-[#f28c1c]/15 px-1.5 py-0.2 rounded border border-[#f28c1c]/30">
                   GLOBAL
-                </span>
+                </span> */}
               </div>
               <span className={`text-[8.5px] sm:text-[9.5px] uppercase tracking-[0.14em] font-bold -mt-0.5 transition-colors ${
                 isTransparent ? 'text-blue-100/90' : 'text-[#008cff]'

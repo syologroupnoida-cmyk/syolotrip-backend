@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { WebCheckoutItem } from './BookingCheckoutPage';
+import { AppDownloadBanner } from '../components/AppDownloadBanner';
 
 export interface AirportOption {
   code: string;
@@ -1271,6 +1272,9 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
             ))}
           </div>
         </section>
+
+        {/* ── APP DOWNLOAD BANNER (MakeMyTrip Style) ── */}
+        <AppDownloadBanner />
 
         {/* ── 7. VALUE PROPOSITIONS / TRUST STRIP ── */}
         <section className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-6 sm:p-8 mb-8" aria-label="Why Book With Us">
