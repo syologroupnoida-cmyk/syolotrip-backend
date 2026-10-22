@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { WebCheckoutItem } from './BookingCheckoutPage';
 import { AppDownloadBanner } from '../components/AppDownloadBanner';
+import { useWishlist } from '../context/WishlistContext';
 import { 
   FlightsIsometricIcon,
   HotelsIsometricIcon,
@@ -90,6 +91,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
   onSearchHotels,
   onInitiateCheckout,
 }) => {
+  const { isWishlisted, toggleWishlist } = useWishlist();
   const [searchMode, setSearchMode] = useState<ServiceCategory>('flights');
   const [tripType, setTripType] = useState<'oneway' | 'roundtrip' | 'multicity'>('oneway');
   const [specialFare, setSpecialFare] = useState('regular');
@@ -1108,13 +1110,40 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                     </div>
                     <div className="flex flex-col items-end">
                       <span className="text-base font-extrabold text-gray-900">₹{villa.price.toLocaleString('en-IN')}<span className="text-[10px] text-gray-500 font-normal">/night</span></span>
-                      <button 
-                        type="button"
-                        onClick={() => handleBookVilla({ name: villa.name, location: villa.location, price: villa.price })}
-                        className="mt-1 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg cursor-pointer transition shadow-xs"
-                      >
-                        Book Villa
-                      </button>
+                      <div className="flex items-center space-x-1.5 mt-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleWishlist({
+                              id: `villa-${villa.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+                              title: villa.name,
+                              category: 'VILLA',
+                              location: villa.location,
+                              price: villa.price,
+                              rating: 4.9,
+                              image: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80',
+                              badge: 'LUXURY VILLA',
+                            });
+                          }}
+                          className="w-7 h-7 rounded-lg text-gray-400 hover:text-rose-500 hover:bg-rose-50 flex items-center justify-center transition cursor-pointer"
+                          title="Save to wishlist"
+                        >
+                          <span 
+                            className={`material-symbols-outlined text-[17px] ${isWishlisted(`villa-${villa.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`) ? 'text-rose-500' : 'text-gray-400'}`}
+                            style={isWishlisted(`villa-${villa.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`) ? { fontVariationSettings: "'FILL' 1" } : {}}
+                          >
+                            favorite
+                          </span>
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => handleBookVilla({ name: villa.name, location: villa.location, price: villa.price })}
+                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg cursor-pointer transition shadow-xs"
+                        >
+                          Book Villa
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1712,6 +1741,33 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                   <span className={`absolute top-3 left-3 text-white text-[10px] font-extrabold uppercase px-2 py-0.5 rounded shadow ${col.tagClass}`}>
                     {col.tag}
                   </span>
+                  {/* Wishlist Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleWishlist({
+                        id: `collection-${col.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+                        title: col.title,
+                        category: 'PACKAGE',
+                        location: 'Global Curated Escape',
+                        price: parseInt(col.price.replace(/[^\d]/g, '')) || 18500,
+                        image: col.img,
+                        badge: col.tag,
+                      });
+                    }}
+                    className="absolute top-2.5 right-2.5 z-10 w-8 h-8 rounded-full bg-white/80 hover:bg-white backdrop-blur-xs flex items-center justify-center transition-all shadow-md cursor-pointer hover:scale-110 active:scale-95"
+                    title={isWishlisted(`collection-${col.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}`) ? "Remove from wishlist" : "Add to wishlist"}
+                  >
+                    <span 
+                      className={`material-symbols-outlined text-[18px] transition-colors ${
+                        isWishlisted(`collection-${col.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}`) ? 'text-rose-500' : 'text-gray-400 hover:text-rose-400'
+                      }`}
+                      style={isWishlisted(`collection-${col.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}`) ? { fontVariationSettings: "'FILL' 1" } : {}}
+                    >
+                      favorite
+                    </span>
+                  </button>
                 </div>
                 <div className="p-4 bg-white">
                   <h3 className="font-extrabold text-sm text-gray-900 group-hover:text-[#008cff] transition line-clamp-1">{col.title}</h3>

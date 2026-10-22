@@ -13,6 +13,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, Shadows, formatINR } from '../theme/theme';
 import { ScreenName, HotelOption } from '../types/travel';
 import { fetchHotelsApi } from '../services/api';
+import { useWishlist } from '../context/WishlistContext';
 
 const { width } = Dimensions.get('window');
 
@@ -107,7 +108,7 @@ export const HotelListingsScreen: React.FC<HotelListingsScreenProps> = ({
   const [hotels, setHotels] = useState<HotelOption[]>(HOTELS_DATA);
   const [isMapView, setIsMapView] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>('free-cancel');
-  const [favorites, setFavorites] = useState<Record<string, boolean>>({});
+  const { isWishlisted, toggleWishlist } = useWishlist();
   const [selectedMapHotel, setSelectedMapHotel] = useState<HotelOption>(HOTELS_DATA[0]);
 
   useEffect(() => {
@@ -118,10 +119,6 @@ export const HotelListingsScreen: React.FC<HotelListingsScreenProps> = ({
       }
     });
   }, []);
-
-  const toggleFavorite = (id: string) => {
-    setFavorites((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
 
   const handleBook = (hotel: HotelOption) => {
     onSelectHotel(hotel);
@@ -260,7 +257,7 @@ export const HotelListingsScreen: React.FC<HotelListingsScreenProps> = ({
 
           {/* Hotel Cards Feed */}
           {hotels.map((hotel) => {
-            const isFav = !!favorites[hotel.id];
+            const isFav = isWishlisted(hotel.id);
             return (
               <View key={hotel.id} style={styles.hotelCard}>
                 {/* Image Aspect ratio container */}
@@ -286,13 +283,24 @@ export const HotelListingsScreen: React.FC<HotelListingsScreenProps> = ({
                   {/* Wishlist Heart Button */}
                   <TouchableOpacity
                     style={styles.wishlistBtn}
-                    onPress={() => toggleFavorite(hotel.id)}
+                    onPress={() => {
+                      toggleWishlist({
+                        id: hotel.id,
+                        title: hotel.name,
+                        category: 'HOTEL',
+                        location: `${hotel.neighborhood} · ${hotel.distance}`,
+                        price: hotel.pricePerNight,
+                        rating: hotel.ratingScore,
+                        image: hotel.image,
+                        badge: hotel.stars ? `${hotel.stars}★ Luxury` : undefined,
+                      });
+                    }}
                     activeOpacity={0.7}
                   >
                     <MaterialIcons
                       name={isFav ? 'favorite' : 'favorite-border'}
                       size={18}
-                      color={isFav ? Colors.error : Colors.onSurface}
+                      color={isFav ? '#e11d48' : Colors.onSurface}
                     />
                   </TouchableOpacity>
 

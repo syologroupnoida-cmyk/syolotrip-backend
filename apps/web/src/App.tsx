@@ -9,6 +9,8 @@ import { BookingCheckoutPage, WebCheckoutItem } from './pages/BookingCheckoutPag
 import { MyTripsPage } from './pages/MyTripsPage';
 import { ListPropertyPage } from './pages/ListPropertyPage';
 import { AuthModal } from './components/AuthModal';
+import { WishlistModal } from './components/WishlistModal';
+import { WishlistProvider, useWishlist } from './context/WishlistContext';
 import { getCurrentUserApi, logoutApi, UserProfile } from './services/api';
 
 const queryClient = new QueryClient({
@@ -20,11 +22,13 @@ const queryClient = new QueryClient({
   },
 });
 
-export const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [activeScreen, setActiveScreen] = useState<ScreenType>('explore');
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [checkoutItem, setCheckoutItem] = useState<WebCheckoutItem | null>(null);
+  const { wishlistCount } = useWishlist();
 
   // Search parameters passed from ExplorePage to search pages
   const [flightSearchParams, setFlightSearchParams] = useState<FlightSearchParams>({
@@ -69,68 +73,86 @@ export const App: React.FC = () => {
   };
 
   return (
+    <div className="min-h-screen flex flex-col bg-background font-sans text-on-surface">
+      {/* Global Navigation Header */}
+      <Header 
+        activeScreen={activeScreen} 
+        setActiveScreen={setActiveScreen} 
+        user={user}
+        onOpenAuth={() => setIsAuthOpen(true)}
+        onLogout={handleLogout}
+        onOpenWishlist={() => setIsWishlistOpen(true)}
+        wishlistCount={wishlistCount}
+      />
+
+      {/* Active Screen View */}
+      <main className={`flex-1 ${activeScreen !== 'explore' ? 'pt-16 sm:pt-[70px]' : ''}`}>
+        {activeScreen === 'explore' && (
+          <ExplorePage 
+            onNavigate={setActiveScreen} 
+            onSearchFlights={handleSearchFlights}
+            onSearchHotels={handleSearchHotels}
+            onInitiateCheckout={handleInitiateCheckout}
+          />
+        )}
+        {activeScreen === 'flights' && (
+          <FlightSearchPage 
+            onNavigate={setActiveScreen} 
+            searchParams={flightSearchParams}
+          />
+        )}
+        {activeScreen === 'hotels' && (
+          <HotelSearchPage 
+            onNavigate={setActiveScreen} 
+            searchParams={hotelSearchParams}
+          />
+        )}
+        {activeScreen === 'checkout' && (
+          <BookingCheckoutPage 
+            onNavigate={setActiveScreen} 
+            bookingItem={checkoutItem || undefined}
+          />
+        )}
+        {activeScreen === 'trips' && (
+          <MyTripsPage 
+            onNavigate={setActiveScreen} 
+            onOpenAuth={() => setIsAuthOpen(true)}
+          />
+        )}
+        {activeScreen === 'list-property' && (
+          <ListPropertyPage 
+            onNavigate={setActiveScreen} 
+          />
+        )}
+      </main>
+
+      {/* Wishlist / Liked Drawer Modal */}
+      <WishlistModal
+        isOpen={isWishlistOpen}
+        onClose={() => setIsWishlistOpen(false)}
+        onInitiateCheckout={handleInitiateCheckout}
+        onExplore={() => setActiveScreen('explore')}
+      />
+
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onSuccess={(loggedInUser) => setUser(loggedInUser)}
+      />
+
+      {/* Global Footer */}
+      <Footer onNavigate={setActiveScreen} />
+    </div>
+  );
+};
+
+export const App: React.FC = () => {
+  return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen flex flex-col bg-background font-sans text-on-surface">
-        {/* Global Navigation Header */}
-        <Header 
-          activeScreen={activeScreen} 
-          setActiveScreen={setActiveScreen} 
-          user={user}
-          onOpenAuth={() => setIsAuthOpen(true)}
-          onLogout={handleLogout}
-        />
-
-        {/* Active Screen View */}
-        <main className={`flex-1 ${activeScreen !== 'explore' ? 'pt-16 sm:pt-[70px]' : ''}`}>
-          {activeScreen === 'explore' && (
-            <ExplorePage 
-              onNavigate={setActiveScreen} 
-              onSearchFlights={handleSearchFlights}
-              onSearchHotels={handleSearchHotels}
-              onInitiateCheckout={handleInitiateCheckout}
-            />
-          )}
-          {activeScreen === 'flights' && (
-            <FlightSearchPage 
-              onNavigate={setActiveScreen} 
-              searchParams={flightSearchParams}
-            />
-          )}
-          {activeScreen === 'hotels' && (
-            <HotelSearchPage 
-              onNavigate={setActiveScreen} 
-              searchParams={hotelSearchParams}
-            />
-          )}
-          {activeScreen === 'checkout' && (
-            <BookingCheckoutPage 
-              onNavigate={setActiveScreen} 
-              bookingItem={checkoutItem || undefined}
-            />
-          )}
-          {activeScreen === 'trips' && (
-            <MyTripsPage 
-              onNavigate={setActiveScreen} 
-              onOpenAuth={() => setIsAuthOpen(true)}
-            />
-          )}
-          {activeScreen === 'list-property' && (
-            <ListPropertyPage 
-              onNavigate={setActiveScreen} 
-            />
-          )}
-        </main>
-
-        {/* Auth Modal */}
-        <AuthModal 
-          isOpen={isAuthOpen}
-          onClose={() => setIsAuthOpen(false)}
-          onSuccess={(loggedInUser) => setUser(loggedInUser)}
-        />
-
-        {/* Global Footer */}
-        <Footer onNavigate={setActiveScreen} />
-      </div>
+      <WishlistProvider>
+        <AppContent />
+      </WishlistProvider>
     </QueryClientProvider>
   );
 };

@@ -14,6 +14,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing, BorderRadius, Shadows, formatINR } from '../theme/theme';
 import { ScreenName, CategoryMode, TripBookingState } from '../types/travel';
+import { useWishlist } from '../context/WishlistContext';
 
 const { width } = Dimensions.get('window');
 
@@ -26,6 +27,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
   onNavigate,
   onInitiateBooking,
 }) => {
+  const { isWishlisted, toggleWishlist } = useWishlist();
   const [activeCategory, setActiveCategory] = useState<CategoryMode>('flights');
   const [tripType, setTripType] = useState<'oneway' | 'roundtrip' | 'multicity'>('oneway');
   const [originCode, setOriginCode] = useState('DEL');
@@ -687,6 +689,29 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                 <View style={styles.collectionBadge}>
                   <Text style={styles.collectionBadgeText}>{col.badge}</Text>
                 </View>
+
+                {/* Wishlist Heart Button */}
+                <TouchableOpacity
+                  style={styles.collectionHeartBtn}
+                  onPress={(e) => {
+                    toggleWishlist({
+                      id: `m-col-${col.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+                      title: col.title,
+                      category: 'PACKAGE',
+                      location: 'Curated Theme Escape',
+                      price: parseInt(col.price.replace(/[^\d]/g, '')) || 18500,
+                      image: col.img,
+                      badge: col.badge,
+                    });
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <MaterialIcons
+                    name={isWishlisted(`m-col-${col.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}`) ? 'favorite' : 'favorite-border'}
+                    size={15}
+                    color={isWishlisted(`m-col-${col.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}`) ? '#e11d48' : '#ffffff'}
+                  />
+                </TouchableOpacity>
               </View>
               <View style={styles.collectionMeta}>
                 <Text style={styles.collectionTitle} numberOfLines={1}>
@@ -1375,6 +1400,18 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontWeight: '800',
     color: '#ffffff',
+  },
+  collectionHeartBtn: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
   },
   collectionMeta: {
     padding: 8,

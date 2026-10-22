@@ -14,15 +14,19 @@ import { MyTripsScreen } from './src/screens/MyTripsScreen';
 import { ScreenName, FlightOption, HotelOption, TripBookingState } from './src/types/travel';
 import { getCurrentUserMobileApi } from './src/services/api';
 import { Colors } from './src/theme/theme';
+import { WishlistProvider, useWishlist } from './src/context/WishlistContext';
+import { WishlistModal } from './src/components/WishlistModal';
 
-export default function App() {
+function MainApp() {
   const [currentScreen, setCurrentScreen] = useState<ScreenName>('explore');
   const [selectedFlight, setSelectedFlight] = useState<FlightOption | undefined>();
   const [selectedHotel, setSelectedHotel] = useState<HotelOption | undefined>();
   const [bookingState, setBookingState] = useState<TripBookingState | undefined>();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [user, setUser] = useState<any | null>(null);
+  const { wishlistCount } = useWishlist();
 
   useEffect(() => {
     getCurrentUserMobileApi().then((u) => {
@@ -62,6 +66,8 @@ export default function App() {
           canGoBack={canGoBack}
           onNavigateBack={handleGoBack}
           onPressNotifications={() => setIsNotificationsOpen(true)}
+          onPressWishlist={() => setIsWishlistOpen(true)}
+          wishlistCount={wishlistCount}
           onPressProfile={() => setIsAuthOpen(true)}
           user={user}
         />
@@ -112,6 +118,14 @@ export default function App() {
           onSelectScreen={handleNavigate}
         />
 
+        {/* Wishlist / Liked Modal Sheet */}
+        <WishlistModal
+          isOpen={isWishlistOpen}
+          onClose={() => setIsWishlistOpen(false)}
+          onInitiateBooking={handleInitiateBooking}
+          onNavigate={handleNavigate}
+        />
+
         {/* Customer Auth Modal */}
         <AuthModal
           visible={isAuthOpen}
@@ -128,6 +142,14 @@ export default function App() {
         />
       </SafeAreaView>
     </SafeAreaProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <WishlistProvider>
+      <MainApp />
+    </WishlistProvider>
   );
 }
 

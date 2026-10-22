@@ -9,6 +9,8 @@ interface HeaderProps {
   onNavigateBack?: () => void;
   canGoBack?: boolean;
   onPressNotifications?: () => void;
+  onPressWishlist?: () => void;
+  wishlistCount?: number;
   onPressProfile?: () => void;
   unreadNotificationsCount?: number;
   user?: any | null;
@@ -19,6 +21,8 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigateBack,
   canGoBack = false,
   onPressNotifications,
+  onPressWishlist,
+  wishlistCount = 0,
   onPressProfile,
   user,
 }) => {
@@ -74,6 +78,22 @@ export const Header: React.FC<HeaderProps> = ({
             <Text style={styles.currencyText}>{currency}</Text>
             <MaterialIcons name="expand-more" size={15} color="#707785" />
           </TouchableOpacity>
+
+          {/* Wishlist / Liked Trigger */}
+          {onPressWishlist && (
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={onPressWishlist}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="favorite" size={21} color="#e11d48" />
+              {wishlistCount > 0 && (
+                <View style={styles.wishlistBadge}>
+                  <Text style={styles.wishlistBadgeText}>{wishlistCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
 
           {/* Notifications Trigger */}
           {onPressNotifications && (
@@ -197,6 +217,24 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  wishlistBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: '#e11d48',
+    minWidth: 15,
+    height: 15,
+    borderRadius: 7.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  wishlistBadgeText: {
+    color: '#ffffff',
+    fontSize: 8.5,
+    fontWeight: '800',
   },
   profileButton: {
     padding: 2,

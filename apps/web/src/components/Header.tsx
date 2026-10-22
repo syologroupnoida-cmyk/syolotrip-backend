@@ -9,6 +9,8 @@ interface HeaderProps {
   user?: UserProfile | null;
   onOpenAuth: () => void;
   onLogout: () => void;
+  onOpenWishlist?: () => void;
+  wishlistCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -17,6 +19,8 @@ export const Header: React.FC<HeaderProps> = ({
   user,
   onOpenAuth,
   onLogout,
+  onOpenWishlist,
+  wishlistCount = 0,
 }) => {
   const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
@@ -157,6 +161,42 @@ export const Header: React.FC<HeaderProps> = ({
                 </p>
                 <p className={`text-[9px] ${isTransparent ? 'text-white/80' : 'text-gray-500'}`}>
                   Manage Bookings
+                </p>
+              </div>
+            </button>
+
+            {/* Wishlist / Liked Quick Access */}
+            <button 
+              type="button"
+              onClick={onOpenWishlist}
+              className={`relative flex items-center space-x-2 py-1.5 px-2.5 rounded-lg transition cursor-pointer ${
+                isTransparent 
+                  ? 'hover:bg-white/15 text-white/90 hover:text-white' 
+                  : 'hover:bg-rose-50 text-gray-700 hover:text-rose-600'
+              }`}
+              title="My Wishlist & Liked"
+            >
+              <div className="relative flex items-center">
+                <span 
+                  className={`material-symbols-outlined text-[19px] transition-colors ${
+                    isTransparent ? 'text-white' : 'text-rose-500'
+                  }`} 
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  favorite
+                </span>
+                {wishlistCount > 0 && (
+                  <span className="absolute -top-1.5 -right-2 bg-rose-500 text-white text-[9px] font-black h-4 min-w-4 px-1 rounded-full flex items-center justify-center shadow-xs">
+                    {wishlistCount}
+                  </span>
+                )}
+              </div>
+              <div className="text-left leading-tight hidden sm:block">
+                <p className={`text-[11px] font-bold ${isTransparent ? 'text-white' : 'text-gray-900'}`}>
+                  Wishlist
+                </p>
+                <p className={`text-[9px] ${isTransparent ? 'text-white/80' : 'text-gray-500'}`}>
+                  {wishlistCount} Saved
                 </p>
               </div>
             </button>

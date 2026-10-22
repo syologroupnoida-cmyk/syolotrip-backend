@@ -26,7 +26,7 @@ interface ListPropertyPageProps {
 
 type PropertyType = 'Hotel' | 'Homestay / Villa' | 'Guest House' | 'Resort' | 'Apartment';
 
-export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate }) => {
+export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate: _onNavigate }) => {
   // Form State
   const [formMode, setFormMode] = useState<'register' | 'login'>('register');
   const [propertyType, setPropertyType] = useState<PropertyType>('Hotel');

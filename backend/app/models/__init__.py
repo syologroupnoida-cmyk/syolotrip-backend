@@ -11,6 +11,17 @@ from backend.app.models.booking import (
 )
 from backend.app.models.payment import Payment, PaymentStatus, PaymentMethod
 from backend.app.models.audit import AuditLog
+from backend.app.models.mybiz import (
+    Company,
+    CompanyEmployee,
+    TravelPolicy,
+    TripRequest,
+    CompanyInvoice,
+    CompanySize,
+    CompanyEmployeeRole,
+    CompanyEmployeeStatus,
+    TripRequestStatus,
+)
 
 __all__ = [
     "Base",
@@ -33,4 +44,13 @@ __all__ = [
     "PaymentStatus",
     "PaymentMethod",
     "AuditLog",
+    "Company",
+    "CompanyEmployee",
+    "TravelPolicy",
+    "TripRequest",
+    "CompanyInvoice",
+    "CompanySize",
+    "CompanyEmployeeRole",
+    "CompanyEmployeeStatus",
+    "TripRequestStatus",
 ]

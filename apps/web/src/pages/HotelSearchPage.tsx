@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { searchHotelsApi } from '../services/api';
+import { useWishlist } from '../context/WishlistContext';
 
 // ─── Fallback Mock Data ──────────────────────────────────
 const fallbackHotels = [
@@ -108,7 +109,7 @@ export const HotelSearchPage: React.FC<HotelSearchPageProps> = ({
   searchParams,
 }) => {
   const [activeSort, setActiveSort] = useState('Recommended');
-  const [wishlist, setWishlist] = useState<any[]>([]);
+  const { isWishlisted, toggleWishlist } = useWishlist();
   const [selectedChips, setSelectedChips] = useState<string[]>([]);
   const [showMap, setShowMap] = useState(false);
   const [priceLimit, setPriceLimit] = useState(50000);
@@ -156,10 +157,6 @@ export const HotelSearchPage: React.FC<HotelSearchPageProps> = ({
     if (selectedChips.includes('Under ₹15,000') && h.price >= 15000) return false;
     return true;
   });
-
-  const toggleWishlist = (id: any) => {
-    setWishlist(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  };
 
   const toggleChip = (chip: string) => {
     setSelectedChips(prev => 
@@ -370,11 +367,26 @@ export const HotelSearchPage: React.FC<HotelSearchPageProps> = ({
                   <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src={hotel.img} alt={hotel.name} />
                   {/* Wishlist Button */}
                   <button
-                    onClick={(e) => { e.stopPropagation(); toggleWishlist(hotel.id); }}
-                    className="absolute top-space-sm right-space-sm w-9 h-9 rounded-full bg-white/80 backdrop-blur-md flex items-center justify-center hover:bg-white transition-colors"
+                    type="button"
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      toggleWishlist({
+                        id: String(hotel.id),
+                        title: hotel.name,
+                        category: 'HOTEL',
+                        location: hotel.location,
+                        price: hotel.price,
+                        rating: hotel.rating,
+                        image: hotel.img,
+                        badge: hotel.featured ? "Editor's Choice" : undefined,
+                      }); 
+                    }}
+                    className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center hover:bg-white transition-all shadow-md cursor-pointer hover:scale-110 active:scale-95"
+                    title={isWishlisted(String(hotel.id)) ? "Remove from wishlist" : "Add to wishlist"}
                   >
-                    <span className={`material-symbols-outlined text-[20px] ${wishlist.includes(hotel.id) ? 'text-error' : 'text-on-surface-variant'}`}
-                      style={wishlist.includes(hotel.id) ? { fontVariationSettings: "'FILL' 1" } : {}}
+                    <span 
+                      className={`material-symbols-outlined text-[20px] transition-colors ${isWishlisted(String(hotel.id)) ? 'text-rose-500' : 'text-gray-400 hover:text-rose-400'}`}
+                      style={isWishlisted(String(hotel.id)) ? { fontVariationSettings: "'FILL' 1" } : {}}
                     >
                       favorite
                     </span>
