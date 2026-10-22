@@ -114,7 +114,10 @@ export const cancelBookingApi = async (bookingId: string, reason: string): Promi
 export const loginApi = async (email: string, password: string): Promise<AuthResponse> => {
   const res = await apiClient.post<ApiResponse<AuthResponse>>('/auth/login', { email, password });
   const data = res.data.data;
-  localStorage.setItem('ss_access_token', data.tokens.accessToken);
+  const token = data?.tokens?.accessToken || (data?.tokens as any)?.access_token;
+  if (token) {
+    localStorage.setItem('ss_access_token', token);
+  }
   return data;
 };
 
@@ -126,7 +129,10 @@ export const registerApi = async (payload: {
 }): Promise<AuthResponse> => {
   const res = await apiClient.post<ApiResponse<AuthResponse>>('/auth/register', payload);
   const data = res.data.data;
-  localStorage.setItem('ss_access_token', data.tokens.accessToken);
+  const token = data?.tokens?.accessToken || (data?.tokens as any)?.access_token;
+  if (token) {
+    localStorage.setItem('ss_access_token', token);
+  }
   return data;
 };
 

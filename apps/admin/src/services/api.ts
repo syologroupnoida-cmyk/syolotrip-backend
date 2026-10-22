@@ -31,8 +31,10 @@ export const getAdminOverview = async (): Promise<DashboardStats> => {
         email: 'admin@ssjourney.com',
         password: 'Admin@123456',
       });
-      token = loginRes.data.data.tokens.accessToken;
-      localStorage.setItem('admin_token', token);
+      token = loginRes.data.data.tokens?.accessToken || (loginRes.data.data.tokens as any)?.access_token;
+      if (token) {
+        localStorage.setItem('admin_token', token);
+      }
     } catch (e) {
       console.warn('Auto-login for admin overview failed', e);
     }
@@ -41,3 +43,35 @@ export const getAdminOverview = async (): Promise<DashboardStats> => {
   const response = await adminApiClient.get<ApiResponse<DashboardStats>>('/admin/overview');
   return response.data.data;
 };
+
+export const getAdminBookings = async (params?: { status?: string; page?: number; limit?: number }) => {
+  const response = await adminApiClient.get('/admin/bookings', { params });
+  return response.data.data;
+};
+
+export const getAdminFlights = async () => {
+  const response = await adminApiClient.get('/flights');
+  return response.data.data;
+};
+
+export const getAdminHotels = async () => {
+  const response = await adminApiClient.get('/hotels');
+  return response.data.data;
+};
+
+export const getAdminBuses = async () => {
+  const response = await adminApiClient.get('/buses');
+  return response.data.data;
+};
+
+export const getAdminPackages = async () => {
+  const response = await adminApiClient.get('/packages');
+  return response.data.data;
+};
+
+export const createAdminFlight = async (payload: any) => {
+  const response = await adminApiClient.post('/admin/flights', payload);
+  return response.data.data;
+};
+
+

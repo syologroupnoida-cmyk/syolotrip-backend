@@ -21,7 +21,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Copy application source code and migrations
 COPY backend /app/backend
-COPY alembic.ini /app/alembic.ini
+COPY backend/alembic.ini /app/alembic.ini
 
 # Expose port (default Render / standard web port 8000)
 EXPOSE 8000

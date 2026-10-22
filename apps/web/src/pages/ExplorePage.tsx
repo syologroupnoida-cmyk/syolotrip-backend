@@ -210,10 +210,10 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
           {/* Hero Text + Metric Badges */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-space-md pt-space-md">
             <div className="max-w-2xl flex flex-col gap-space-xs">
-              <div className="inline-flex items-center gap-space-xs px-space-sm py-space-xs bg-white/[0.15] backdrop-blur-md rounded-full w-fit">
+              {/* <div className="inline-flex items-center gap-space-xs px-space-sm py-space-xs bg-white/[0.15] backdrop-blur-md rounded-full w-fit">
                 <span className="w-2 h-2 rounded-full bg-secondary-container animate-ping" />
                 <span className="text-label-sm uppercase tracking-wider text-primary-fixed">Winter & Spring Fare Matrix Active</span>
-              </div>
+              </div> */}
               <h1 className="text-display-hero text-surface-container-lowest tracking-tight">
                 Where do you want to <span className="text-secondary-fixed-dim">wander</span> next?
               </h1>

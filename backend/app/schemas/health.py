@@ -1,21 +1,13 @@
-from typing import Dict, Any, Optional, Generic, TypeVar
-from pydantic import BaseModel
-from datetime import datetime, timezone
-
-T = TypeVar("T")
-
-
-class ApiResponse(BaseModel, Generic[T]):
-    success: bool = True
-    data: T
-    message: Optional[str] = None
-    timestamp: datetime = datetime.now(timezone.utc)
+from typing import Dict
+from pydantic import BaseModel, Field
+from backend.app.schemas.common import ApiResponse, utc_now_iso
 
 
 class HealthResponse(BaseModel):
     status: str
     version: str
     environment: str
-    timestamp: datetime
+    timestamp: str = Field(default_factory=utc_now_iso)
     database: str
     services: Dict[str, str]
+

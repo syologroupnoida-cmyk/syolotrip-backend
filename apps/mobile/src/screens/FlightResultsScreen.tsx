@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, Shadows, formatINR } from '../theme/theme';
 import { ScreenName, FlightOption } from '../types/travel';
+import { fetchFlightsApi } from '../services/api';
 
 interface FlightResultsScreenProps {
   onNavigate: (screen: ScreenName) => void;
@@ -103,12 +104,21 @@ export const FlightResultsScreen: React.FC<FlightResultsScreenProps> = ({
   onNavigate,
   onSelectFlight,
 }) => {
+  const [flights, setFlights] = useState<FlightOption[]>(FLIGHTS_DATA);
   const [activeSort, setActiveSort] = useState<'best' | 'cheapest' | 'fastest'>('best');
   const [nonStopOnly, setNonStopOnly] = useState(true);
   const [priceAlerts, setPriceAlerts] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
 
-  const filteredFlights = FLIGHTS_DATA.filter((f) => {
+  useEffect(() => {
+    fetchFlightsApi(FLIGHTS_DATA).then((data) => {
+      if (data && data.length > 0) {
+        setFlights(data);
+      }
+    });
+  }, []);
+
+  const filteredFlights = flights.filter((f) => {
     if (nonStopOnly && !f.isDirect) return false;
     if (selectedFilter === 'under60k' && f.price > 60000) return false;
     return true;

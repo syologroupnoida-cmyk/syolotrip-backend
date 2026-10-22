@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, Shadows, formatINR } from '../theme/theme';
 import { ScreenName, HotelOption } from '../types/travel';
+import { fetchHotelsApi } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -103,10 +104,20 @@ export const HotelListingsScreen: React.FC<HotelListingsScreenProps> = ({
   onNavigate,
   onSelectHotel,
 }) => {
+  const [hotels, setHotels] = useState<HotelOption[]>(HOTELS_DATA);
   const [isMapView, setIsMapView] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>('free-cancel');
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
   const [selectedMapHotel, setSelectedMapHotel] = useState<HotelOption>(HOTELS_DATA[0]);
+
+  useEffect(() => {
+    fetchHotelsApi(HOTELS_DATA).then((data) => {
+      if (data && data.length > 0) {
+        setHotels(data);
+        setSelectedMapHotel(data[0]);
+      }
+    });
+  }, []);
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -248,7 +259,7 @@ export const HotelListingsScreen: React.FC<HotelListingsScreenProps> = ({
           </View>
 
           {/* Hotel Cards Feed */}
-          {HOTELS_DATA.map((hotel) => {
+          {hotels.map((hotel) => {
             const isFav = !!favorites[hotel.id];
             return (
               <View key={hotel.id} style={styles.hotelCard}>
@@ -381,7 +392,7 @@ export const HotelListingsScreen: React.FC<HotelListingsScreenProps> = ({
             <View style={styles.mapRiverArea} />
 
             {/* Hotel Pins on Map */}
-            {HOTELS_DATA.map((h, i) => {
+            {hotels.map((h, i) => {
               const isSelected = selectedMapHotel.id === h.id;
               const positions: Array<{ top: DimensionValue; left: DimensionValue }> = [
                 { top: '28%', left: '32%' },

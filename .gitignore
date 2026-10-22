@@ -27,6 +27,11 @@ build/
 .next/
 out/
 
+# Mobile build artifacts
+*.apk
+*.aab
+*.ipa
+
 # Environment Variables
 .env
 .env.local

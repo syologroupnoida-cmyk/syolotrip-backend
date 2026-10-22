@@ -15,6 +15,7 @@ import { Colors, Spacing, BorderRadius, Shadows, formatINR } from '../theme/them
 import { ScreenName, FlightOption, HotelOption } from '../types/travel';
 import { SeatSelectionModal } from '../components/SeatSelectionModal';
 import { BookingSuccessModal } from '../components/BookingSuccessModal';
+import { submitMobileBookingApi } from '../services/api';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -36,6 +37,8 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   const [selectedSeat, setSelectedSeat] = useState('23A');
   const [isSeatModalOpen, setIsSeatModalOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [confirmedBookingRef, setConfirmedBookingRef] = useState('SSJ-849201');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form states
   const [legalName, setLegalName] = useState('Alexander Vanderbilt');
@@ -44,9 +47,9 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   const [frequentFlyer, setFrequentFlyer] = useState('NH-Diamond Club #8892019');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'applepay' | 'upi'>('card');
 
-  const basePrice = 168000;
-  const taxes = 11200;
-  const discount = 12500;
+  const basePrice = selectedFlight ? selectedFlight.price : (selectedHotel ? selectedHotel.totalPrice : 168000);
+  const taxes = Math.round(basePrice * 0.08);
+  const discount = Math.round(basePrice * 0.05);
   const insurancePrice = 3999;
 
   const currentTotal =
@@ -57,8 +60,26 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
     setSummaryExpanded(!summaryExpanded);
   };
 
-  const handleConfirmPay = () => {
-    setIsSuccessModalOpen(true);
+  const handleConfirmPay = async () => {
+    setIsSubmitting(true);
+    try {
+      const res = await submitMobileBookingApi({
+        serviceType: selectedFlight ? 'FLIGHT' : 'HOTEL',
+        itemId: selectedFlight?.id || selectedHotel?.id,
+        totalAmount: currentTotal,
+        contactEmail: 'traveler@ssjourney.com',
+        contactPhone: '+91 98765 43210',
+        passengerName: legalName || 'Alex Chen',
+      });
+      if (res?.bookingId) {
+        setConfirmedBookingRef(res.bookingId);
+      }
+    } catch (e) {
+      console.warn('Booking submit failed', e);
+    } finally {
+      setIsSubmitting(false);
+      setIsSuccessModalOpen(true);
+    }
   };
 
   return (
@@ -377,7 +398,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
           activeOpacity={0.85}
         >
           <MaterialIcons name="lock" size={16} color="#ffffff" />
-          <Text style={styles.confirmPayText}>Confirm & Pay</Text>
+          <Text style={styles.confirmPayText}>{isSubmitting ? 'Processing...' : 'Confirm & Pay'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -392,7 +413,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
       {/* Booking Success Celebration Modal */}
       <BookingSuccessModal
         visible={isSuccessModalOpen}
-        bookingRef="SSJ-849201"
+        bookingRef={confirmedBookingRef}
         totalAmount={formatINR(currentTotal)}
         onDone={() => {
           setIsSuccessModalOpen(false);

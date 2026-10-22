@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, computed_field
 
 
 class UserRegisterRequest(BaseModel):
@@ -19,6 +19,21 @@ class AuthTokenResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int
 
+    @computed_field
+    @property
+    def accessToken(self) -> str:
+        return self.access_token
+
+    @computed_field
+    @property
+    def tokenType(self) -> str:
+        return self.token_type
+
+    @computed_field
+    @property
+    def expiresIn(self) -> int:
+        return self.expires_in
+
 
 class UserProfileResponse(BaseModel):
     id: str
@@ -31,7 +46,23 @@ class UserProfileResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @computed_field
+    @property
+    def fullName(self) -> str:
+        return self.full_name
+
+    @computed_field
+    @property
+    def isActive(self) -> bool:
+        return self.is_active
+
+    @computed_field
+    @property
+    def createdAt(self) -> str:
+        return self.created_at
+
 
 class AuthResponse(BaseModel):
     user: UserProfileResponse
     tokens: AuthTokenResponse
+

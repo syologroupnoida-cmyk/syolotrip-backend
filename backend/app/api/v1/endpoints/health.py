@@ -1,10 +1,10 @@
-from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from backend.app.core.config import settings
 from backend.app.core.database import get_db
-from backend.app.schemas.health import HealthResponse, ApiResponse
+from backend.app.schemas.common import ApiResponse, utc_now_iso
+from backend.app.schemas.health import HealthResponse
 
 router = APIRouter()
 
@@ -21,7 +21,7 @@ async def get_health_status(db: AsyncSession = Depends(get_db)):
         status="healthy" if db_status == "connected" else "degraded",
         version=settings.VERSION,
         environment=settings.ENVIRONMENT,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=utc_now_iso(),
         database=db_status,
         services={
             "flights_provider": "mock" if settings.USE_MOCK_PROVIDERS else "supplier",
