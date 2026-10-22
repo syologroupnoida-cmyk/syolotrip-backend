@@ -61,7 +61,7 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate }
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 selection:bg-blue-500 selection:text-white">
       {/* ── SUB-BANNER / HELPLINE STRIP ── */}
-      <div className="bg-[#071426] border-b border-white/10 text-white/90 text-xs py-2 px-4 select-none">
+      {/* <div className="bg-[#071426] border-b border-white/10 text-white/90 text-xs py-2 px-4 select-none">
         <div className="max-w-[1240px] mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center space-x-2">
             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
@@ -85,7 +85,7 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate }
             </button>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* ── 1. HERO & REGISTRATION SECTION ── */}
       <section className="relative overflow-hidden bg-slate-950 text-white min-h-[640px] flex items-center py-12 lg:py-16">
