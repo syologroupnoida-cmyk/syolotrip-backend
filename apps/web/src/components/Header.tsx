@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile } from '../services/api';
 
-export type ScreenType = 'explore' | 'flights' | 'hotels' | 'checkout' | 'trips';
+export type ScreenType = 'explore' | 'flights' | 'hotels' | 'checkout' | 'trips' | 'list-property';
 
 interface HeaderProps {
   activeScreen: ScreenType;
@@ -76,7 +76,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* ── RIGHT UTILITY BAR ── */}
-          <div className={`flex items-center space-x-3 sm:space-x-5 lg:space-x-7 text-xs font-semibold transition-colors ${
+          <div className={`flex items-center space-x-2 sm:space-x-4 lg:space-x-5 text-xs font-semibold transition-colors ${
             isTransparent ? 'text-white' : 'text-gray-700'
           }`}>
             {/* Introducing myBiz */}
@@ -98,6 +98,41 @@ export const Header: React.FC<HeaderProps> = ({
                 </p>
               </div>
             </div>
+
+            {/* List Your Property */}
+            <button
+              type="button"
+              onClick={() => setActiveScreen('list-property')}
+              className={`flex items-center space-x-1.5 sm:space-x-2 py-1.5 px-2 sm:px-2.5 rounded-lg transition cursor-pointer ${
+                activeScreen === 'list-property'
+                  ? isTransparent
+                    ? 'bg-white/20 text-white font-bold ring-1 ring-white/30'
+                    : 'bg-emerald-50 text-emerald-700 font-bold ring-1 ring-emerald-300'
+                  : isTransparent
+                    ? 'hover:bg-white/15 text-white/90 hover:text-white'
+                    : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900'
+              }`}
+            >
+              <div className="w-5 h-5 rounded-md bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-xs shrink-0">
+                <span className="material-symbols-outlined text-[13px]">apartment</span>
+              </div>
+              <div className="text-left leading-tight hidden lg:block">
+                <div className="flex items-center space-x-1">
+                  <p className={`text-[11px] font-bold ${isTransparent ? 'text-white' : 'text-gray-900'}`}>
+                    List Your Property
+                  </p>
+                  <span className="text-[8px] font-black uppercase px-1 py-0.2 rounded bg-amber-400 text-amber-950">
+                    Free
+                  </span>
+                </div>
+                <p className={`text-[9px] ${isTransparent ? 'text-white/80' : 'text-gray-500'}`}>
+                  Grow your business
+                </p>
+              </div>
+              <span className="lg:hidden text-[11px] font-bold hidden sm:inline">
+                List Property
+              </span>
+            </button>
 
             {/* My Trips */}
             <button 

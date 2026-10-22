@@ -7,6 +7,7 @@ import { FlightSearchPage } from './pages/FlightSearchPage';
 import { HotelSearchPage } from './pages/HotelSearchPage';
 import { BookingCheckoutPage, WebCheckoutItem } from './pages/BookingCheckoutPage';
 import { MyTripsPage } from './pages/MyTripsPage';
+import { ListPropertyPage } from './pages/ListPropertyPage';
 import { AuthModal } from './components/AuthModal';
 import { getCurrentUserApi, logoutApi, UserProfile } from './services/api';
 
@@ -111,6 +112,11 @@ export const App: React.FC = () => {
             <MyTripsPage 
               onNavigate={setActiveScreen} 
               onOpenAuth={() => setIsAuthOpen(true)}
+            />
+          )}
+          {activeScreen === 'list-property' && (
+            <ListPropertyPage 
+              onNavigate={setActiveScreen} 
             />
           )}
         </main>
