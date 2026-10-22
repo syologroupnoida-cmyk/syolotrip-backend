@@ -38,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
     <header 
       className={`fixed top-0 left-0 w-full z-40 select-none transition-all duration-300 ${
         isTransparent 
-          ? 'bg-gradient-to-b from-black/40 via-black/15 to-transparent border-b border-white/10 text-white shadow-none' 
+          ? 'bg-gradient-to-b from-black/35 via-black/10 to-transparent border-none text-white shadow-none' 
           : 'bg-white/95 backdrop-blur-md border-b border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.08)] text-gray-800'
       }`}
     >
@@ -53,11 +53,7 @@ export const Header: React.FC<HeaderProps> = ({
               <img 
                 src="/assets/ss-journey-emblem.png" 
                 alt="SS Journey Logo" 
-                className={`h-10 sm:h-11 w-auto object-contain group-hover:scale-105 transition-all duration-300 filter ${
-                  isTransparent 
-                    ? 'drop-shadow-[0_0_12px_rgba(255,255,255,0.7)] drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)]' 
-                    : 'drop-shadow-[0_2px_6px_rgba(0,92,171,0.2)]'
-                }`}
+                className="h-10 sm:h-11 w-auto object-contain group-hover:scale-105 transition-transform duration-300"
               />
             </div>
             <div className="flex flex-col">
