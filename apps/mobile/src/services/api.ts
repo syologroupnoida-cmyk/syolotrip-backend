@@ -341,7 +341,7 @@ export async function fetchPackagesApi(fallback: PackageOption[]): Promise<Packa
  * Submit booking and trigger demo payment
  */
 export async function submitMobileBookingApi(payload: {
-  serviceType: 'FLIGHT' | 'HOTEL' | 'BUS' | 'PACKAGE' | 'TRAIN' | 'CAB';
+  serviceType: 'FLIGHT' | 'HOTEL' | 'BUS' | 'PACKAGE' | 'TRAIN' | 'CAB' | 'VILLA' | 'TOUR' | 'VISA' | 'INSURANCE';
   itemId?: string;
   totalAmount: number;
   contactEmail: string;

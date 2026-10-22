@@ -65,19 +65,27 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
       onNavigate('hotels');
     } else if (activeCategory === 'flights') {
       onNavigate('flights');
+    } else if (activeCategory === 'villas') {
+      handleBookItem('VILLA', 'Candolim Luxury 4BHK Private Pool Villa', 14500);
+    } else if (activeCategory === 'packages') {
+      handleBookItem('PACKAGE', 'Goa Beachfront & Heritage Holiday (5D/4N)', 18500);
     } else if (activeCategory === 'trains') {
       handleBookItem('TRAIN', 'Vande Bharat Express (20172)', 1750);
     } else if (activeCategory === 'buses') {
       handleBookItem('BUS', 'Zingbus Luxury Multi-Axle Volvo AC', 950);
     } else if (activeCategory === 'cabs') {
       handleBookItem('CAB', 'Airport Prime Sedan (IGI T3)', 650);
-    } else if (activeCategory === 'packages') {
-      handleBookItem('PACKAGE', 'Goa Beachfront & Heritage Holiday (5D/4N)', 18500);
+    } else if (activeCategory === 'tours') {
+      handleBookItem('TOUR', 'Burj Khalifa At The Top - Fast Track Level 124 & 125', 3850);
+    } else if (activeCategory === 'visa') {
+      handleBookItem('VISA', 'Dubai Express 30-Day Tourist E-Visa', 6499);
+    } else if (activeCategory === 'insurance') {
+      handleBookItem('INSURANCE', 'International Travel Shield - $500k Coverage', 1299);
     }
   };
 
   const handleBookItem = (
-    serviceType: 'FLIGHT' | 'HOTEL' | 'BUS' | 'PACKAGE' | 'TRAIN' | 'CAB',
+    serviceType: 'FLIGHT' | 'HOTEL' | 'BUS' | 'PACKAGE' | 'TRAIN' | 'CAB' | 'VILLA' | 'TOUR' | 'VISA' | 'INSURANCE',
     title: string,
     price: number
   ) => {
@@ -177,10 +185,14 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
           {([
             { id: 'flights' as const, label: 'Flights', icon: 'flight-takeoff' as const },
             { id: 'hotels' as const, label: 'Hotels', icon: 'hotel' as const },
-            { id: 'packages' as const, label: 'Holidays', icon: 'beach-access' as const, badge: '-25%' },
+            { id: 'villas' as const, label: 'Villas & Homestays', icon: 'holiday-village' as const },
+            { id: 'packages' as const, label: 'Holiday Packages', icon: 'beach-access' as const, badge: '-25%' },
             { id: 'trains' as const, label: 'Trains', icon: 'train' as const },
             { id: 'buses' as const, label: 'Buses', icon: 'directions-bus' as const },
             { id: 'cabs' as const, label: 'Cabs', icon: 'local-taxi' as const },
+            { id: 'tours' as const, label: 'Tours & Attractions', icon: 'attractions' as const },
+            { id: 'visa' as const, label: 'Visa', icon: 'card-membership' as const },
+            { id: 'insurance' as const, label: 'Travel Insurance', icon: 'security' as const },
           ]).map((item) => {
             const isActive = activeCategory === item.id;
             return (
@@ -432,9 +444,13 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
             <Text style={styles.searchButtonText}>
               {activeCategory === 'flights' ? 'SEARCH FLIGHTS' :
                activeCategory === 'hotels' ? 'SEARCH HOTELS' :
+               activeCategory === 'villas' ? 'SEARCH VILLAS' :
                activeCategory === 'trains' ? 'BOOK TRAIN' :
                activeCategory === 'buses' ? 'BOOK BUS' :
-               activeCategory === 'cabs' ? 'RESERVE CAB' : 'EXPLORE HOLIDAYS'}
+               activeCategory === 'cabs' ? 'RESERVE CAB' :
+               activeCategory === 'tours' ? 'EXPLORE TOURS' :
+               activeCategory === 'visa' ? 'APPLY VISA' :
+               activeCategory === 'insurance' ? 'VIEW INSURANCE PLANS' : 'EXPLORE PACKAGES'}
             </Text>
           </LinearGradient>
         </TouchableOpacity>

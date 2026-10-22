@@ -1,6 +1,16 @@
 export type ScreenName = 'explore' | 'flights' | 'hotels' | 'checkout' | 'trips';
 
-export type CategoryMode = 'flights' | 'hotels' | 'packages' | 'trains' | 'buses' | 'cabs';
+export type CategoryMode = 
+  | 'flights' 
+  | 'hotels' 
+  | 'villas'
+  | 'packages' 
+  | 'trains' 
+  | 'buses' 
+  | 'cabs'
+  | 'tours'
+  | 'visa'
+  | 'insurance';
 
 export interface DestinationCard {
   id: string;
@@ -117,7 +127,7 @@ export interface PackageOption {
 }
 
 export interface TripBookingState {
-  serviceType?: 'FLIGHT' | 'HOTEL' | 'BUS' | 'PACKAGE' | 'TRAIN' | 'CAB';
+  serviceType?: 'FLIGHT' | 'HOTEL' | 'BUS' | 'PACKAGE' | 'TRAIN' | 'CAB' | 'VILLA' | 'TOUR' | 'VISA' | 'INSURANCE';
   originCode: string;
   originCity: string;
   destCode: string;
