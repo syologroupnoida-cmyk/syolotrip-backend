@@ -75,9 +75,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
           <div className="flex items-center gap-3">
             <img 
-              src="/assets/ss-journey-logo.jpg" 
+              src="/assets/ss-journey-emblem.png" 
               alt="SS Journey" 
-              className="h-10 w-10 rounded-xl bg-white p-0.5 object-cover shadow"
+              className="h-10 w-auto object-contain drop-shadow-sm"
             />
             <div>
               <h3 className="text-headline-sm font-bold text-white">SS Journey Account</h3>

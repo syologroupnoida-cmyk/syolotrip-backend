@@ -48,9 +48,9 @@ export const Header: React.FC<HeaderProps> = ({
           <View style={styles.brandRow}>
             <View style={styles.logoWrapper}>
               <Image
-                source={require('../../assets/ss-journey-logo.jpg')}
+                source={require('../../assets/ss-journey-emblem.png')}
                 style={styles.logoImage}
-                resizeMode="cover"
+                resizeMode="contain"
               />
             </View>
             <View style={styles.titleColumn}>
@@ -144,14 +144,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   logoWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#E7EBF0',
-    ...Shadows.sm,
+    width: 44,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   logoImage: {
     width: '100%',

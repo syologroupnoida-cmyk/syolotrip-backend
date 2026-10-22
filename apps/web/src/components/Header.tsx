@@ -30,11 +30,11 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setActiveScreen('explore')}
             className="flex items-center space-x-3 cursor-pointer group select-none shrink-0"
           >
-            <div className="relative">
+            <div className="relative flex items-center">
               <img 
-                src="/assets/ss-journey-logo.jpg" 
+                src="/assets/ss-journey-emblem.png" 
                 alt="SS Journey Logo" 
-                className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl object-cover bg-white p-0.5 shadow-md ring-2 ring-white/20 group-hover:ring-[#008cff]/60 group-hover:scale-105 transition-all duration-300"
+                className="h-9 sm:h-10 w-auto object-contain group-hover:scale-105 transition-all duration-300 drop-shadow-sm"
               />
             </div>
             <div className="flex flex-col">

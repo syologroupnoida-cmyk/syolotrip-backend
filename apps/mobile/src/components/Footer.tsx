@@ -20,9 +20,9 @@ export const Footer: React.FC = () => {
       {/* ── 1. LOGO & BRANDING ── */}
       <View style={styles.brandRow}>
         <Image
-          source={require('../../assets/ss-journey-logo.jpg')}
+          source={require('../../assets/ss-journey-emblem.png')}
           style={styles.logoImage}
-          resizeMode="cover"
+          resizeMode="contain"
         />
         <View style={styles.brandMeta}>
           <View style={styles.titleRow}>
@@ -139,10 +139,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   logoImage: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
+    width: 48,
+    height: 36,
   },
   brandMeta: {
     flex: 1,

@@ -14,9 +14,9 @@ export const Footer: React.FC<FooterProps> = () => {
           {/* ── 1. LOGO & BRANDING ── */}
           <div className="flex items-center space-x-3.5">
             <img 
-              src="/assets/ss-journey-logo.jpg" 
+              src="/assets/ss-journey-emblem.png" 
               alt="SS Journey Logo" 
-              className="w-12 h-12 rounded-xl object-cover bg-white p-0.5 shadow-md ring-2 ring-white/20" 
+              className="h-10 w-auto object-contain drop-shadow-sm" 
             />
             <div>
               <div className="flex items-center space-x-2">
