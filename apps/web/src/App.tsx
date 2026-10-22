@@ -7,7 +7,6 @@ import { FlightSearchPage } from './pages/FlightSearchPage';
 import { HotelSearchPage } from './pages/HotelSearchPage';
 import { BookingCheckoutPage } from './pages/BookingCheckoutPage';
 import { MyTripsPage } from './pages/MyTripsPage';
-import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { AuthModal } from './components/AuthModal';
 import { getCurrentUserApi, logoutApi, UserProfile } from './services/api';
 
@@ -102,11 +101,6 @@ export const App: React.FC = () => {
             <MyTripsPage 
               onNavigate={setActiveScreen} 
               onOpenAuth={() => setIsAuthOpen(true)}
-            />
-          )}
-          {activeScreen === 'admin' && (
-            <AdminDashboardPage 
-              onNavigate={setActiveScreen} 
             />
           )}
         </main>

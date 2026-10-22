@@ -189,20 +189,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             <span className="text-label-sm text-on-surface-variant font-medium block mb-2 text-center">
               Quick Demo Fill:
             </span>
-            <div className="flex gap-2">
+            <div className="flex">
               <button
                 type="button"
                 onClick={() => fillQuickDemo('customer@ssjourney.com', 'Customer@123456')}
-                className="flex-1 text-label-sm bg-surface-container hover:bg-surface-container-high text-primary font-semibold py-1.5 px-2 rounded-lg border border-outline-variant/30 transition-colors"
+                className="w-full text-label-sm bg-surface-container hover:bg-surface-container-high text-primary font-semibold py-1.5 px-3 rounded-lg border border-outline-variant/30 transition-colors"
               >
-                Customer Demo
-              </button>
-              <button
-                type="button"
-                onClick={() => fillQuickDemo('admin@ssjourney.com', 'Admin@123456')}
-                className="flex-1 text-label-sm bg-surface-container hover:bg-surface-container-high text-on-surface-variant font-semibold py-1.5 px-2 rounded-lg border border-outline-variant/30 transition-colors"
-              >
-                Admin Demo
+                Customer Demo Account
               </button>
             </div>
           </div>

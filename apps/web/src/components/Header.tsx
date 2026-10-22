@@ -14,7 +14,7 @@ import {
   InsuranceIsometricIcon,
 } from './TravelCategoryIcons';
 
-export type ScreenType = 'explore' | 'flights' | 'hotels' | 'checkout' | 'trips' | 'admin';
+export type ScreenType = 'explore' | 'flights' | 'hotels' | 'checkout' | 'trips';
 
 interface HeaderProps {
   activeScreen: ScreenType;
