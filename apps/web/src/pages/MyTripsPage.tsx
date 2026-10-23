@@ -180,7 +180,7 @@ export const MyTripsPage: React.FC<MyTripsPageProps> = ({ onNavigate, onOpenAuth
                   <div className="flex items-center gap-3">
                     {getStatusBadge(booking.status)}
                     <span className="text-headline-sm font-extrabold text-on-surface tabular-nums">
-                      ₹{Number(booking.total_price).toLocaleString('en-IN')}
+                      ₹{Number(booking.total_amount ?? booking.total_price ?? 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                 </div>

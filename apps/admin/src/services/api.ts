@@ -158,6 +158,48 @@ export const deleteAdminInventoryItem = async (itemType: string, itemId: string)
   return response.data;
 };
 
+export const updateAdminInventoryItem = async (itemType: string, itemId: string, payload: Record<string, any>) => {
+  const response = await adminApiClient.patch(`/admin/inventory/${itemType}/${itemId}`, payload);
+  return response.data;
+};
+
+export const updateAdminUserStatus = async (userId: string, isActive: boolean) => {
+  const response = await adminApiClient.patch(`/admin/users/${userId}/status`, { is_active: isActive });
+  return response.data;
+};
+
+export const createAdminCoupon = async (payload: {
+  code: string;
+  discount_type: string;
+  discount_value: number;
+  max_discount_amount?: number | null;
+  min_order_amount: number;
+  service_type: string;
+  description?: string;
+  is_active?: boolean;
+}) => {
+  const response = await adminApiClient.post('/admin/coupons', payload);
+  return response.data.data;
+};
+
+export const updateAdminCoupon = async (couponId: string, payload: {
+  discount_type?: string;
+  discount_value?: number;
+  max_discount_amount?: number | null;
+  min_order_amount?: number;
+  service_type?: string;
+  description?: string;
+  is_active?: boolean;
+}) => {
+  const response = await adminApiClient.patch(`/admin/coupons/${couponId}`, payload);
+  return response.data.data;
+};
+
+export const deleteAdminCoupon = async (couponId: string) => {
+  const response = await adminApiClient.delete(`/admin/coupons/${couponId}`);
+  return response.data;
+};
+
 export const getAdminPendingProperties = async () => {
   const response = await adminApiClient.get('/admin/properties/pending');
   return response.data.data;

@@ -29,6 +29,156 @@ export const checkSystemHealth = async (): Promise<HealthCheckResponse> => {
   return response.data.data;
 };
 
+// ================= Search API Interfaces =================
+export interface FlightApiResponse {
+  id: string;
+  airline: string;
+  airline_code: string;
+  flight_number: string;
+  aircraft?: string;
+  origin: {
+    code: string;
+    name: string;
+    city: string;
+    country: string;
+  };
+  destination: {
+    code: string;
+    name: string;
+    city: string;
+    country: string;
+  };
+  departure_time: string;
+  arrival_time: string;
+  duration_minutes: number;
+  stops: number;
+  stops_info?: string;
+  cabin_class: string;
+  available_seats: number;
+  base_fare: number;
+  taxes: number;
+  total_price: number;
+  currency: string;
+  logo_url?: string;
+  baggage_info?: string;
+  tags?: string[];
+  is_simulated?: boolean;
+}
+
+export interface HotelRoomApiResponse {
+  id: string;
+  room_type: string;
+  bed_type: string;
+  max_occupancy: number;
+  price_per_night: number;
+  taxes_per_night: number;
+  available_rooms: number;
+  amenities?: string[];
+  images?: string[];
+  is_available: boolean;
+}
+
+export interface HotelApiResponse {
+  id: string;
+  name: string;
+  property_type: string;
+  partner_id?: string;
+  publication_status: string;
+  star_rating: number;
+  guest_rating: number;
+  rating_label: string;
+  review_count: number;
+  address: string;
+  city: string;
+  country: string;
+  neighborhood?: string;
+  overview: string;
+  amenities?: string[];
+  tags?: string[];
+  featured_image: string;
+  images?: string[];
+  starting_price: number;
+  currency: string;
+  featured?: boolean;
+  is_simulated?: boolean;
+  rooms?: HotelRoomApiResponse[];
+}
+
+export interface TrainApiResponse {
+  id: string;
+  train_number: string;
+  train_name: string;
+  train_type: string;
+  from_station_code: string;
+  from_station_name: string;
+  from_city: string;
+  to_station_code: string;
+  to_station_name: string;
+  to_city: string;
+  departure_time: string;
+  arrival_time: string;
+  duration_minutes: number;
+  train_class: string;
+  available_seats: number;
+  base_fare: number;
+  rating: number;
+  currency: string;
+  is_simulated?: boolean;
+}
+
+export interface BusApiResponse {
+  id: string;
+  operator_name: string;
+  bus_type: string;
+  from_city: string;
+  to_city: string;
+  boarding_point?: string;
+  dropping_point?: string;
+  departure_time: string;
+  arrival_time: string;
+  duration_minutes: number;
+  available_seats: number;
+  base_fare: number;
+  rating: number;
+  currency: string;
+  is_simulated?: boolean;
+}
+
+export interface CabApiResponse {
+  id: string;
+  cab_type: string;
+  vehicle_model: string;
+  city: string;
+  pickup_area: string;
+  drop_area: string;
+  driver_name: string;
+  driver_rating: number;
+  capacity: number;
+  base_fare: number;
+  currency: string;
+  eta_minutes: number;
+  features?: string[];
+  is_simulated?: boolean;
+}
+
+export interface PackageApiResponse {
+  id: string;
+  title: string;
+  destination: string;
+  duration_days: number;
+  duration_nights: number;
+  overview: string;
+  inclusions?: string[];
+  exclusions?: string[];
+  itinerary?: Array<{ day?: number; title?: string; description?: string }>;
+  price_per_person: number;
+  currency: string;
+  featured_image: string;
+  rating: number;
+  available_capacity: number;
+  is_simulated?: boolean;
+}
+
 // ================= Flights API =================
 export const searchFlightsApi = async (params?: {
   from_city?: string;
@@ -38,14 +188,9 @@ export const searchFlightsApi = async (params?: {
   cabin_class?: string;
   max_price?: number;
   non_stop?: boolean;
-}): Promise<any[]> => {
-  try {
-    const res = await apiClient.get<ApiResponse<{ items: any[] }>>('/flights', { params });
-    return res.data.data.items;
-  } catch (err) {
-    console.warn('Flight API error, falling back', err);
-    return [];
-  }
+}): Promise<FlightApiResponse[]> => {
+  const res = await apiClient.get<ApiResponse<{ items: FlightApiResponse[]; pagination: any }>>('/flights', { params });
+  return res.data?.data?.items || [];
 };
 
 // ================= Hotels API =================
@@ -54,14 +199,9 @@ export const searchHotelsApi = async (params?: {
   min_stars?: number;
   max_price?: number;
   featured_only?: boolean;
-}): Promise<any[]> => {
-  try {
-    const res = await apiClient.get<ApiResponse<{ items: any[] }>>('/hotels', { params });
-    return res.data.data.items;
-  } catch (err) {
-    console.warn('Hotel API error, falling back', err);
-    return [];
-  }
+}): Promise<HotelApiResponse[]> => {
+  const res = await apiClient.get<ApiResponse<{ items: HotelApiResponse[]; pagination: any }>>('/hotels', { params });
+  return res.data?.data?.items || [];
 };
 
 // ================= Trains API =================
@@ -72,14 +212,9 @@ export const searchTrainsApi = async (params?: {
   to_station?: string;
   train_class?: string;
   max_price?: number;
-}): Promise<any[]> => {
-  try {
-    const res = await apiClient.get<ApiResponse<{ items: any[] }>>('/trains', { params });
-    return res.data.data.items;
-  } catch (err) {
-    console.warn('Train API error, falling back', err);
-    return [];
-  }
+}): Promise<TrainApiResponse[]> => {
+  const res = await apiClient.get<ApiResponse<{ items: TrainApiResponse[]; pagination: any }>>('/trains', { params });
+  return res.data?.data?.items || [];
 };
 
 // ================= Buses API =================
@@ -87,14 +222,9 @@ export const searchBusesApi = async (params?: {
   from_city?: string;
   to_city?: string;
   max_price?: number;
-}): Promise<any[]> => {
-  try {
-    const res = await apiClient.get<ApiResponse<{ items: any[] }>>('/buses', { params });
-    return res.data.data.items;
-  } catch (err) {
-    console.warn('Bus API error, falling back', err);
-    return [];
-  }
+}): Promise<BusApiResponse[]> => {
+  const res = await apiClient.get<ApiResponse<{ items: BusApiResponse[]; pagination: any }>>('/buses', { params });
+  return res.data?.data?.items || [];
 };
 
 // ================= Cabs API =================
@@ -102,14 +232,9 @@ export const searchCabsApi = async (params?: {
   city?: string;
   cab_type?: string;
   max_price?: number;
-}): Promise<any[]> => {
-  try {
-    const res = await apiClient.get<ApiResponse<{ items: any[] }>>('/cabs', { params });
-    return res.data.data.items;
-  } catch (err) {
-    console.warn('Cab API error, falling back', err);
-    return [];
-  }
+}): Promise<CabApiResponse[]> => {
+  const res = await apiClient.get<ApiResponse<{ items: CabApiResponse[]; pagination: any }>>('/cabs', { params });
+  return res.data?.data?.items || [];
 };
 
 // ================= Holiday Packages API =================
@@ -118,27 +243,29 @@ export const searchPackagesApi = async (params?: {
   max_price?: number;
   min_days?: number;
   max_days?: number;
-}): Promise<any[]> => {
-  try {
-    const res = await apiClient.get<ApiResponse<{ items: any[] }>>('/packages', { params });
-    return res.data.data.items;
-  } catch (err) {
-    console.warn('Package API error, falling back', err);
-    return [];
-  }
+}): Promise<PackageApiResponse[]> => {
+  const res = await apiClient.get<ApiResponse<{ items: PackageApiResponse[]; pagination: any }>>('/packages', { params });
+  return res.data?.data?.items || [];
 };
 
 // ================= Bookings API =================
 export const createBookingApi = async (payload: {
   service_type: string;
+  guest_name?: string;
   contact_email: string;
   contact_phone: string;
+  check_in_date?: string;
+  check_out_date?: string;
   promo_code?: string;
   has_insurance?: boolean;
   items: Array<{
     item_type: string;
     item_reference_id: string;
     quantity: number;
+    hotel_id?: string;
+    room_id?: string;
+    check_in_date?: string;
+    check_out_date?: string;
     meta_data?: any;
   }>;
   passengers: Array<{
@@ -147,7 +274,9 @@ export const createBookingApi = async (payload: {
     last_name: string;
     passenger_type?: string;
     gender?: string;
+    date_of_birth?: string;
     passport_number?: string;
+    seat_preference?: string;
   }>;
 }): Promise<any> => {
   const res = await apiClient.post<ApiResponse<any>>('/bookings', payload);
@@ -444,6 +573,37 @@ export const getMyBizReportsApi = async (): Promise<MyBizReport> => {
 
 export const getMyBizBookingsApi = async (): Promise<any[]> => {
   const res = await apiClient.get<ApiResponse<any[]>>('/mybiz/bookings');
+  return res.data.data;
+};
+
+// ================= Coupon & Offers APIs =================
+export interface CouponValidateResult {
+  valid: boolean;
+  code: string;
+  discount_type: 'PERCENTAGE' | 'FLAT' | 'NONE';
+  discount_value: number;
+  discount_amount: number;
+  final_amount: number;
+  message: string;
+}
+
+export const validateCouponApi = async (
+  code: string,
+  orderAmount: number,
+  serviceType?: string
+): Promise<CouponValidateResult> => {
+  const res = await apiClient.post<ApiResponse<CouponValidateResult>>('/coupons/validate', {
+    code,
+    order_amount: orderAmount,
+    service_type: serviceType || 'ALL',
+  });
+  return res.data.data;
+};
+
+export const getActiveCouponsApi = async (serviceType?: string): Promise<any[]> => {
+  const res = await apiClient.get<ApiResponse<any[]>>('/coupons/active', {
+    params: serviceType ? { service_type: serviceType } : {},
+  });
   return res.data.data;
 };
 

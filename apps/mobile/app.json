@@ -21,6 +21,9 @@
     },
     "web": {
       "favicon": "./assets/ss-journey-logo.jpg"
-    }
+    },
+    "plugins": [
+      "expo-status-bar"
+    ]
   }
 }

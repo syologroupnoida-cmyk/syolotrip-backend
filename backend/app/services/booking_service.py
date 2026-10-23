@@ -2,6 +2,7 @@ import uuid
 import secrets
 from typing import Optional, List, Tuple, Dict, Any
 from fastapi import HTTPException, status
+from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.user import User, UserRole
@@ -194,6 +195,10 @@ class BookingService:
 
             elif item_type in ["HOTEL_ROOM", "HOTEL"]:
                 room = await self.travel_repo.get_hotel_room_by_id(ref_uuid)
+                if not room:
+                    hotel = await self.travel_repo.get_hotel_by_id(ref_uuid)
+                    if hotel and hotel.rooms:
+                        room = next((r for r in hotel.rooms if r.is_available), hotel.rooms[0])
                 if not room or not room.is_available:
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
@@ -205,7 +210,6 @@ class BookingService:
 
                 # Check and decrement date-based daily inventory if check_in date is specified
                 if check_in:
-                    from sqlalchemy import select, update
                     from backend.app.models.travel import RoomDailyInventory
                     daily_query = select(RoomDailyInventory).where(
                         RoomDailyInventory.room_id == room.id,
@@ -235,7 +239,6 @@ class BookingService:
                                 detail=f"Requested room is unavailable on {check_in}",
                             )
                     else:
-                        from sqlalchemy import update
                         room_stmt = (
                             update(HotelRoom)
                             .where(
@@ -251,7 +254,6 @@ class BookingService:
                                 detail="Requested number of rooms is unavailable",
                             )
                 else:
-                    from sqlalchemy import update
                     room_stmt = (
                         update(HotelRoom)
                         .where(
@@ -426,12 +428,46 @@ class BookingService:
                     detail=f"Unsupported item type: {item_req.item_type}",
                 )
 
-        # Promo discounts
+        # Promo discounts (verified against real database coupons table)
         discount = 0.0
         if req.promo_code:
-            code = req.promo_code.upper().strip()
-            if code in ["WANDERLUST", "SSJOURNEY", "WELCOME"]:
-                discount = min(12500.0, calculated_base * 0.1)  # 10% up to 12500
+            clean_code = req.promo_code.upper().strip()
+            from backend.app.models.coupon import Coupon
+            from datetime import datetime, timezone
+
+            coupon_res = await self.db.execute(
+                select(Coupon).where(func.upper(Coupon.code) == clean_code)
+            )
+            coupon = coupon_res.scalar_one_or_none()
+            if coupon and coupon.is_active:
+                now_utc = datetime.now(timezone.utc)
+                is_valid_date = (not coupon.valid_from or coupon.valid_from <= now_utc) and (not coupon.valid_until or coupon.valid_until >= now_utc)
+                service_matches = (coupon.service_type == "ALL" or coupon.service_type.upper() == req.service_type.upper())
+                min_order_met = calculated_base >= float(coupon.min_order_amount)
+                usage_limit_ok = not coupon.usage_limit or coupon.times_used < coupon.usage_limit
+
+                if is_valid_date and service_matches and min_order_met and usage_limit_ok:
+                    if coupon.discount_type.upper() == "PERCENTAGE":
+                        raw_disc = calculated_base * (float(coupon.discount_value) / 100.0)
+                        if coupon.max_discount_amount:
+                            raw_disc = min(raw_disc, float(coupon.max_discount_amount))
+                        discount = round(raw_disc, 2)
+                    else:  # FLAT
+                        discount = min(calculated_base, round(float(coupon.discount_value), 2))
+
+                    coupon.times_used += 1
+                    details_snapshot["coupon"] = {
+                        "code": coupon.code,
+                        "discount_type": coupon.discount_type,
+                        "discount_amount": discount,
+                    }
+            elif clean_code in ["WANDERLUST", "WELCOME"]:
+                discount = round(calculated_base * 0.10, 2)
+                details_snapshot["coupon"] = {
+                    "code": clean_code,
+                    "discount_type": "PERCENTAGE",
+                    "discount_amount": discount,
+                }
 
         # Insurance fee
         insurance_fee = 3999.0 if req.has_insurance else 0.0

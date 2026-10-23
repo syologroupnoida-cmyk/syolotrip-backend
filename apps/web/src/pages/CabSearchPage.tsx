@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { searchCabsApi, CabApiResponse } from '../services/api';
 import { ScreenType } from '../components/Header';
 import { WebCheckoutItem } from './BookingCheckoutPage';
 
@@ -28,6 +30,40 @@ interface CabOption {
   freeCancelHours: number;
 }
 
+const mapCabResponse = (c: CabApiResponse): CabOption => {
+  const originalPrice = Math.round(c.base_fare * 1.25);
+  let category: 'HATCHBACK' | 'SEDAN' | 'SUV' | 'PREMIUM_SUV' | 'EV' = 'SEDAN';
+  const ct = c.cab_type?.toUpperCase() || '';
+  if (ct.includes('SUV')) category = 'SUV';
+  else if (ct.includes('EV') || ct.includes('ELECTRIC')) category = 'EV';
+  else if (ct.includes('HATCH')) category = 'HATCHBACK';
+
+  const img = category === 'SUV'
+    ? 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=500&q=80'
+    : category === 'EV'
+    ? 'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=500&q=80'
+    : 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=500&q=80';
+
+  return {
+    id: c.id,
+    name: `${c.city} ${c.cab_type}`,
+    model: c.vehicle_model,
+    category,
+    rating: c.driver_rating || 4.8,
+    tripsCount: 1500,
+    passengers: c.capacity || 4,
+    luggage: c.capacity > 4 ? 4 : 2,
+    price: Math.round(c.base_fare),
+    originalPrice,
+    fareBreakdown: `${c.pickup_area} → ${c.drop_area} · Tolls included`,
+    image: img,
+    features: c.features && c.features.length > 0 ? c.features : ['Air Conditioned', 'Verified Chauffeur', 'Complimentary Water', 'Clean Sanitized Cab'],
+    badges: ['MMT Assured', 'Zero Surge Guarantee'],
+    tollIncluded: true,
+    freeCancelHours: 1,
+  };
+};
+
 export const CabSearchPage: React.FC<CabSearchPageProps> = ({
   onNavigate,
   onInitiateCheckout,
@@ -37,104 +73,43 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
   const [tripType, setTripType] = useState<'AIRPORT' | 'OUTSTATION' | 'HOURLY'>('AIRPORT');
   const [selectedCategory, setSelectedCategory] = useState<'ALL' | 'SEDAN' | 'SUV' | 'EV'>('ALL');
   const [tollIncludedOnly, setTollIncludedOnly] = useState(true);
-  const [maxPrice, setMaxPrice] = useState(3500);
+  const [maxPrice, setMaxPrice] = useState(15000);
   const [sortBy, setSortBy] = useState<'CHEAPEST' | 'RATING' | 'POPULAR'>('POPULAR');
+  const [ignoreCityFilter, setIgnoreCityFilter] = useState(false);
 
-  const cabs: CabOption[] = useMemo(() => [
-    {
-      id: 'cab-sedan-dzire',
-      name: 'Airport Prime Sedan',
-      model: 'Maruti Suzuki Dzire / Toyota Etios',
-      category: 'SEDAN',
-      rating: 4.8,
-      tripsCount: 4210,
-      passengers: 4,
-      luggage: 2,
-      price: 649,
-      originalPrice: 850,
-      fareBreakdown: 'Base fare + MCD Toll + Airport Parking included',
-      image: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=500&q=80',
-      features: ['Air Conditioned', 'Top Rated Chauffeur', 'Complimentary Water', 'Clean Sanitized Cab'],
-      badges: ['MMT Assured', 'Zero Surge Guarantee'],
-      tollIncluded: true,
-      freeCancelHours: 1,
+  const detectedCity = useMemo(() => {
+    const loc = pickupLocation.toLowerCase();
+    if (loc.includes('mumbai')) return 'Mumbai';
+    if (loc.includes('bengaluru') || loc.includes('bangalore')) return 'Bengaluru';
+    return 'Delhi';
+  }, [pickupLocation]);
+
+  // Live Backend Query
+  const {
+    data: apiCabs,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['cabsSearch', detectedCity, ignoreCityFilter],
+    queryFn: () => {
+      if (ignoreCityFilter) {
+        return searchCabsApi();
+      }
+      return searchCabsApi({ city: detectedCity });
     },
-    {
-      id: 'cab-ev-tigor',
-      name: 'Eco Green Electric Sedan',
-      model: 'Tata Tigor EV / BYD e6',
-      category: 'EV',
-      rating: 4.9,
-      tripsCount: 1650,
-      passengers: 4,
-      luggage: 2,
-      price: 699,
-      originalPrice: 900,
-      fareBreakdown: 'Zero Emission Green Ride · All Tolls Covered',
-      image: 'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=500&q=80',
-      features: ['Silent Electric Cabin', 'Zero Carbon Ride', 'High Speed Mobile Charger', 'Air Purifier'],
-      badges: ['100% Electric', 'Eco Friendly'],
-      tollIncluded: true,
-      freeCancelHours: 1,
-    },
-    {
-      id: 'cab-suv-ertiga',
-      name: 'Family SUV Prime',
-      model: 'Maruti Suzuki Ertiga (6+1 Seater)',
-      category: 'SUV',
-      rating: 4.8,
-      tripsCount: 3120,
-      passengers: 6,
-      luggage: 4,
-      price: 1199,
-      originalPrice: 1550,
-      fareBreakdown: 'Extra boot space for large airport suitcases',
-      image: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=500&q=80',
-      features: ['Rear AC Vents', 'Carrier for Big Bags', 'Reclining Seats', 'Family Friendly'],
-      badges: ['Spacious SUV', 'Family Choice'],
-      tollIncluded: true,
-      freeCancelHours: 2,
-    },
-    {
-      id: 'cab-innova-crysta',
-      name: 'Luxury Crysta Outstation & Airport',
-      model: 'Toyota Innova Crysta Captain Seats',
-      category: 'SUV',
-      rating: 4.9,
-      tripsCount: 5400,
-      passengers: 6,
-      luggage: 5,
-      price: 1850,
-      originalPrice: 2400,
-      fareBreakdown: 'Executive Chauffeur in Uniform · All Expressway Tolls Included',
-      image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=500&q=80',
-      features: ['Captain Recliner Seats', 'Highway Certified Driver', 'Free Cancellation', 'Fastag Auto-toll'],
-      badges: ['MMT Luxe', 'Top Executive'],
-      tollIncluded: true,
-      freeCancelHours: 2,
-    },
-    {
-      id: 'cab-hatch-wagonr',
-      name: 'Budget Saver Hatchback',
-      model: 'Maruti WagonR / Hyundai Grand i10',
-      category: 'HATCHBACK',
-      rating: 4.6,
-      tripsCount: 2200,
-      passengers: 4,
-      luggage: 1,
-      price: 499,
-      originalPrice: 650,
-      fareBreakdown: 'Compact airport taxi for solo travelers or light luggage',
-      image: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=500&q=80',
-      features: ['AC Taxi', 'Budget Friendly', 'Live GPS Tracking'],
-      badges: ['Pocket Friendly'],
-      tollIncluded: true,
-      freeCancelHours: 1,
-    },
-  ], []);
+    staleTime: 30000,
+  });
+
+  // Map API response to cab cards
+  const liveCabs = useMemo(() => {
+    if (!apiCabs) return [];
+    return apiCabs.map(mapCabResponse);
+  }, [apiCabs]);
 
   const filteredCabs = useMemo(() => {
-    return cabs
+    return liveCabs
       .filter((cab) => {
         if (selectedCategory !== 'ALL' && cab.category !== selectedCategory) return false;
         if (tollIncludedOnly && !cab.tollIncluded) return false;
@@ -146,12 +121,19 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
         if (sortBy === 'RATING') return b.rating - a.rating;
         return b.tripsCount - a.tripsCount;
       });
-  }, [cabs, selectedCategory, tollIncludedOnly, maxPrice, sortBy]);
+  }, [liveCabs, selectedCategory, tollIncludedOnly, maxPrice, sortBy]);
 
   const handleBookCab = (cab: CabOption) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!cab.id || !uuidRegex.test(cab.id)) {
+      alert('Data integrity issue: Selected cab lacks a valid database UUID. Booking is disabled.');
+      return;
+    }
+
     if (onInitiateCheckout) {
       onInitiateCheckout({
         serviceType: 'CAB',
+        itemId: cab.id,
         title: `${cab.name} (${cab.model})`,
         subtitle: `${cab.passengers} Passengers · ${cab.luggage} Bags · ${cab.fareBreakdown}`,
         routeInfo: `${pickupLocation} → ${dropLocation}`,
@@ -355,8 +337,75 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
               </div>
             </div>
 
-            {/* Cab Cards */}
-            {filteredCabs.map((cab) => (
+            {/* Ignore City Banner if viewing all */}
+            {ignoreCityFilter && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between text-xs text-blue-900">
+                <span>Showing verified airport & outstation cabs across all service regions.</span>
+                <button
+                  type="button"
+                  onClick={() => setIgnoreCityFilter(false)}
+                  className="font-bold text-[#005cab] hover:underline"
+                >
+                  Filter to {detectedCity}
+                </button>
+              </div>
+            )}
+
+            {/* Loading State */}
+            {isLoading && (
+              <div className="bg-white rounded-xl p-12 text-center border border-[#E7EBF0] shadow-xs flex flex-col items-center justify-center">
+                <div className="w-10 h-10 border-4 border-[#005cab] border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-base font-bold text-gray-800">Checking Live Chauffeur & Cab Availability...</p>
+                <p className="text-xs text-gray-500 mt-1">Connecting to live fleet for {pickupLocation}</p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {isError && (
+              <div className="bg-red-50 rounded-xl p-8 text-center border border-red-200 shadow-xs">
+                <p className="text-base font-bold text-red-700">Unable to Fetch Cab Fleet</p>
+                <p className="text-xs text-red-600 mt-1">{(error as any)?.message || 'An error occurred while connecting to the cab service.'}</p>
+                <button
+                  type="button"
+                  onClick={() => refetch()}
+                  className="mt-4 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition shadow-xs"
+                >
+                  Retry Search
+                </button>
+              </div>
+            )}
+
+            {/* Cab Cards / Empty State */}
+            {!isLoading && !isError && filteredCabs.length === 0 ? (
+              <div className="bg-white rounded-xl p-10 text-center border border-[#E7EBF0]">
+                <span className="material-symbols-outlined text-4xl text-gray-400 mb-2">local_taxi</span>
+                <p className="font-extrabold text-base text-gray-800">No cabs available in {detectedCity} matching filters</p>
+                <p className="text-xs text-gray-500 mt-1">Try resetting the vehicle category or price filters, or browse all cabs.</p>
+                <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMaxPrice(15000);
+                      setSelectedCategory('ALL');
+                      setTollIncludedOnly(false);
+                    }}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-lg transition"
+                  >
+                    Reset Filters
+                  </button>
+                  {!ignoreCityFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setIgnoreCityFilter(true)}
+                      className="px-4 py-2 bg-[#005cab] hover:bg-[#0A58CA] text-white text-xs font-bold rounded-lg shadow-xs transition"
+                    >
+                      View All Available Cabs
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : !isLoading && !isError && (
+              filteredCabs.map((cab) => (
               <div
                 key={cab.id}
                 className="bg-white rounded-xl border border-[#E7EBF0] hover:border-[#005cab] hover:shadow-md transition overflow-hidden"
@@ -430,7 +479,7 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
                   </div>
                 </div>
               </div>
-            ))}
+            )))}
           </section>
         </div>
       </main>

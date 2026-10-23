@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { searchPackagesApi, PackageApiResponse } from '../services/api';
 import { ScreenType } from '../components/Header';
 import { WebCheckoutItem } from './BookingCheckoutPage';
 
@@ -28,114 +30,89 @@ interface HolidayPackage {
   highlights: string[];
 }
 
+const mapPackageResponse = (p: PackageApiResponse): HolidayPackage => {
+  const originalPrice = Math.round(p.price_per_person * 1.3);
+  const emi = Math.round(p.price_per_person / 12);
+  let theme: 'BEACH' | 'HILLS' | 'INTERNATIONAL' | 'HONEYMOON' | 'HERITAGE' = 'HILLS';
+  const destLower = p.destination.toLowerCase();
+  if (destLower.includes('bali') || destLower.includes('goa') || destLower.includes('beach')) theme = 'BEACH';
+  else if (destLower.includes('tokyo') || destLower.includes('dubai') || destLower.includes('japan') || destLower.includes('paris')) theme = 'INTERNATIONAL';
+
+  const defaultImgs = [
+    'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=400&q=80',
+    'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=400&q=80',
+  ];
+  const images = [
+    p.featured_image || defaultImgs[0],
+    defaultImgs[1],
+    defaultImgs[2],
+  ];
+
+  return {
+    id: p.id,
+    title: p.title,
+    destination: p.destination,
+    theme,
+    nights: p.duration_nights || 4,
+    days: p.duration_days || 5,
+    itinerarySummary: `${p.duration_days || 5} Days / ${p.duration_nights || 4} Nights · All Transfers Included`,
+    rating: p.rating || 4.8,
+    reviewsCount: 380,
+    images,
+    inclusions: p.inclusions && p.inclusions.length > 0 ? p.inclusions : ['4-Star Stays', 'Roundtrip Airport Transfers', 'Daily Breakfast', 'Guided Sightseeing'],
+    hotelStars: 4,
+    pricePerPerson: Math.round(p.price_per_person),
+    originalPrice,
+    emiStartsAt: emi,
+    assuredBadge: 'MMT Holiday Assured',
+    highlights: p.overview ? [p.overview.slice(0, 100) + '...'] : ['Verified Handcrafted Itinerary'],
+  };
+};
+
 export const PackageSearchPage: React.FC<PackageSearchPageProps> = ({
   onNavigate,
   onInitiateCheckout,
-  destinationCity = 'Kerala Backwaters & Hills',
+  destinationCity = 'Tokyo, Japan',
 }) => {
   const [selectedTheme, setSelectedTheme] = useState<'ALL' | 'BEACH' | 'HILLS' | 'INTERNATIONAL' | 'HONEYMOON'>('ALL');
   const [flightsIncludedOnly, setFlightsIncludedOnly] = useState(false);
-  const [maxPrice, setMaxPrice] = useState(45000);
+  const [maxPrice, setMaxPrice] = useState(250000);
   const [minHotelStars, setMinHotelStars] = useState(3);
   const [sortBy, setSortBy] = useState<'POPULAR' | 'CHEAPEST' | 'DURATION'>('POPULAR');
+  const [ignoreDestinationFilter, setIgnoreDestinationFilter] = useState(false);
 
-  const packages: HolidayPackage[] = useMemo(() => [
-    {
-      id: 'pkg-kerala-01',
-      title: 'Scenic Kerala: Munnar Tea Valleys & Alleppey Houseboat',
-      destination: 'Kerala, India',
-      theme: 'HILLS',
-      nights: 5,
-      days: 6,
-      itinerarySummary: '2N Munnar + 1N Thekkady + 1N Alleppey Houseboat + 1N Kochi',
-      rating: 4.9,
-      reviewsCount: 1840,
-      images: [
-        'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=600&q=80',
-        'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=400&q=80',
-        'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=400&q=80',
-      ],
-      inclusions: ['Roundtrip Flights', '4-Star Resorts', 'Private AC Sedan', 'Alleppey Deluxe Houseboat', 'Daily Breakfast & Dinner'],
-      hotelStars: 4,
-      pricePerPerson: 23999,
-      originalPrice: 31999,
-      emiStartsAt: 2000,
-      assuredBadge: 'MMT Holiday Assured',
-      highlights: ['Tea Garden Stroll & Factory Tour', 'Spices Plantation Walk', 'Sunset Houseboat Cruise in Vembanad Lake'],
+  const cleanDestination = useMemo(() => {
+    if (!destinationCity) return '';
+    return destinationCity.split('&')[0].split(',')[0].trim();
+  }, [destinationCity]);
+
+  // Live Backend Query
+  const {
+    data: apiPackages,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['packagesSearch', cleanDestination, ignoreDestinationFilter],
+    queryFn: () => {
+      if (ignoreDestinationFilter || !cleanDestination) {
+        return searchPackagesApi();
+      }
+      return searchPackagesApi({ destination: cleanDestination });
     },
-    {
-      id: 'pkg-kashmir-02',
-      title: 'Heaven On Earth: Srinagar, Gulmarg & Pahalgam Paradise',
-      destination: 'Kashmir, India',
-      theme: 'HILLS',
-      nights: 5,
-      days: 6,
-      itinerarySummary: '2N Srinagar Dal Lake + 2N Pahalgam Valleys + 1N Gulmarg Snow',
-      rating: 4.9,
-      reviewsCount: 2250,
-      images: [
-        'https://images.unsplash.com/photo-1595815771614-ade9d652a65d?auto=format&fit=crop&w=600&q=80',
-        'https://images.unsplash.com/photo-1566837945700-30057527ade0?auto=format&fit=crop&w=400&q=80',
-        'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=400&q=80',
-      ],
-      inclusions: ['Flights Included', 'Heritage Houseboat Stay', 'Gulmarg Gondola Phase 1 Ticket', 'All Transfers', 'Breakfast & Dinner'],
-      hotelStars: 4,
-      pricePerPerson: 27500,
-      originalPrice: 36000,
-      emiStartsAt: 2290,
-      assuredBadge: 'All Inclusions Guaranteed',
-      highlights: ['Shikara Ride on Dal Lake', 'Betaab Valley & Aru Valley Tour', 'Gulmarg Snow Cable Car'],
-    },
-    {
-      id: 'pkg-goa-03',
-      title: 'Goa Coastal Bliss: Beachfront Resort & Sunset Catamaran',
-      destination: 'Goa, India',
-      theme: 'BEACH',
-      nights: 3,
-      days: 4,
-      itinerarySummary: '3N Beachfront 5-Star Resort at Candolim Beach',
-      rating: 4.8,
-      reviewsCount: 3100,
-      images: [
-        'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=600&q=80',
-        'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=80',
-        'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=400&q=80',
-      ],
-      inclusions: ['5-Star Beach Resort', 'Airport Transfers in AC Cab', 'Mandovi Luxury Sunset Cruise', 'Lavish Buffet Breakfast'],
-      hotelStars: 5,
-      pricePerPerson: 16999,
-      originalPrice: 22500,
-      emiStartsAt: 1415,
-      assuredBadge: '5-Star Luxury Stays',
-      highlights: ['Direct Beach Access', 'Complimentary Cocktails at Sunset', 'North & South Goa Sightseeing'],
-    },
-    {
-      id: 'pkg-dubai-04',
-      title: 'Dazzling Dubai & Abu Dhabi Grand Discovery',
-      destination: 'Dubai & Abu Dhabi, UAE',
-      theme: 'INTERNATIONAL',
-      nights: 5,
-      days: 6,
-      itinerarySummary: '4N Dubai 4-Star Hotel + 1N Abu Dhabi Yas Island',
-      rating: 4.9,
-      reviewsCount: 1590,
-      images: [
-        'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=600&q=80',
-        'https://images.unsplash.com/photo-1518684079-3c830dcef090?auto=format&fit=crop&w=400&q=80',
-        'https://images.unsplash.com/photo-1546412414-e1885259563a?auto=format&fit=crop&w=400&q=80',
-      ],
-      inclusions: ['Flights & Express Tourist Visa', 'Burj Khalifa 124th Floor Entry', 'Desert Safari with BBQ Dinner', 'Dhow Marina Cruise'],
-      hotelStars: 4,
-      pricePerPerson: 38999,
-      originalPrice: 48999,
-      emiStartsAt: 3250,
-      assuredBadge: 'Visa Guaranteed',
-      highlights: ['At The Top Burj Khalifa', 'Dune Bashing & Belly Dance Show', 'Sheikh Zayed Grand Mosque Tour'],
-    },
-  ], []);
+    staleTime: 30000,
+  });
+
+  // Map API response to package cards
+  const livePackages = useMemo(() => {
+    if (!apiPackages) return [];
+    return apiPackages.map(mapPackageResponse);
+  }, [apiPackages]);
 
   const filteredPackages = useMemo(() => {
-    return packages
+    return livePackages
       .filter((pkg) => {
         if (selectedTheme !== 'ALL' && pkg.theme !== selectedTheme) return false;
         if (flightsIncludedOnly && !pkg.inclusions.some((inc) => inc.toLowerCase().includes('flight'))) return false;
@@ -148,12 +125,19 @@ export const PackageSearchPage: React.FC<PackageSearchPageProps> = ({
         if (sortBy === 'DURATION') return b.days - a.days;
         return b.reviewsCount - a.reviewsCount;
       });
-  }, [packages, selectedTheme, flightsIncludedOnly, maxPrice, minHotelStars, sortBy]);
+  }, [livePackages, selectedTheme, flightsIncludedOnly, maxPrice, minHotelStars, sortBy]);
 
   const handleBookPackage = (pkg: HolidayPackage) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!pkg.id || !uuidRegex.test(pkg.id)) {
+      alert('Data integrity issue: Selected holiday package lacks a valid database UUID. Booking is disabled.');
+      return;
+    }
+
     if (onInitiateCheckout) {
       onInitiateCheckout({
         serviceType: 'PACKAGE',
+        itemId: pkg.id,
         title: pkg.title,
         subtitle: `${pkg.days} Days / ${pkg.nights} Nights · ${pkg.itinerarySummary}`,
         routeInfo: `${pkg.destination} (${pkg.inclusions.slice(0, 3).join(', ')})`,
@@ -361,8 +345,76 @@ export const PackageSearchPage: React.FC<PackageSearchPageProps> = ({
               </div>
             </div>
 
-            {/* Package Cards */}
-            {filteredPackages.map((pkg) => (
+            {/* Ignore Destination Banner if viewing all */}
+            {ignoreDestinationFilter && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between text-xs text-blue-900">
+                <span>Showing all handcrafted holiday packages across all destinations.</span>
+                <button
+                  type="button"
+                  onClick={() => setIgnoreDestinationFilter(false)}
+                  className="font-bold text-[#005cab] hover:underline"
+                >
+                  Filter to {destinationCity}
+                </button>
+              </div>
+            )}
+
+            {/* Loading State */}
+            {isLoading && (
+              <div className="bg-white rounded-xl p-12 text-center border border-[#E7EBF0] shadow-xs flex flex-col items-center justify-center">
+                <div className="w-10 h-10 border-4 border-[#005cab] border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-base font-bold text-gray-800">Searching Handcrafted Holiday Packages...</p>
+                <p className="text-xs text-gray-500 mt-1">Connecting to live itineraries for {destinationCity}</p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {isError && (
+              <div className="bg-red-50 rounded-xl p-8 text-center border border-red-200 shadow-xs">
+                <p className="text-base font-bold text-red-700">Unable to Fetch Holiday Packages</p>
+                <p className="text-xs text-red-600 mt-1">{(error as any)?.message || 'An error occurred while connecting to the package service.'}</p>
+                <button
+                  type="button"
+                  onClick={() => refetch()}
+                  className="mt-4 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition shadow-xs"
+                >
+                  Retry Search
+                </button>
+              </div>
+            )}
+
+            {/* Package Cards / Empty State */}
+            {!isLoading && !isError && filteredPackages.length === 0 ? (
+              <div className="bg-white rounded-xl p-10 text-center border border-[#E7EBF0]">
+                <span className="material-symbols-outlined text-4xl text-gray-400 mb-2">luggage</span>
+                <p className="font-extrabold text-base text-gray-800">No holiday packages found for {destinationCity}</p>
+                <p className="text-xs text-gray-500 mt-1">Try resetting the theme or budget sliders, or explore our top packages worldwide.</p>
+                <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMaxPrice(250000);
+                      setSelectedTheme('ALL');
+                      setFlightsIncludedOnly(false);
+                      setMinHotelStars(3);
+                    }}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-lg transition"
+                  >
+                    Reset Filters
+                  </button>
+                  {!ignoreDestinationFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setIgnoreDestinationFilter(true)}
+                      className="px-4 py-2 bg-[#005cab] hover:bg-[#0A58CA] text-white text-xs font-bold rounded-lg shadow-xs transition"
+                    >
+                      View All Available Packages
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : !isLoading && !isError && (
+              filteredPackages.map((pkg) => (
               <div
                 key={pkg.id}
                 className="bg-white rounded-xl border border-[#E7EBF0] hover:border-[#005cab] hover:shadow-lg transition overflow-hidden"
@@ -461,7 +513,7 @@ export const PackageSearchPage: React.FC<PackageSearchPageProps> = ({
                   </div>
                 </div>
               </div>
-            ))}
+            )))}
           </section>
         </div>
       </main>

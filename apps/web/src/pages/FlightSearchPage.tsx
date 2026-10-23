@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { searchFlightsApi } from '../services/api';
+import { searchFlightsApi, FlightApiResponse } from '../services/api';
 import { ScreenType } from '../components/Header';
 import { FlightSearchParams } from './ExplorePage';
 import { WebCheckoutItem } from './BookingCheckoutPage';
@@ -10,6 +10,93 @@ interface FlightSearchPageProps {
   searchParams?: FlightSearchParams;
   onInitiateCheckout?: (item: WebCheckoutItem) => void;
 }
+
+export interface FlightCardItem {
+  id: string;
+  airline: string;
+  airlineCode: string;
+  flightNumber: string;
+  aircraft: string;
+  brandBg: string;
+  depTime: string;
+  depCode: string;
+  depTerminal: string;
+  arrTime: string;
+  arrCode: string;
+  arrTerminal: string;
+  duration: string;
+  durationMinutes: number;
+  isNonStop: boolean;
+  stopsText: string;
+  originalPrice: number;
+  price: number;
+  tags: string[];
+  hasFreeMeal: boolean;
+  cabinBaggage: string;
+  checkinBaggage: string;
+  baseFare: number;
+  taxes: number;
+  timeSlot: 'BEFORE_6' | '6_12' | '12_18' | 'AFTER_18';
+}
+
+const mapFlightResponse = (f: FlightApiResponse, defaultFromCode: string, defaultToCode: string): FlightCardItem => {
+  const depTimeStr = f.departure_time?.includes('T') ? f.departure_time.split('T')[1].slice(0, 5) : (f.departure_time || '08:00');
+  const arrTimeStr = f.arrival_time?.includes('T') ? f.arrival_time.split('T')[1].slice(0, 5) : (f.arrival_time || '11:00');
+  const durationHrs = Math.floor(f.duration_minutes / 60);
+  const durationMins = f.duration_minutes % 60;
+  const durationText = `${String(durationHrs).padStart(2, '0')}h ${String(durationMins).padStart(2, '0')}m`;
+
+  let brandBg = 'bg-[#005cab]';
+  const al = f.airline?.toLowerCase() || '';
+  const code = f.airline_code?.toUpperCase() || '';
+  if (code === 'AI' || al.includes('air india') && !al.includes('express')) brandBg = 'bg-[#bb0017]';
+  else if (code === '6E' || al.includes('indigo')) brandBg = 'bg-[#005bab]';
+  else if (code === 'QP' || al.includes('akasa')) brandBg = 'bg-[#f4511e]';
+  else if (code === 'IX' || al.includes('express')) brandBg = 'bg-[#d81b60]';
+  else if (code === 'SQ' || al.includes('singapore')) brandBg = 'bg-[#f5a623]';
+  else if (code === 'JL' || al.includes('japan')) brandBg = 'bg-[#cc0000]';
+  else if (code === 'UA' || al.includes('united')) brandBg = 'bg-[#002244]';
+  else if (code === 'NH' || al.includes('ana')) brandBg = 'bg-[#104374]';
+
+  const hour = parseInt(depTimeStr.split(':')[0] || '10', 10);
+  let timeSlot: 'BEFORE_6' | '6_12' | '12_18' | 'AFTER_18' = '6_12';
+  if (hour < 6) timeSlot = 'BEFORE_6';
+  else if (hour >= 6 && hour < 12) timeSlot = '6_12';
+  else if (hour >= 12 && hour < 18) timeSlot = '12_18';
+  else timeSlot = 'AFTER_18';
+
+  const isNonStop = f.stops === 0;
+  const stopsText = isNonStop ? 'NON STOP' : `${f.stops} STOP${f.stops > 1 ? 'S' : ''}`;
+  const originalPrice = Math.round(f.total_price * 1.15);
+
+  return {
+    id: f.id,
+    airline: f.airline || 'Commercial Airline',
+    airlineCode: f.airline_code || 'FL',
+    flightNumber: f.flight_number || 'FL-000',
+    aircraft: f.aircraft || 'Commercial Aircraft',
+    brandBg,
+    depTime: depTimeStr,
+    depCode: f.origin?.code || defaultFromCode,
+    depTerminal: f.origin?.name || 'Main Terminal',
+    arrTime: arrTimeStr,
+    arrCode: f.destination?.code || defaultToCode,
+    arrTerminal: f.destination?.name || 'Main Terminal',
+    duration: durationText,
+    durationMinutes: f.duration_minutes || 120,
+    isNonStop,
+    stopsText,
+    originalPrice,
+    price: Math.round(f.total_price),
+    baseFare: Math.round(f.base_fare),
+    taxes: Math.round(f.taxes),
+    tags: f.tags && f.tags.length > 0 ? f.tags : ['Guaranteed Booking'],
+    hasFreeMeal: f.tags?.some(t => t.toLowerCase().includes('meal')) || f.cabin_class === 'BUSINESS',
+    cabinBaggage: '7 kg',
+    checkinBaggage: f.cabin_class === 'BUSINESS' ? '30 kg' : '15 kg',
+    timeSlot,
+  };
+};
 
 export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({
   onNavigate,
@@ -25,14 +112,15 @@ export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({
   // Filters state
   const [activeSort, setActiveSort] = useState<'CHEAPEST' | 'NONSTOP' | 'EARLIEST' | 'FASTEST'>('CHEAPEST');
   const [selectedFareDay, setSelectedFareDay] = useState(3);
-  const [maxPrice, setMaxPrice] = useState(18000);
+  const [maxPrice, setMaxPrice] = useState(150000);
   const [stopsFilter, setStopsFilter] = useState<'ALL' | 'NONSTOP' | '1STOP'>('ALL');
   const [timeSlotFilter, setTimeSlotFilter] = useState<'ALL' | 'BEFORE_6' | '6_12' | '12_18' | 'AFTER_18'>('ALL');
-  const [selectedAirlines, setSelectedAirlines] = useState<string[]>(['IndiGo', 'Air India', 'Akasa Air']);
+  const [selectedAirlines, setSelectedAirlines] = useState<string[]>([]);
   const [freeMealOnly, setFreeMealOnly] = useState(false);
   const [expandedFlightId, setExpandedFlightId] = useState<string | null>(null);
   const [flightDetailTab, setFlightDetailTab] = useState<'info' | 'fare' | 'policy'>('info');
   const [zeroCancelProtection, setZeroCancelProtection] = useState(false);
+  const [ignoreRouteFilter, setIgnoreRouteFilter] = useState(false);
 
   // 7-day fare strip data
   const fareDays = [
@@ -45,155 +133,42 @@ export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({
     { label: 'Tue, 27 Oct', price: 6990, isCheapest: false },
   ];
 
-  // Flights dataset matching Stitch design
-  const defaultFlights = useMemo(() => [
-    {
-      id: 'flight-6e-2134',
-      airline: 'IndiGo',
-      airlineCode: '6E',
-      flightNumber: '6E 2134',
-      aircraft: 'Airbus A321',
-      brandBg: 'bg-[#005bab]',
-      depTime: '06:00',
-      depCode: fromCode,
-      depTerminal: 'Terminal 2',
-      arrTime: '08:45',
-      arrCode: toCode,
-      arrTerminal: 'Terminal 1',
-      duration: '02h 45m',
-      durationMinutes: 165,
-      isNonStop: true,
-      stopsText: 'NON STOP',
-      originalPrice: 7200,
-      price: 6499,
-      tags: ['Lowest Price in 7 Days'],
-      hasFreeMeal: false,
-      cabinBaggage: '7 kg',
-      checkinBaggage: '15 kg',
-      baseFare: 5150,
-      taxes: 1349,
-      timeSlot: '6_12',
+  // Query live backend flights
+  const {
+    data: apiFlights,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['flightsSearch', fromCode, toCode, ignoreRouteFilter],
+    queryFn: () => {
+      if (ignoreRouteFilter) {
+        return searchFlightsApi();
+      }
+      return searchFlightsApi({ from_code: fromCode, to_code: toCode });
     },
-    {
-      id: 'flight-ai-803',
-      airline: 'Air India',
-      airlineCode: 'AI',
-      flightNumber: 'AI 803',
-      aircraft: 'Boeing 787-8 Dreamliner',
-      brandBg: 'bg-[#bb0017]',
-      depTime: '09:30',
-      depCode: fromCode,
-      depTerminal: 'Terminal 3',
-      arrTime: '12:15',
-      arrCode: toCode,
-      arrTerminal: 'Terminal 2',
-      duration: '02h 45m',
-      durationMinutes: 165,
-      isNonStop: true,
-      stopsText: 'NON STOP',
-      originalPrice: 7900,
-      price: 7149,
-      tags: ['Widebody Dreamliner', 'Complimentary Meal'],
-      hasFreeMeal: true,
-      cabinBaggage: '7 kg',
-      checkinBaggage: '20 kg',
-      baseFare: 5800,
-      taxes: 1349,
-      timeSlot: '6_12',
-    },
-    {
-      id: 'flight-qp-1362',
-      airline: 'Akasa Air',
-      airlineCode: 'QP',
-      flightNumber: 'QP 1362',
-      aircraft: 'Boeing 737 MAX 8',
-      brandBg: 'bg-[#f4511e]',
-      depTime: '14:10',
-      depCode: fromCode,
-      depTerminal: 'Terminal 2',
-      arrTime: '16:55',
-      arrCode: toCode,
-      arrTerminal: 'Terminal 1',
-      duration: '02h 45m',
-      durationMinutes: 165,
-      isNonStop: true,
-      stopsText: 'NON STOP',
-      originalPrice: 7400,
-      price: 6680,
-      tags: ['Modern Fleet', 'Cafe Akasa'],
-      hasFreeMeal: false,
-      cabinBaggage: '7 kg',
-      checkinBaggage: '15 kg',
-      baseFare: 5331,
-      taxes: 1349,
-      timeSlot: '12_18',
-    },
-    {
-      id: 'flight-ix-742',
-      airline: 'Air India Express',
-      airlineCode: 'IX',
-      flightNumber: 'IX 742',
-      aircraft: 'Boeing 737-800',
-      brandBg: 'bg-[#d81b60]',
-      depTime: '19:40',
-      depCode: fromCode,
-      depTerminal: 'Terminal 3',
-      arrTime: '22:20',
-      arrCode: toCode,
-      arrTerminal: 'Terminal 1',
-      duration: '02h 40m',
-      durationMinutes: 160,
-      isNonStop: true,
-      stopsText: 'NON STOP',
-      originalPrice: 7600,
-      price: 6900,
-      tags: ['Fastest Flight'],
-      hasFreeMeal: false,
-      cabinBaggage: '7 kg',
-      checkinBaggage: '15 kg',
-      baseFare: 5551,
-      taxes: 1349,
-      timeSlot: 'AFTER_18',
-    },
-    {
-      id: 'flight-6e-5011',
-      airline: 'IndiGo',
-      airlineCode: '6E',
-      flightNumber: '6E 5011',
-      aircraft: 'Airbus A320neo',
-      brandBg: 'bg-[#005bab]',
-      depTime: '05:15',
-      depCode: fromCode,
-      depTerminal: 'Terminal 2',
-      arrTime: '08:00',
-      arrCode: toCode,
-      arrTerminal: 'Terminal 1',
-      duration: '02h 45m',
-      durationMinutes: 165,
-      isNonStop: true,
-      stopsText: 'NON STOP',
-      originalPrice: 6999,
-      price: 6200,
-      tags: ['Early Bird Saver'],
-      hasFreeMeal: false,
-      cabinBaggage: '7 kg',
-      checkinBaggage: '15 kg',
-      baseFare: 4851,
-      taxes: 1349,
-      timeSlot: 'BEFORE_6',
-    },
-  ], [fromCode, toCode]);
-
-  // Query backend flights if available
-  const { data: backendFlights } = useQuery({
-    queryKey: ['flightsSearch', fromCode, toCode],
-    queryFn: () => searchFlightsApi({ from_code: fromCode, to_code: toCode }),
-    staleTime: 60000,
+    staleTime: 30000,
   });
+
+  // Map API items into flight cards
+  const liveFlights = useMemo(() => {
+    if (!apiFlights) return [];
+    return apiFlights.map((f) => mapFlightResponse(f, fromCode, toCode));
+  }, [apiFlights, fromCode, toCode]);
+
+  // Available airlines derived from live data
+  const availableAirlines = useMemo(() => {
+    const set = new Set<string>();
+    liveFlights.forEach(f => {
+      if (f.airline) set.add(f.airline);
+    });
+    return Array.from(set);
+  }, [liveFlights]);
 
   // Filtered flights
   const filteredFlights = useMemo(() => {
-    let list = (backendFlights && backendFlights.length > 0) ? backendFlights : [...defaultFlights];
+    let list = [...liveFlights];
 
     // Airline filter
     if (selectedAirlines.length > 0) {
@@ -230,11 +205,18 @@ export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({
     }
 
     return list;
-  }, [defaultFlights, selectedAirlines, maxPrice, stopsFilter, timeSlotFilter, freeMealOnly, activeSort]);
+  }, [liveFlights, selectedAirlines, maxPrice, stopsFilter, timeSlotFilter, freeMealOnly, activeSort]);
 
-  const handleBookFlight = (flight: typeof defaultFlights[0]) => {
+  const handleBookFlight = (flight: FlightCardItem) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!flight.id || !uuidRegex.test(flight.id)) {
+      alert('Data issue: The selected flight result lacks a valid database UUID. Booking is disabled.');
+      return;
+    }
+
     const item: WebCheckoutItem = {
       serviceType: 'FLIGHT',
+      itemId: flight.id,
       title: `${flight.airline} (${flight.flightNumber})`,
       subtitle: `${flight.depCode} → ${flight.arrCode} · ${flight.stopsText} (${flight.duration})`,
       routeInfo: `${fromCity} (${flight.depCode}) to ${toCity} (${flight.arrCode})`,
@@ -261,11 +243,12 @@ export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({
   };
 
   const handleResetFilters = () => {
-    setMaxPrice(18000);
+    setMaxPrice(150000);
     setStopsFilter('ALL');
     setTimeSlotFilter('ALL');
-    setSelectedAirlines(['IndiGo', 'Air India', 'Akasa Air']);
+    setSelectedAirlines([]);
     setFreeMealOnly(false);
+    setIgnoreRouteFilter(false);
   };
 
   return (
@@ -493,30 +476,37 @@ export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({
             {/* Airlines Checkboxes with Brand Logos */}
             <div className="flex flex-col gap-1.5">
               <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Airlines</span>
-              {[
-                { name: 'IndiGo', code: '6E', color: 'bg-[#005bab]', price: '₹6,499' },
-                { name: 'Air India', code: 'AI', color: 'bg-[#bb0017]', price: '₹7,149' },
-                { name: 'Akasa Air', code: 'QP', color: 'bg-[#f4511e]', price: '₹6,680' },
-                { name: 'Air India Express', code: 'IX', color: 'bg-[#d81b60]', price: '₹6,900' },
-              ].map((al) => {
-                const checked = selectedAirlines.includes(al.name);
+              {(availableAirlines.length > 0 ? availableAirlines : ['IndiGo', 'Air India', 'Akasa Air', 'Air India Express', 'Japan Airlines', 'United Airlines']).map((name) => {
+                const checked = selectedAirlines.length === 0 || selectedAirlines.includes(name);
+                const code = name.slice(0, 2).toUpperCase();
+                let color = 'bg-[#005bab]';
+                if (name.includes('Air India')) color = 'bg-[#bb0017]';
+                else if (name.includes('Akasa')) color = 'bg-[#f4511e]';
+                else if (name.includes('Japan')) color = 'bg-[#cc0000]';
+                else if (name.includes('United')) color = 'bg-[#002244]';
+
                 return (
-                  <label key={al.code} className="flex items-center justify-between p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer text-xs">
+                  <label key={name} className="flex items-center justify-between p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer text-xs">
                     <div className="flex items-center space-x-2">
                       <input
                         type="checkbox"
                         checked={checked}
                         onChange={() => {
-                          setSelectedAirlines(prev => checked ? prev.filter(x => x !== al.name) : [...prev, al.name]);
+                          if (selectedAirlines.length === 0) {
+                            setSelectedAirlines(availableAirlines.filter(x => x !== name));
+                          } else if (selectedAirlines.includes(name)) {
+                            setSelectedAirlines(selectedAirlines.filter(x => x !== name));
+                          } else {
+                            setSelectedAirlines([...selectedAirlines, name]);
+                          }
                         }}
                         className="w-4 h-4 rounded text-[#008cff] focus:ring-0 cursor-pointer"
                       />
-                      <div className={`w-5 h-5 rounded-md ${al.color} flex items-center justify-center text-[10px] text-white font-bold`}>
-                        {al.code}
+                      <div className={`w-5 h-5 rounded-md ${color} flex items-center justify-center text-[10px] text-white font-bold`}>
+                        {code}
                       </div>
-                      <span className="text-gray-800 font-medium">{al.name}</span>
+                      <span className="text-gray-800 font-medium">{name}</span>
                     </div>
-                    <span className="text-gray-500 font-semibold">{al.price}</span>
                   </label>
                 );
               })}
@@ -594,19 +584,60 @@ export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({
               </button>
             </div>
 
-            {/* Flight Cards List */}
-            {filteredFlights.length === 0 ? (
-              <div className="bg-white rounded-2xl p-12 text-center border border-gray-200 shadow-xs">
-                <p className="text-base font-bold text-gray-800">No flights match the selected filters</p>
-                <p className="text-xs text-gray-500 mt-1">Try resetting price sliders or removing airline filters.</p>
+            {/* Loading State */}
+            {isLoading && (
+              <div className="bg-white rounded-2xl p-12 text-center border border-gray-200 shadow-xs flex flex-col items-center justify-center">
+                <div className="w-10 h-10 border-4 border-[#008cff] border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-base font-bold text-gray-800">Searching Live Scheduled Flights...</p>
+                <p className="text-xs text-gray-500 mt-1">Connecting to live flight inventory for {fromCity} ({fromCode}) &rarr; {toCity} ({toCode})</p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {isError && (
+              <div className="bg-red-50 rounded-2xl p-8 text-center border border-red-200 shadow-xs">
+                <p className="text-base font-bold text-red-700">Unable to Fetch Live Flights</p>
+                <p className="text-xs text-red-600 mt-1">{(error as any)?.message || 'An error occurred while connecting to the flight service.'}</p>
                 <button
-                  onClick={handleResetFilters}
-                  className="mt-4 px-4 py-2 bg-[#008cff] text-white text-xs font-bold rounded-lg"
+                  type="button"
+                  onClick={() => refetch()}
+                  className="mt-4 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition shadow-xs"
                 >
-                  Reset Filters
+                  Retry Search
                 </button>
               </div>
-            ) : (
+            )}
+
+            {/* Flight Cards List / Empty State */}
+            {!isLoading && !isError && filteredFlights.length === 0 ? (
+              <div className="bg-white rounded-2xl p-12 text-center border border-gray-200 shadow-xs">
+                <div className="w-12 h-12 mx-auto mb-3 bg-gray-100 rounded-full flex items-center justify-center text-xl">
+                  ✈️
+                </div>
+                <p className="text-base font-bold text-gray-800">No scheduled flights match your search</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  No flights found between {fromCity} ({fromCode}) and {toCity} ({toCode}) with the selected filters.
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
+                  <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-lg transition"
+                  >
+                    Reset Filters
+                  </button>
+                  {!ignoreRouteFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setIgnoreRouteFilter(true)}
+                      className="px-4 py-2 bg-[#008cff] hover:bg-[#0A58CA] text-white text-xs font-bold rounded-lg shadow-xs transition"
+                    >
+                      View All Available Flights Across Routes
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : !isLoading && !isError && (
               filteredFlights.map((flight) => {
                 const isExpanded = expandedFlightId === flight.id;
                 return (

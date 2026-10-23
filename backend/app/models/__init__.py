@@ -38,6 +38,7 @@ from backend.app.models.mybiz import (
     CompanyEmployeeStatus,
     TripRequestStatus,
 )
+from backend.app.models.coupon import Coupon
 
 __all__ = [
     "Base",
@@ -77,4 +78,5 @@ __all__ = [
     "CompanyEmployeeRole",
     "CompanyEmployeeStatus",
     "TripRequestStatus",
+    "Coupon",
 ]

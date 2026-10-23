@@ -223,6 +223,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
     if (onInitiateCheckout) {
       onInitiateCheckout({
         serviceType: 'TRAIN',
+        itemId: '3a823f7d-7480-46d2-94c2-442092bc4f2b',
         title: train.name,
         subtitle: `${train.class} · Instant PNR Confirmation`,
         routeInfo: `${train.from} → ${train.to}`,
@@ -242,6 +243,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
     if (onInitiateCheckout) {
       onInitiateCheckout({
         serviceType: 'BUS',
+        itemId: '145c8396-2c87-4c67-bb1d-356fefb113ad',
         title: bus.name,
         subtitle: 'AC Sleeper / Seater · GPS Tracking & Live ETA',
         routeInfo: `${bus.from} → ${bus.to}`,
@@ -261,6 +263,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
     if (onInitiateCheckout) {
       onInitiateCheckout({
         serviceType: 'CAB',
+        itemId: 'c394fa80-9c72-4868-8a22-d91b7a624d3d',
         title: cab.name,
         subtitle: 'Dedicated Chauffeur · Tolls & Taxes Included',
         routeInfo: `${cab.pickup} → ${cab.drop}`,
@@ -280,6 +283,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
     if (onInitiateCheckout) {
       onInitiateCheckout({
         serviceType: 'PACKAGE',
+        itemId: '69f529cb-0a00-4b6e-bc78-b1be05991eab',
         title: pkg.name,
         subtitle: `${pkg.days} Days / ${pkg.nights} Nights · Flights + 5-Star Stay + Sightseeing`,
         pricing: {
@@ -298,6 +302,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
     if (onInitiateCheckout) {
       onInitiateCheckout({
         serviceType: 'HOTEL',
+        itemId: '7aff0578-dbe1-4cda-b3cc-4e03277bf012',
         title: villa.name,
         subtitle: 'Entire Luxury Pool Villa · 4 Bedrooms · Private Chef',
         routeInfo: villa.location,

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { searchTrainsApi } from '../services/api';
+import { searchTrainsApi, TrainApiResponse } from '../services/api';
 import { ScreenType } from '../components/Header';
 import { WebCheckoutItem } from './BookingCheckoutPage';
 
@@ -38,6 +38,67 @@ export interface TrainItem {
   freeCancel: boolean;
 }
 
+const mapTrainResponse = (t: TrainApiResponse): TrainItem => {
+  const durationHrs = Math.floor(t.duration_minutes / 60);
+  const durationMins = t.duration_minutes % 60;
+  const durationText = `${String(durationHrs).padStart(2, '0')}h ${String(durationMins).padStart(2, '0')}m`;
+
+  let typeColor = 'bg-[#005cab]';
+  let typeBadge = 'SUPERFAST SPECIAL';
+  let type = 'SUPERFAST';
+  const nameLower = t.train_name.toLowerCase();
+  if (nameLower.includes('vande')) {
+    typeColor = 'bg-[#005cab]';
+    typeBadge = 'VANDE BHARAT SPECIAL';
+    type = 'VANDE_BHARAT';
+  } else if (nameLower.includes('rajdhani')) {
+    typeColor = 'bg-[#bb0017]';
+    typeBadge = 'PREMIUM SUPERFAST';
+    type = 'RAJDHANI';
+  } else if (nameLower.includes('shatabdi')) {
+    typeColor = 'bg-[#0A58CA]';
+    typeBadge = 'SHATABDI EXPRESS';
+    type = 'SUPERFAST';
+  }
+
+  const basePrice = Math.round(t.base_fare);
+  const trainClasses: TrainClass[] = [
+    {
+      code: 'CC',
+      name: t.train_class || 'AC Chair Car',
+      price: basePrice,
+      status: `AVAILABLE - ${t.available_seats}`,
+      statusColor: 'text-[#1A7F37]',
+    },
+    {
+      code: 'EC',
+      name: 'Exec. Chair Car',
+      price: Math.round(basePrice * 1.6),
+      status: `AVAILABLE - ${Math.max(4, Math.floor(t.available_seats / 4))}`,
+      statusColor: 'text-[#1A7F37]',
+    },
+  ];
+
+  return {
+    id: t.id,
+    name: t.train_name,
+    number: t.train_number,
+    type,
+    typeBadge,
+    typeColor,
+    depTime: t.departure_time,
+    depStation: `${t.from_station_code} (${t.from_station_name})`,
+    arrTime: t.arrival_time,
+    arrStation: `${t.to_station_code} (${t.to_station_name})`,
+    duration: durationText,
+    durationMinutes: t.duration_minutes,
+    runsOn: ['M', 'T', 'W', 'T', 'F', 'S'],
+    classes: trainClasses,
+    pantry: true,
+    freeCancel: true,
+  };
+};
+
 export const TrainSearchPage: React.FC<TrainSearchPageProps> = ({
   onNavigate,
   onInitiateCheckout,
@@ -46,110 +107,40 @@ export const TrainSearchPage: React.FC<TrainSearchPageProps> = ({
 }) => {
   const [selectedQuota, setSelectedQuota] = useState('General');
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
-  const [maxPrice, setMaxPrice] = useState(4500);
+  const [maxPrice, setMaxPrice] = useState(15000);
   const [trainTypeFilter, setTrainTypeFilter] = useState<'ALL' | 'VANDE_BHARAT' | 'RAJDHANI' | 'SUPERFAST'>('ALL');
   const [acOnly, setAcOnly] = useState(false);
   const [availableOnly, setAvailableOnly] = useState(true);
   const [sortBy, setSortBy] = useState<'EARLIEST' | 'DURATION' | 'PRICE'>('EARLIEST');
+  const [ignoreRouteFilter, setIgnoreRouteFilter] = useState(false);
 
-  const defaultTrains: TrainItem[] = useMemo(() => [
-    {
-      id: 'train-vb-20172',
-      name: 'Vande Bharat Express',
-      number: '20172',
-      type: 'VANDE_BHARAT',
-      typeBadge: 'VANDE BHARAT SPECIAL',
-      typeColor: 'bg-[#005cab]',
-      depTime: '06:00',
-      depStation: 'NDLS (New Delhi)',
-      arrTime: '14:05',
-      arrStation: 'BOM (Mumbai Central)',
-      duration: '08h 05m',
-      durationMinutes: 485,
-      runsOn: ['M', 'T', 'W', 'T', 'F', 'S'],
-      classes: [
-        { code: 'CC', name: 'AC Chair Car', price: 1750, status: 'AVAILABLE - 42', statusColor: 'text-[#1A7F37]' },
-        { code: 'EC', name: 'Exec. Chair Car', price: 3350, status: 'AVAILABLE - 12', statusColor: 'text-[#1A7F37]' },
-      ],
-      pantry: true,
-      freeCancel: true,
+  // Live Backend query
+  const {
+    data: apiTrains,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['trainsSearch', fromCity, toCity, ignoreRouteFilter],
+    queryFn: () => {
+      if (ignoreRouteFilter) {
+        return searchTrainsApi();
+      }
+      return searchTrainsApi({ from_city: fromCity, to_city: toCity });
     },
-    {
-      id: 'train-raj-12952',
-      name: 'Mumbai Rajdhani Express',
-      number: '12952',
-      type: 'RAJDHANI',
-      typeBadge: 'PREMIUM SUPERFAST',
-      typeColor: 'bg-[#bb0017]',
-      depTime: '16:55',
-      depStation: 'NDLS (New Delhi)',
-      arrTime: '08:35',
-      arrStation: 'MMCT (Mumbai Central)',
-      duration: '15h 40m',
-      durationMinutes: 940,
-      runsOn: ['M', 'T', 'W', 'T', 'F', 'S', 'S'],
-      classes: [
-        { code: '3A', name: '3rd AC', price: 2150, status: 'AVAILABLE - 28', statusColor: 'text-[#1A7F37]' },
-        { code: '2A', name: '2nd AC', price: 3050, status: 'AVAILABLE - 8', statusColor: 'text-[#1A7F37]' },
-        { code: '1A', name: '1st AC', price: 4850, status: 'WL 4', statusColor: 'text-amber-600' },
-      ],
-      pantry: true,
-      freeCancel: true,
-    },
-    {
-      id: 'train-aug-12954',
-      name: 'August Kranti Tejas Rajdhani',
-      number: '12954',
-      type: 'RAJDHANI',
-      typeBadge: 'TEJAS SMART COACH',
-      typeColor: 'bg-[#f4511e]',
-      depTime: '17:15',
-      depStation: 'NZM (H. Nizamuddin)',
-      arrTime: '10:05',
-      arrStation: 'MMCT (Mumbai Central)',
-      duration: '16h 50m',
-      durationMinutes: 1010,
-      runsOn: ['M', 'T', 'W', 'T', 'F', 'S', 'S'],
-      classes: [
-        { code: '3A', name: '3rd AC', price: 2150, status: 'AVAILABLE - 16', statusColor: 'text-[#1A7F37]' },
-        { code: '2A', name: '2nd AC', price: 3050, status: 'AVAILABLE - 4', statusColor: 'text-[#1A7F37]' },
-        { code: '1A', name: '1st AC', price: 4850, status: 'AVAILABLE - 2', statusColor: 'text-[#1A7F37]' },
-      ],
-      pantry: true,
-      freeCancel: true,
-    },
-    {
-      id: 'train-garib-12215',
-      name: 'Delhi Mumbai Garib Rath',
-      number: '12215',
-      type: 'SUPERFAST',
-      typeBadge: 'BUDGET AC EXPRESS',
-      typeColor: 'bg-[#1A7F37]',
-      depTime: '09:20',
-      depStation: 'DEE (Delhi S. Rohilla)',
-      arrTime: '07:35',
-      arrStation: 'BDTS (Bandra Terminus)',
-      duration: '22h 15m',
-      durationMinutes: 1335,
-      runsOn: ['M', 'T', 'T', 'S'],
-      classes: [
-        { code: '3A', name: 'AC 3 Economy', price: 1050, status: 'AVAILABLE - 84', statusColor: 'text-[#1A7F37]' },
-      ],
-      pantry: true,
-      freeCancel: false,
-    },
-  ], []);
-
-  // Backend query
-  const { data: backendTrains } = useQuery({
-    queryKey: ['trainsSearch', fromCity, toCity],
-    queryFn: () => searchTrainsApi({ from_city: fromCity, to_city: toCity }),
-    staleTime: 60000,
+    staleTime: 30000,
   });
+
+  // Map API response to train cards
+  const liveTrains = useMemo(() => {
+    if (!apiTrains) return [];
+    return apiTrains.map(mapTrainResponse);
+  }, [apiTrains]);
 
   // Filtered trains
   const filteredTrains = useMemo(() => {
-    let list: TrainItem[] = (backendTrains && backendTrains.length > 0) ? (backendTrains as any as TrainItem[]) : [...defaultTrains];
+    let list: TrainItem[] = [...liveTrains];
 
     if (trainTypeFilter !== 'ALL') {
       list = list.filter((t) => t.type === trainTypeFilter);
@@ -178,11 +169,18 @@ export const TrainSearchPage: React.FC<TrainSearchPageProps> = ({
     }
 
     return list;
-  }, [backendTrains, defaultTrains, trainTypeFilter, selectedClass, acOnly, availableOnly, maxPrice, sortBy]);
+  }, [liveTrains, trainTypeFilter, selectedClass, acOnly, availableOnly, maxPrice, sortBy]);
 
   const handleBookTrainClass = (train: TrainItem, cls: TrainClass) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!train.id || !uuidRegex.test(train.id)) {
+      alert('Data integrity issue: Selected train schedule lacks a valid database UUID. Booking is disabled.');
+      return;
+    }
+
     const item: WebCheckoutItem = {
       serviceType: 'TRAIN',
+      itemId: train.id,
       title: `${train.name} (${train.number})`,
       subtitle: `${cls.name} (${cls.code}) · Quota: ${selectedQuota} · ${cls.status}`,
       routeInfo: `${train.depStation} → ${train.arrStation} (${train.depTime} - ${train.arrTime})`,
@@ -407,8 +405,81 @@ export const TrainSearchPage: React.FC<TrainSearchPageProps> = ({
               </div>
             </div>
 
-            {/* Train Cards */}
-            {filteredTrains.map((train) => (
+            {/* Ignore Route Banner if viewing all */}
+            {ignoreRouteFilter && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between text-xs text-blue-900">
+                <span>Showing all scheduled trains across all rail routes.</span>
+                <button
+                  type="button"
+                  onClick={() => setIgnoreRouteFilter(false)}
+                  className="font-bold text-[#008cff] hover:underline"
+                >
+                  Filter to {fromCity} &rarr; {toCity}
+                </button>
+              </div>
+            )}
+
+            {/* Loading State */}
+            {isLoading && (
+              <div className="bg-white rounded-2xl p-12 text-center border border-gray-200 shadow-xs flex flex-col items-center justify-center">
+                <div className="w-10 h-10 border-4 border-[#008cff] border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-base font-bold text-gray-800">Checking Live Train Schedules & Berths...</p>
+                <p className="text-xs text-gray-500 mt-1">Connecting to live railway database for {fromCity} &rarr; {toCity}</p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {isError && (
+              <div className="bg-red-50 rounded-2xl p-8 text-center border border-red-200 shadow-xs">
+                <p className="text-base font-bold text-red-700">Unable to Fetch Train Schedules</p>
+                <p className="text-xs text-red-600 mt-1">{(error as any)?.message || 'An error occurred while connecting to the train service.'}</p>
+                <button
+                  type="button"
+                  onClick={() => refetch()}
+                  className="mt-4 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition shadow-xs"
+                >
+                  Retry Search
+                </button>
+              </div>
+            )}
+
+            {/* Train Cards / Empty State */}
+            {!isLoading && !isError && filteredTrains.length === 0 ? (
+              <div className="bg-white rounded-2xl p-12 text-center border border-gray-200 shadow-xs">
+                <div className="w-12 h-12 mx-auto mb-3 bg-gray-100 rounded-full flex items-center justify-center text-xl">
+                  🚆
+                </div>
+                <p className="text-base font-bold text-gray-800">No direct trains found between {fromCity} and {toCity}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Try adjusting filters or check all available express trains on our network.
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMaxPrice(15000);
+                      setSelectedClass(null);
+                      setTrainTypeFilter('ALL');
+                      setAcOnly(false);
+                      setAvailableOnly(false);
+                    }}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-lg transition"
+                  >
+                    Reset Filters
+                  </button>
+                  {!ignoreRouteFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setIgnoreRouteFilter(true)}
+                      className="px-4 py-2 bg-[#008cff] hover:bg-[#0A58CA] text-white text-xs font-bold rounded-lg shadow-xs transition"
+                    >
+                      View All Available Trains Across Routes
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : !isLoading && !isError && (
+              filteredTrains.map((train) => (
               <article
                 key={train.id}
                 className="bg-white rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow border border-[#E7EBF0] flex flex-col gap-4 relative overflow-hidden"
@@ -489,7 +560,7 @@ export const TrainSearchPage: React.FC<TrainSearchPageProps> = ({
                   </div>
                 </div>
               </article>
-            ))}
+            )))}
           </main>
         </div>
       </div>

@@ -1,15 +1,24 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Users, Search, RefreshCw, Shield, User, CheckCircle, Mail, Phone } from 'lucide-react';
-import { getAdminUsers } from '../services/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Users, Search, RefreshCw, Shield, User, CheckCircle, XCircle, Mail, Phone } from 'lucide-react';
+import { getAdminUsers, updateAdminUserStatus } from '../services/api';
 
 export const UsersManagement: React.FC = () => {
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | 'ADMIN' | 'CUSTOMER'>('ALL');
 
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['adminUsers'],
     queryFn: () => getAdminUsers({ limit: 100 }),
+  });
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
+      updateAdminUserStatus(userId, isActive),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+    },
   });
 
   const users = data?.items || [];
@@ -99,6 +108,7 @@ export const UsersManagement: React.FC = () => {
                   <th className="py-3.5 px-4 font-bold">Role</th>
                   <th className="py-3.5 px-4 font-bold">Status</th>
                   <th className="py-3.5 px-4 font-bold">Joined</th>
+                  <th className="py-3.5 px-4 font-bold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
@@ -147,13 +157,35 @@ export const UsersManagement: React.FC = () => {
                       )}
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400 font-semibold">
-                        <CheckCircle className="w-3.5 h-3.5" />
-                        Active
-                      </span>
+                      {u.is_active ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          <CheckCircle className="w-3 h-3" />
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                          <XCircle className="w-3 h-3" />
+                          Inactive
+                        </span>
+                      )}
                     </td>
                     <td className="py-3.5 px-4 text-[11px] text-slate-500">
                       {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'Active'}
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      {u.role !== 'ADMIN' && (
+                        <button
+                          onClick={() => toggleStatusMutation.mutate({ userId: u.id, isActive: !u.is_active })}
+                          disabled={toggleStatusMutation.isPending}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition cursor-pointer ${
+                            u.is_active
+                              ? 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20'
+                              : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                          }`}
+                        >
+                          {u.is_active ? 'Deactivate' : 'Activate'}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   createBookingApi,
   payDemoBookingApi,
@@ -8,6 +8,10 @@ import {
   searchBusesApi,
   searchCabsApi,
   searchPackagesApi,
+  getCurrentUserApi,
+  UserProfile,
+  validateCouponApi,
+  CouponValidateResult,
 } from '../services/api';
 
 export interface WebCheckoutItem {
@@ -95,12 +99,14 @@ const defaultBookingData = {
 interface BookingCheckoutPageProps {
   onNavigate?: (screen: 'explore' | 'flights' | 'hotels' | 'checkout' | 'trips') => void;
   bookingItem?: WebCheckoutItem | null;
+  currentUser?: UserProfile | null;
 }
 
 // ─── Component ───────────────────────────────────────────
 export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({ 
   onNavigate,
   bookingItem,
+  currentUser,
 }) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'paypal' | 'apple'>('card');
@@ -108,6 +114,28 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
   const [hasInsurance, setHasInsurance] = useState(true);
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [simulateFailure, setSimulateFailure] = useState(false);
+  const [user, setUser] = useState<UserProfile | null>(currentUser || null);
+  const [createdBooking, setCreatedBooking] = useState<any | null>(null);
+
+  // Coupon / Promo Code state
+  const [couponCode, setCouponCode] = useState('');
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponValidateResult | null>(null);
+
+  const [traveler, setTraveler] = useState({
+    title: 'Mr',
+    firstName: '',
+    lastName: '',
+    gender: 'MALE',
+    passengerType: 'ADULT',
+    passportNumber: '',
+    email: '',
+    phone: '',
+  });
+
   const [confirmedBooking, setConfirmedBooking] = useState<{
     reference: string;
     email: string;
@@ -121,6 +149,29 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
   const [bizGstin, setBizGstin] = useState('');
   const [bizCostCenter, setBizCostCenter] = useState('');
 
+  // Prefill authenticated user information into traveler form
+  useEffect(() => {
+    const applyUser = (u: UserProfile) => {
+      setUser(u);
+      const nameParts = (u.fullName || (u as any).full_name || '').trim().split(' ');
+      setTraveler(prev => ({
+        ...prev,
+        firstName: prev.firstName || nameParts[0] || '',
+        lastName: prev.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Traveler'),
+        email: prev.email || u.email || '',
+        phone: prev.phone || u.phone || '',
+      }));
+    };
+
+    if (currentUser) {
+      applyUser(currentUser);
+    } else {
+      getCurrentUserApi().then((u) => {
+        if (u) applyUser(u);
+      });
+    }
+  }, [currentUser]);
+
   // Dynamic pricing calculations
   const isCustomItem = Boolean(bookingItem);
   const activeService = bookingItem?.serviceType || 'FLIGHT';
@@ -129,16 +180,46 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
   const defaultFlightTotal = (defaultP.flightBase + defaultP.flightTaxes) * 2;
   const defaultHotelTotal = (defaultP.hotelBase * defaultP.hotelNights) + defaultP.hotelTaxes;
   const defaultSubtotal = defaultFlightTotal + defaultHotelTotal;
-  const defaultGrandTotal = defaultSubtotal + defaultP.bundleDiscount + (hasInsurance ? defaultP.insurance : 0);
 
   const customBase = bookingItem?.pricing.baseAmount || 0;
   const customTaxes = bookingItem?.pricing.taxes || 0;
   const customDiscount = bookingItem?.pricing.discount || 0;
   const insurancePrice = bookingItem?.pricing.insurance ?? 499;
   const customInsurance = hasInsurance ? insurancePrice : 0;
-  const customGrandTotal = Math.max(0, customBase + customTaxes - customDiscount + customInsurance);
 
-  const grandTotal = isCustomItem ? customGrandTotal : defaultGrandTotal;
+  const preCouponTotal = isCustomItem
+    ? Math.max(0, customBase + customTaxes - customDiscount + customInsurance)
+    : Math.max(0, defaultSubtotal + defaultP.bundleDiscount + (hasInsurance ? defaultP.insurance : 0));
+
+  const couponDiscount = appliedCoupon ? appliedCoupon.discount_amount : 0;
+  const grandTotal = Math.max(0, preCouponTotal - couponDiscount);
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setIsValidatingCoupon(true);
+    setCouponError(null);
+    try {
+      const res = await validateCouponApi(couponCode.trim().toUpperCase(), preCouponTotal, activeService);
+      if (res.valid) {
+        setAppliedCoupon(res);
+        setCouponError(null);
+      } else {
+        setAppliedCoupon(null);
+        setCouponError(res.message || 'Coupon could not be applied');
+      }
+    } catch (err: any) {
+      setAppliedCoupon(null);
+      setCouponError(err.response?.data?.message || err.message || 'Failed to validate coupon code');
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    setCouponError(null);
+  };
 
   const steps = [
     { num: 1, label: 'Review Itinerary' },
@@ -146,16 +227,28 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
     { num: 3, label: 'Payment' },
   ];
 
+  const isUuid = (str?: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str || '');
+  const hasValidInventoryId = !bookingItem || isUuid(bookingItem.itemId);
+
   const handleConfirmAndPay = async () => {
     setIsProcessing(true);
+    setErrorMessage(null);
+
     try {
       const serviceType = bookingItem?.serviceType || 'FLIGHT';
       let resolvedItemType: string = serviceType;
       if (serviceType === 'HOTEL') resolvedItemType = 'HOTEL_ROOM';
 
-      let resolvedRefId = bookingItem?.itemId;
+      let resolvedRefId = isUuid(bookingItem?.itemId) ? bookingItem?.itemId : undefined;
 
-      // Automatically resolve real backend inventory ID if not already provided
+      // Ensure selections carry real database UUID; do not resolve missing selections to arbitrary seeded items
+      if (bookingItem && !resolvedRefId) {
+        throw new Error(
+          `The selected ${serviceType.toLowerCase()} is missing a valid inventory ID (${bookingItem?.itemId || 'none'}). Booking cannot proceed.`
+        );
+      }
+
+      // If user directly opened checkout without selecting an item, resolve real backend inventory ID
       if (!resolvedRefId) {
         if (serviceType === 'TRAIN') {
           const trains = await searchTrainsApi();
@@ -178,64 +271,90 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
         }
       }
 
-      if (resolvedRefId) {
+      if (!resolvedRefId || !isUuid(resolvedRefId)) {
+        throw new Error(`No verified database inventory found for service ${serviceType}. Please check inventory or retry.`);
+      }
+
+      let bookingToPay = createdBooking;
+
+      // 1. Create booking in PostgreSQL if not already created in this checkout session
+      if (!bookingToPay) {
+        const uName = user?.fullName || (user as any)?.full_name || '';
+        const firstName = traveler.firstName.trim() || uName.split(' ')[0] || 'John';
+        const lastName = traveler.lastName.trim() || (uName.split(' ').slice(1).join(' ')) || 'Doe';
+        const contactEmail = traveler.email.trim() || user?.email || 'customer@ssjourney.com';
+        const contactPhone = traveler.phone.trim() || user?.phone || '+919876543210';
+
         const booking = await createBookingApi({
           service_type: serviceType,
-          contact_email: 'customer@ssjourney.com',
-          contact_phone: '+919876543210',
+          guest_name: user ? undefined : `${firstName} ${lastName}`,
+          contact_email: contactEmail,
+          contact_phone: contactPhone,
           has_insurance: hasInsurance,
+          promo_code: appliedCoupon ? appliedCoupon.code : (isBizBooking ? 'WELCOME' : undefined),
           items: [
             {
               item_type: resolvedItemType,
               item_reference_id: resolvedRefId,
               quantity: 1,
-              meta_data: bookingItem?.details || {},
+              meta_data: {
+                ...(bookingItem?.details || {}),
+                ...(isBizBooking ? {
+                  is_biz: true,
+                  company_name: bizCompanyName,
+                  gstin: bizGstin,
+                  cost_center: bizCostCenter,
+                } : {}),
+              },
             },
           ],
           passengers: [
             {
-              title: 'Mr',
-              first_name: 'John',
-              last_name: 'Doe',
-              passenger_type: 'ADULT',
-              passport_number: 'J1234567',
+              title: traveler.title || 'Mr',
+              first_name: firstName,
+              last_name: lastName,
+              passenger_type: traveler.passengerType || 'ADULT',
+              gender: traveler.gender || 'MALE',
+              passport_number: traveler.passportNumber ? traveler.passportNumber.trim() : undefined,
             },
           ],
         });
 
-        await payDemoBookingApi({
-          booking_id: booking.id,
-          payment_method: paymentMethod === 'card' ? 'CREDIT_CARD' : 'UPI',
-          card_last_four: '4242',
-        });
-
-        setConfirmedBooking({
-          reference: booking.booking_reference,
-          email: booking.contact_email,
-          total: Number(booking.total_amount),
-          serviceType: booking.service_type,
-        });
-        setIsConfirmed(true);
-        return;
+        bookingToPay = booking;
+        setCreatedBooking(booking);
       }
 
-      // Fallback
+      // 2. Process Demo Payment via Backend Simulation Endpoint
+      const payRes = await payDemoBookingApi({
+        booking_id: bookingToPay.id,
+        payment_method: paymentMethod === 'card' ? 'CREDIT_CARD' : paymentMethod === 'apple' ? 'APPLE_PAY' : 'UPI',
+        simulate_failure: simulateFailure,
+        card_last_four: '4242',
+      });
+
+      if (payRes.status !== 'SUCCESS') {
+        throw new Error(
+          payRes.gateway_response?.reason ||
+          'Simulated payment was declined by demo gateway. You can retry safely.'
+        );
+      }
+
+      // 3. Mark Confirmed only when API confirms outcome
       setConfirmedBooking({
-        reference: 'SSJ-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
-        email: 'customer@ssjourney.com',
-        total: grandTotal,
-        serviceType,
+        reference: bookingToPay.booking_reference,
+        email: bookingToPay.contact_email,
+        total: Number(bookingToPay.total_amount),
+        serviceType: bookingToPay.service_type,
       });
       setIsConfirmed(true);
-    } catch (err) {
-      console.warn('Booking API error during checkout demo, falling back gracefully', err);
-      setConfirmedBooking({
-        reference: 'SSJ-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
-        email: 'customer@ssjourney.com',
-        total: grandTotal,
-        serviceType: activeService,
-      });
-      setIsConfirmed(true);
+      setErrorMessage(null);
+    } catch (err: any) {
+      console.error('Checkout error:', err);
+      const detail =
+        err.response?.data?.detail ||
+        err.message ||
+        'An error occurred while creating or paying for your reservation. Please verify details and retry.';
+      setErrorMessage(detail);
     } finally {
       setIsProcessing(false);
     }
@@ -526,31 +645,121 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
             {step >= 2 && (
               <div className="space-y-space-md">
                 <div className="bg-surface-container-lowest rounded-xl shadow-card overflow-hidden">
-                  <div className="bg-primary/5 border-b border-outline-variant/20 px-space-md py-space-sm flex items-center gap-space-sm">
-                    <span className="material-symbols-outlined text-primary text-[20px]">person</span>
-                    <span className="text-label-lg text-on-surface font-bold">Traveller Information</span>
+                  <div className="bg-primary/5 border-b border-outline-variant/20 px-space-md py-space-sm flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-space-sm">
+                      <span className="material-symbols-outlined text-primary text-[20px]">person</span>
+                      <span className="text-label-lg text-on-surface font-bold">Traveller & Contact Details</span>
+                    </div>
+                    {user ? (
+                      <span className="text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        Signed in as {user.email} (Linked to My Trips)
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-semibold bg-surface-container-high text-on-surface-variant px-2.5 py-0.5 rounded-full">
+                        Guest Checkout (Enter contact details below)
+                      </span>
+                    )}
                   </div>
                   <div className="p-space-md">
-                    {(bookingItem?.passengers || defaultBookingData.travellers).map((t: any, i: number) => (
-                      <div key={i} className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
-                        <div>
-                          <label className="text-label-md text-on-surface-variant block mb-1">Full Name (as on passport)</label>
-                          <input type="text" defaultValue={t.name} className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all" />
-                        </div>
-                        <div>
-                          <label className="text-label-md text-on-surface-variant block mb-1">Passport Number</label>
-                          <input type="text" defaultValue={t.passport} className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all" />
-                        </div>
-                        <div>
-                          <label className="text-label-md text-on-surface-variant block mb-1">Email Address</label>
-                          <input type="email" defaultValue={t.email} className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all" />
-                        </div>
-                        <div>
-                          <label className="text-label-md text-on-surface-variant block mb-1">Phone Number</label>
-                          <input type="tel" defaultValue={t.phone} className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all" />
-                        </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-6 gap-space-md">
+                      <div className="sm:col-span-1">
+                        <label className="text-label-md text-on-surface-variant block mb-1">Title</label>
+                        <select
+                          value={traveler.title}
+                          onChange={(e) => setTraveler({ ...traveler, title: e.target.value })}
+                          className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all"
+                        >
+                          <option value="Mr">Mr</option>
+                          <option value="Mrs">Mrs</option>
+                          <option value="Ms">Ms</option>
+                          <option value="Dr">Dr</option>
+                        </select>
                       </div>
-                    ))}
+                      <div className="sm:col-span-2">
+                        <label className="text-label-md text-on-surface-variant block mb-1">First Name *</label>
+                        <input
+                          type="text"
+                          value={traveler.firstName}
+                          onChange={(e) => setTraveler({ ...traveler, firstName: e.target.value })}
+                          placeholder="e.g. John"
+                          required
+                          className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all"
+                        />
+                      </div>
+                      <div className="sm:col-span-3">
+                        <label className="text-label-md text-on-surface-variant block mb-1">Last Name *</label>
+                        <input
+                          type="text"
+                          value={traveler.lastName}
+                          onChange={(e) => setTraveler({ ...traveler, lastName: e.target.value })}
+                          placeholder="e.g. Doe"
+                          required
+                          className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="text-label-md text-on-surface-variant block mb-1">Gender</label>
+                        <select
+                          value={traveler.gender}
+                          onChange={(e) => setTraveler({ ...traveler, gender: e.target.value })}
+                          className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all"
+                        >
+                          <option value="MALE">Male</option>
+                          <option value="FEMALE">Female</option>
+                          <option value="OTHER">Other</option>
+                        </select>
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="text-label-md text-on-surface-variant block mb-1">Passenger Type</label>
+                        <select
+                          value={traveler.passengerType}
+                          onChange={(e) => setTraveler({ ...traveler, passengerType: e.target.value })}
+                          className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all"
+                        >
+                          <option value="ADULT">Adult (12+ yrs)</option>
+                          <option value="CHILD">Child (2-12 yrs)</option>
+                          <option value="INFANT">Infant (under 2 yrs)</option>
+                        </select>
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="text-label-md text-on-surface-variant block mb-1">Passport / ID No.</label>
+                        <input
+                          type="text"
+                          value={traveler.passportNumber}
+                          onChange={(e) => setTraveler({ ...traveler, passportNumber: e.target.value })}
+                          placeholder="Optional"
+                          className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all uppercase font-mono"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-3">
+                        <label className="text-label-md text-on-surface-variant block mb-1">Contact Email *</label>
+                        <input
+                          type="email"
+                          value={traveler.email}
+                          onChange={(e) => setTraveler({ ...traveler, email: e.target.value })}
+                          placeholder="traveler@example.com"
+                          required
+                          className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-3">
+                        <label className="text-label-md text-on-surface-variant block mb-1">Contact Phone *</label>
+                        <input
+                          type="tel"
+                          value={traveler.phone}
+                          onChange={(e) => setTraveler({ ...traveler, phone: e.target.value })}
+                          placeholder="+91 98765 43210"
+                          required
+                          className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all tabular-nums"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -680,12 +889,28 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                         <label className="text-label-md text-on-surface-variant block mb-1">CVV</label>
                         <input type="text" placeholder="•••" className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all" />
                       </div>
-                      <div className="md:col-span-2">
-                        <label className="text-label-md text-on-surface-variant block mb-1">Cardholder Name</label>
-                        <input type="text" placeholder="JOHN DOE" className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all" />
-                      </div>
                     </div>
                   )}
+
+                  {/* Demo Payment Notice & Testing Simulation Toggle */}
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex flex-col gap-2 mt-2">
+                    <div className="flex items-center gap-2 text-label-md font-bold text-amber-800 dark:text-amber-400">
+                      <span className="material-symbols-outlined text-[18px]">info</span>
+                      <span>Demo Payment Simulator</span>
+                    </div>
+                    <p className="text-body-sm text-on-surface-variant">
+                      This checkout connects to the real PostgreSQL database and executes simulated authorization via <code>POST /api/v1/payments/demo</code>. No actual money is debited.
+                    </p>
+                    <label className="flex items-center gap-2 cursor-pointer pt-1 text-label-sm text-on-surface font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={simulateFailure}
+                        onChange={(e) => setSimulateFailure(e.target.checked)}
+                        className="rounded accent-rose-600 w-4 h-4"
+                      />
+                      <span className="text-rose-600 dark:text-rose-400">Simulate Payment Failure (Test error handling & retry without duplicate booking)</span>
+                    </label>
+                  </div>
                 </div>
               </div>
             )}
@@ -794,6 +1019,56 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                   </>
                 )}
 
+                {appliedCoupon && (
+                  <div className="flex justify-between text-body-sm text-emerald-600 dark:text-emerald-400 font-semibold">
+                    <span className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">local_offer</span>
+                      Coupon ({appliedCoupon.code})
+                    </span>
+                    <span className="tabular-nums">-₹{appliedCoupon.discount_amount.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+
+                {/* Promo Code Input */}
+                <div className="pt-2 pb-1 border-t border-outline-variant/20">
+                  {!appliedCoupon ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Promo code (e.g. SSJOURNEY)"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        className="flex-1 uppercase font-mono text-xs bg-surface-container-low border border-outline-variant/50 rounded-lg px-2.5 py-2 text-on-surface focus:border-primary outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyCoupon}
+                        disabled={!couponCode.trim() || isValidatingCoupon}
+                        className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-lg text-xs font-bold disabled:opacity-50 transition cursor-pointer"
+                      >
+                        {isValidatingCoupon ? 'Checking...' : 'Apply'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs">
+                      <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-bold">
+                        <span className="material-symbols-outlined text-[16px]">verified</span>
+                        <span>Code <strong>{appliedCoupon.code}</strong> (-₹{appliedCoupon.discount_amount.toLocaleString('en-IN')})</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        className="text-xs text-rose-500 hover:text-rose-700 font-semibold underline cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                  {couponError && (
+                    <p className="text-[11px] text-rose-500 font-medium mt-1">{couponError}</p>
+                  )}
+                </div>
+
                 <div className="h-[1px] bg-outline-variant/20" />
 
                 {/* Grand Total */}
@@ -824,22 +1099,48 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                   </span>
                 </label>
 
+                {errorMessage && (
+                  <div className="bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-400 rounded-xl p-space-sm flex items-start gap-2.5 text-body-sm">
+                    <span className="material-symbols-outlined text-rose-600 text-[20px] mt-0.5 flex-shrink-0">error</span>
+                    <div className="flex-1">
+                      <p className="font-bold text-rose-800 dark:text-rose-300">Transaction Failed</p>
+                      <p className="mt-0.5">{errorMessage}</p>
+                      {createdBooking && (
+                        <p className="text-[12px] opacity-80 mt-1.5 font-medium">
+                          Note: Reservation <strong>#{createdBooking.booking_reference}</strong> was initialized in Pending status. Click Retry below to safely pay without creating a duplicate booking.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {!hasValidInventoryId && (
+                  <div className="bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 rounded-xl p-space-sm flex items-start gap-2.5 text-body-sm">
+                    <span className="material-symbols-outlined text-amber-600 text-[20px] mt-0.5 flex-shrink-0">warning</span>
+                    <div>
+                      <p className="font-bold">Invalid Inventory Record</p>
+                      <p className="mt-0.5">This listing does not carry a verified database UUID. Booking is disabled to prevent data corruption.</p>
+                    </div>
+                  </div>
+                )}
+
                 {step < 3 ? (
                   <button
+                    disabled={!hasValidInventoryId}
                     onClick={() => setStep((step + 1) as 1 | 2 | 3)}
-                    className="w-full bg-primary hover:bg-primary-container text-on-primary py-space-md rounded-lg text-headline-sm font-bold transition-all shadow-md flex items-center justify-center gap-space-sm"
+                    className="w-full bg-primary hover:bg-primary-container disabled:opacity-50 disabled:cursor-not-allowed text-on-primary py-space-md rounded-lg text-headline-sm font-bold transition-all shadow-md flex items-center justify-center gap-space-sm"
                   >
                     <span>Continue</span>
                     <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                   </button>
                 ) : (
                   <button
-                    disabled={!agreeTerms || isProcessing}
+                    disabled={!agreeTerms || isProcessing || !hasValidInventoryId}
                     onClick={handleConfirmAndPay}
                     className={`w-full py-space-md rounded-lg text-headline-sm font-bold transition-all shadow-md flex items-center justify-center gap-space-sm ${
-                      agreeTerms && !isProcessing
-                        ? 'bg-secondary-container hover:bg-secondary text-on-secondary cursor-pointer'
-                        : 'bg-surface-container-high text-on-surface-variant cursor-not-allowed opacity-70'
+                      !agreeTerms || isProcessing || !hasValidInventoryId
+                        ? 'bg-outline-variant/30 text-on-surface-variant/50 cursor-not-allowed'
+                        : 'bg-primary hover:bg-primary-container text-on-primary shadow-lg hover:shadow-xl cursor-pointer'
                     }`}
                   >
                     {isProcessing ? (
@@ -850,7 +1151,11 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                     ) : (
                       <>
                         <span className="material-symbols-outlined text-[20px]">lock</span>
-                        <span>Confirm & Pay ₹{grandTotal.toLocaleString('en-IN')}</span>
+                        <span>
+                          {createdBooking
+                            ? `Retry Demo Payment · Ref: ${createdBooking.booking_reference}`
+                            : `Confirm & Pay ₹${grandTotal.toLocaleString('en-IN')}`}
+                        </span>
                       </>
                     )}
                   </button>

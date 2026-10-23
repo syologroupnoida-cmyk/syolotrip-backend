@@ -1,6 +1,6 @@
 # SS Journey Mobile (Expo + React Native)
 
-A mobile travel booking application crafted with **Expo SDK 57** (`~57.0.30`), **React Native**, and TypeScript, accurately replicating the Stitch design system.
+A mobile travel booking application crafted with **Expo SDK 58** (`^58.0.0`), **React Native** (`0.88.0`), and TypeScript, accurately replicating the Stitch design system.
 
 ---
 

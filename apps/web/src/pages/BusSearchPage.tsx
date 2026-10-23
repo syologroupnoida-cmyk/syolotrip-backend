@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { searchBusesApi, BusApiResponse } from '../services/api';
 import { ScreenType } from '../components/Header';
 import { WebCheckoutItem } from './BookingCheckoutPage';
 
@@ -31,131 +33,77 @@ interface BusOption {
   cancellation: string;
 }
 
+const mapBusResponse = (b: BusApiResponse): BusOption => {
+  const durationHrs = Math.floor(b.duration_minutes / 60);
+  const durationMins = b.duration_minutes % 60;
+  const durationText = `${String(durationHrs).padStart(2, '0')}h ${String(durationMins).padStart(2, '0')}m`;
+  const originalPrice = Math.round(b.base_fare * 1.3);
+
+  return {
+    id: b.id,
+    operator: b.operator_name,
+    busType: b.bus_type,
+    primo: b.rating >= 4.7,
+    rating: b.rating || 4.5,
+    reviewsCount: 420,
+    depTime: b.departure_time,
+    depPoint: b.boarding_point || `${b.from_city} Boarding Point`,
+    arrTime: b.arrival_time,
+    arrPoint: b.dropping_point || `${b.to_city} Bus Terminal`,
+    duration: durationText,
+    durationMinutes: b.duration_minutes,
+    price: Math.round(b.base_fare),
+    originalPrice,
+    seatsAvailable: b.available_seats,
+    windowSeats: Math.max(1, Math.floor(b.available_seats / 3)),
+    amenities: ['Live GPS Tracking', 'Blanket & Pillow', 'Charging Point', 'Emergency SOS', 'Reading Light'],
+    badges: b.rating >= 4.7 ? ['MMT Primo', 'On-Time Guarantee'] : ['Verified Operator'],
+    cancellation: 'Free cancellation up to 6 hrs before departure',
+  };
+};
+
 export const BusSearchPage: React.FC<BusSearchPageProps> = ({
   onNavigate,
   onInitiateCheckout,
-  fromCity = 'Delhi',
-  toCity = 'Manali',
+  fromCity = 'Mumbai',
+  toCity = 'Goa',
 }) => {
   const [operatorFilter, setOperatorFilter] = useState<'ALL' | 'ZINGBUS' | 'INTRCITY' | 'NUEGO' | 'HRTC'>('ALL');
-  const [acOnly, setAcOnly] = useState(true);
+  const [acOnly, setAcOnly] = useState(false);
   const [sleeperOnly, setSleeperOnly] = useState(false);
   const [primoOnly, setPrimoOnly] = useState(false);
   const [depTimeSlot, setDepTimeSlot] = useState<'ALL' | 'MORNING' | 'AFTERNOON' | 'EVENING' | 'NIGHT'>('ALL');
-  const [maxPrice, setMaxPrice] = useState(2500);
+  const [maxPrice, setMaxPrice] = useState(15000);
   const [sortBy, setSortBy] = useState<'CHEAPEST' | 'EARLIEST' | 'FASTEST' | 'RATING'>('CHEAPEST');
   const [selectedSeatBusId, setSelectedSeatBusId] = useState<string | null>(null);
+  const [ignoreRouteFilter, setIgnoreRouteFilter] = useState(false);
 
-  const buses: BusOption[] = useMemo(() => [
-    {
-      id: 'bus-zing-01',
-      operator: 'Zingbus Plus',
-      busType: 'Bharat Benz AC Sleeper (2+1)',
-      primo: true,
-      rating: 4.8,
-      reviewsCount: 1420,
-      depTime: '20:30',
-      depPoint: 'Kashmere Gate Metro Gate 1',
-      arrTime: '07:15',
-      arrPoint: 'Private Bus Parking, Manali',
-      duration: '10h 45m',
-      durationMinutes: 645,
-      price: 1199,
-      originalPrice: 1599,
-      seatsAvailable: 14,
-      windowSeats: 5,
-      amenities: ['Live GPS Tracking', 'Blanket & Pillow', 'Charging Point', 'Emergency SOS', 'Reading Light'],
-      badges: ['MMT Primo', 'On-Time Guarantee'],
-      cancellation: 'Free cancellation up to 6 hrs before departure',
+  // Live Backend Query
+  const {
+    data: apiBuses,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['busesSearch', fromCity, toCity, ignoreRouteFilter],
+    queryFn: () => {
+      if (ignoreRouteFilter) {
+        return searchBusesApi();
+      }
+      return searchBusesApi({ from_city: fromCity, to_city: toCity });
     },
-    {
-      id: 'bus-intrcity-02',
-      operator: 'IntrCity SmartBus',
-      busType: 'Volvo 9600 Multi-Axle AC Sleeper',
-      primo: true,
-      rating: 4.9,
-      reviewsCount: 2180,
-      depTime: '21:15',
-      depPoint: 'Majnu Ka Tilla Boarding Lounge',
-      arrTime: '07:45',
-      arrPoint: 'Mall Road Volvo Stand, Manali',
-      duration: '10h 30m',
-      durationMinutes: 630,
-      price: 1399,
-      originalPrice: 1850,
-      seatsAvailable: 9,
-      windowSeats: 2,
-      amenities: ['Air Conditioned Waiting Lounge', 'In-bus Washroom', 'Water Bottle', 'WiFi', 'CCTV Security'],
-      badges: ['MMT Primo', 'Smart Lounge Access'],
-      cancellation: 'Instant 100% refund on bus delay > 30m',
-    },
-    {
-      id: 'bus-nuego-03',
-      operator: 'NueGo Electric',
-      busType: 'Pure Electric AC Seater (2+2)',
-      primo: true,
-      rating: 4.7,
-      reviewsCount: 890,
-      depTime: '06:00',
-      depPoint: 'ISBT Anand Vihar',
-      arrTime: '17:30',
-      arrPoint: 'Govt Bus Stand, Manali',
-      duration: '11h 30m',
-      durationMinutes: 690,
-      price: 899,
-      originalPrice: 1200,
-      seatsAvailable: 22,
-      windowSeats: 8,
-      amenities: ['Zero Emission EV', 'Silent Cabin', 'USB Charging Port', 'Speed Governor (80 km/h)'],
-      badges: ['Eco Friendly EV', 'Zero Carbon'],
-      cancellation: 'Free cancellation up to 12 hrs before',
-    },
-    {
-      id: 'bus-hrtc-him-04',
-      operator: 'HRTC Himgaurav',
-      busType: 'Scania Luxury AC Seater (2+2)',
-      primo: false,
-      rating: 4.4,
-      reviewsCount: 650,
-      depTime: '19:45',
-      depPoint: 'ISBT Kashmere Gate Counter 14',
-      arrTime: '06:30',
-      arrPoint: 'HRTC Bus Stand, Manali',
-      duration: '10h 45m',
-      durationMinutes: 645,
-      price: 980,
-      originalPrice: 1100,
-      seatsAvailable: 18,
-      windowSeats: 6,
-      amenities: ['Experienced Mountain Drivers', 'Push-back Seats', 'Heating System', 'Govt Regulated'],
-      badges: ['State Transport', 'Himachal Govt'],
-      cancellation: 'Standard state transport cancellation rules',
-    },
-    {
-      id: 'bus-cityland-05',
-      operator: 'City Land Travels',
-      busType: 'Volvo AC Semi Sleeper (2+2)',
-      primo: false,
-      rating: 4.3,
-      reviewsCount: 420,
-      depTime: '22:00',
-      depPoint: 'RK Ashram Marg Metro Station',
-      arrTime: '08:45',
-      arrPoint: 'Private Bus Stand, Manali',
-      duration: '10h 45m',
-      durationMinutes: 645,
-      price: 849,
-      originalPrice: 1050,
-      seatsAvailable: 7,
-      windowSeats: 1,
-      amenities: ['Mineral Water', 'Charging Port', 'Emergency Exit'],
-      badges: ['Budget Saver'],
-      cancellation: 'Refund available up to 8 hrs',
-    },
-  ], []);
+    staleTime: 30000,
+  });
+
+  // Map API response to bus cards
+  const liveBuses = useMemo(() => {
+    if (!apiBuses) return [];
+    return apiBuses.map(mapBusResponse);
+  }, [apiBuses]);
 
   const filteredBuses = useMemo(() => {
-    return buses
+    return liveBuses
       .filter((bus) => {
         if (primoOnly && !bus.primo) return false;
         if (acOnly && !bus.busType.toLowerCase().includes('ac')) return false;
@@ -180,12 +128,19 @@ export const BusSearchPage: React.FC<BusSearchPageProps> = ({
         if (sortBy === 'RATING') return b.rating - a.rating;
         return a.depTime.localeCompare(b.depTime);
       });
-  }, [buses, primoOnly, acOnly, sleeperOnly, maxPrice, operatorFilter, depTimeSlot, sortBy]);
+  }, [liveBuses, primoOnly, acOnly, sleeperOnly, maxPrice, operatorFilter, depTimeSlot, sortBy]);
 
   const handleBook = (bus: BusOption, seatNumber: string = 'U4 (Upper Sleeper)') => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!bus.id || !uuidRegex.test(bus.id)) {
+      alert('Data integrity issue: Selected bus schedule lacks a valid database UUID. Booking is disabled.');
+      return;
+    }
+
     if (onInitiateCheckout) {
       onInitiateCheckout({
         serviceType: 'BUS',
+        itemId: bus.id,
         title: `${bus.operator} - ${bus.busType}`,
         subtitle: `Seat: ${seatNumber} · ${bus.cancellation}`,
         routeInfo: `${fromCity} (${bus.depPoint}) → ${toCity} (${bus.arrPoint})`,
@@ -454,14 +409,77 @@ export const BusSearchPage: React.FC<BusSearchPageProps> = ({
               </div>
             </div>
 
-            {/* Bus Cards List */}
-            {filteredBuses.length === 0 ? (
+            {/* Ignore Route Banner if viewing all */}
+            {ignoreRouteFilter && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between text-xs text-blue-900">
+                <span>Showing all scheduled intercity buses across routes.</span>
+                <button
+                  type="button"
+                  onClick={() => setIgnoreRouteFilter(false)}
+                  className="font-bold text-[#005cab] hover:underline"
+                >
+                  Filter to {fromCity} &rarr; {toCity}
+                </button>
+              </div>
+            )}
+
+            {/* Loading State */}
+            {isLoading && (
+              <div className="bg-white rounded-xl p-12 text-center border border-[#E7EBF0] shadow-xs flex flex-col items-center justify-center">
+                <div className="w-10 h-10 border-4 border-[#005cab] border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-base font-bold text-gray-800">Searching Live Intercity Bus Schedules...</p>
+                <p className="text-xs text-gray-500 mt-1">Checking live seat availability for {fromCity} &rarr; {toCity}</p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {isError && (
+              <div className="bg-red-50 rounded-xl p-8 text-center border border-red-200 shadow-xs">
+                <p className="text-base font-bold text-red-700">Unable to Fetch Bus Schedules</p>
+                <p className="text-xs text-red-600 mt-1">{(error as any)?.message || 'An error occurred while connecting to the bus service.'}</p>
+                <button
+                  type="button"
+                  onClick={() => refetch()}
+                  className="mt-4 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition shadow-xs"
+                >
+                  Retry Search
+                </button>
+              </div>
+            )}
+
+            {/* Bus Cards List / Empty State */}
+            {!isLoading && !isError && filteredBuses.length === 0 ? (
               <div className="bg-white rounded-xl p-10 text-center border border-[#E7EBF0]">
                 <span className="material-symbols-outlined text-4xl text-gray-400 mb-2">directions_bus</span>
-                <p className="font-extrabold text-base text-gray-800">No buses match your filters</p>
-                <p className="text-xs text-gray-500 mt-1">Try resetting the operator, AC, or price filters above.</p>
+                <p className="font-extrabold text-base text-gray-800">No buses found between {fromCity} and {toCity}</p>
+                <p className="text-xs text-gray-500 mt-1">Try resetting the operator, AC, or price filters or check all available buses.</p>
+                <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMaxPrice(15000);
+                      setOperatorFilter('ALL');
+                      setAcOnly(false);
+                      setSleeperOnly(false);
+                      setPrimoOnly(false);
+                      setDepTimeSlot('ALL');
+                    }}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-lg transition"
+                  >
+                    Reset Filters
+                  </button>
+                  {!ignoreRouteFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setIgnoreRouteFilter(true)}
+                      className="px-4 py-2 bg-[#005cab] hover:bg-[#0A58CA] text-white text-xs font-bold rounded-lg shadow-xs transition"
+                    >
+                      View All Available Buses Across Routes
+                    </button>
+                  )}
+                </div>
               </div>
-            ) : (
+            ) : !isLoading && !isError && (
               filteredBuses.map((bus) => (
                 <div
                   key={bus.id}

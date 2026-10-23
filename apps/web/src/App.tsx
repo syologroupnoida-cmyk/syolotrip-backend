@@ -179,6 +179,7 @@ const AppContent: React.FC = () => {
           <BookingCheckoutPage 
             onNavigate={setActiveScreen} 
             bookingItem={checkoutItem || undefined}
+            currentUser={user}
           />
         )}
         {activeScreen === 'trips' && (

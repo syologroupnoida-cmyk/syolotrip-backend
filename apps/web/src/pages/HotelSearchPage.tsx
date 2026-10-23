@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { searchHotelsApi } from '../services/api';
+import { searchHotelsApi, HotelApiResponse, HotelRoomApiResponse } from '../services/api';
 import { useWishlist } from '../context/WishlistContext';
 import { ScreenType } from '../components/Header';
 import { HotelSearchParams } from './ExplorePage';
@@ -14,6 +14,7 @@ interface HotelSearchPageProps {
 
 export interface PropertyItem {
   id: string;
+  roomId?: string;
   name: string;
   location: string;
   rating: number;
@@ -32,7 +33,48 @@ export interface PropertyItem {
   price: number;
   taxes: number;
   amenities: string[];
+  rooms?: HotelRoomApiResponse[];
 }
+
+const mapHotelResponse = (h: HotelApiResponse): PropertyItem => {
+  const firstRoom = h.rooms && h.rooms.length > 0 ? h.rooms[0] : null;
+  const roomPrice = firstRoom ? Math.round(firstRoom.price_per_night) : Math.round(h.starting_price || 5000);
+  const roomTaxes = firstRoom ? Math.round(firstRoom.taxes_per_night) : Math.round(roomPrice * 0.12);
+  const originalPrice = Math.round(roomPrice * 1.25);
+
+  const images = h.images && h.images.length > 0 ? h.images : [
+    'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800&q=80',
+    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&q=80',
+    'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=80',
+  ];
+  const mainImg = h.featured_image || images[0];
+  const thumb1 = images[1] || images[0];
+  const thumb2 = images[2] || images[0];
+
+  return {
+    id: h.id,
+    roomId: firstRoom?.id,
+    name: h.name,
+    location: `${h.city}, ${h.country}${h.neighborhood ? ' • ' + h.neighborhood : ''}`,
+    rating: h.guest_rating || (h.star_rating ? h.star_rating * 1.8 : 4.5),
+    reviews: h.review_count || 120,
+    ratingCategory: h.rating_label || 'Exceptional',
+    propertyType: h.property_type === 'HOMESTAY' ? 'Entire Villa / Homestay' : 'Luxury Hotel',
+    mainImg,
+    thumb1,
+    thumb2,
+    badge: h.publication_status === 'APPROVED' ? 'MMT VERIFIED LUXE' : 'FEATURED STAY',
+    badgeBg: 'bg-[#1A7F37]',
+    features: h.amenities && h.amenities.length > 0 ? h.amenities.slice(0, 4) : ['Verified Amenities', 'Air Conditioned', 'Free WiFi'],
+    description: h.overview || `Experience premium comfort at ${h.name} situated in ${h.city}.`,
+    cancellation: 'Free Cancellation available',
+    originalPrice,
+    price: roomPrice,
+    taxes: roomTaxes,
+    amenities: h.amenities || [],
+    rooms: h.rooms || [],
+  };
+};
 
 export const HotelSearchPage: React.FC<HotelSearchPageProps> = ({
   onNavigate,
@@ -40,124 +82,55 @@ export const HotelSearchPage: React.FC<HotelSearchPageProps> = ({
   onInitiateCheckout,
 }) => {
   const { isWishlisted, toggleWishlist } = useWishlist();
-  const city = searchParams?.city || 'Mumbai & Escapes';
+  const rawCity = searchParams?.city || 'Paris';
+  const cleanCity = rawCity.includes('&') ? '' : rawCity.trim();
   const checkIn = searchParams?.checkIn || '2026-10-24';
   const checkOut = searchParams?.checkOut || '2026-10-26';
 
   // Filters state
-  const [selectedQuickFilter, setSelectedQuickFilter] = useState<string | null>('Private Pool');
-  const [propertyTypes, setPropertyTypes] = useState<string[]>(['Entire Villa', 'Private Cottages', 'Luxury Farmhouse']);
-  const [maxPrice, setMaxPrice] = useState(35000);
-  const [minRating, setMinRating] = useState<number | null>(4.0);
-  const [selectedAmenities, setSelectedAmenities] = useState<string[]>(['Private Pool']);
+  const [ignoreCityFilter, setIgnoreCityFilter] = useState(false);
+  const [selectedQuickFilter, setSelectedQuickFilter] = useState<string | null>(null);
+  const [propertyTypes, setPropertyTypes] = useState<string[]>([]);
+  const [maxPrice, setMaxPrice] = useState(150000);
+  const [minRating, setMinRating] = useState<number | null>(null);
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('Popularity');
 
-  // Stitch Mock Villas / Hotels Dataset
-  const defaultProperties: PropertyItem[] = useMemo(() => [
-    {
-      id: 'villa-glass-house-lonavala',
-      name: 'The Glass House by Vista Rooms - 4 BHK Private Pool Villa',
-      location: 'Lonavala • 1.8 km from Tungarli Lake',
-      rating: 4.8,
-      reviews: 248,
-      ratingCategory: 'Exceptional',
-      propertyType: 'Entire Villa',
-      mainImg: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800&q=80',
-      thumb1: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&q=80',
-      thumb2: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=80',
-      badge: 'MMT VERIFIED LUXE',
-      badgeBg: 'bg-[#1A7F37]',
-      features: ['Private Heated Pool', 'Care-taker on site', 'Mountain View', 'Lawn with Bonfire & BBQ'],
-      description: 'Accommodates up to 10 guests • 4 King Bedrooms • Full Kitchen with Chef Service • High-speed Starlink WiFi',
-      cancellation: 'Free Cancellation till 22 Oct',
-      originalPrice: 24000,
-      price: 18500,
-      taxes: 2400,
-      amenities: ['Private Pool', 'Wi-Fi', 'Kitchen', 'AC', 'Lawn', 'BBQ', 'Power Backup'],
+  // Query live backend hotels
+  const {
+    data: apiHotels,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['hotelsSearch', cleanCity, ignoreCityFilter],
+    queryFn: () => {
+      if (ignoreCityFilter || !cleanCity) {
+        return searchHotelsApi();
+      }
+      return searchHotelsApi({ city: cleanCity });
     },
-    {
-      id: 'villa-sea-breeze-alibaug',
-      name: 'SaffronStays Sea Breeze Villa - Waterfront 3 BHK',
-      location: 'Alibaug • 200m from Awas Beach',
-      rating: 4.7,
-      reviews: 182,
-      ratingCategory: 'Exceptional',
-      propertyType: 'Entire Villa',
-      mainImg: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&q=80',
-      thumb1: 'https://images.unsplash.com/photo-1613977257363-707ba9348227?w=400&q=80',
-      thumb2: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=400&q=80',
-      badge: 'WATERFRONT',
-      badgeBg: 'bg-[#0A58CA]',
-      features: ['Direct Beach Access', 'Cook Available', 'Pet Friendly', 'Private Jacuzzi'],
-      description: 'Fresh coastal seafood prepared by seasoned in-house cook • Private lawn with hammock • Ideal for family getaways',
-      cancellation: 'Free Cancellation available',
-      originalPrice: 19500,
-      price: 15200,
-      taxes: 1850,
-      amenities: ['Private Pool', 'Wi-Fi', 'Cook', 'Beachfront', 'AC', 'Pet Friendly'],
-    },
-    {
-      id: 'villa-bougainvillea-karjat',
-      name: 'Bougainvillea Farmstay & Cottages',
-      location: 'Karjat Hills • 12 km from Station',
-      rating: 4.6,
-      reviews: 310,
-      ratingCategory: 'Very Good',
-      propertyType: 'Luxury Farmhouse',
-      mainImg: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800&q=80',
-      thumb1: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&q=80',
-      thumb2: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=400&q=80',
-      badge: 'TOP RATED HOMESTAY',
-      badgeBg: 'bg-[#1A7F37]',
-      features: ['Organic Farm Tour', 'Plunge Pool', 'Farm-to-Table Meals', 'River Access'],
-      description: 'Homecooked authentic Maharashtrian meals included • Forest trails • Pet-friendly • 2 Independent Cottages',
-      cancellation: 'Special Offer: Meals Included',
-      originalPrice: 9800,
-      price: 7800,
-      taxes: 950,
-      amenities: ['Private Pool', 'Kitchen', 'Lawn', 'Pet Friendly'],
-    },
-    {
-      id: 'villa-royal-palms-mumbai',
-      name: 'Royal Palms Penthouse & Terrace Villa',
-      location: 'Goregaon East, Mumbai Suburbs • Close to Film City',
-      rating: 4.4,
-      reviews: 95,
-      ratingCategory: 'Very Good',
-      propertyType: 'Heritage Bungalow',
-      mainImg: 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800&q=80',
-      thumb1: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=400&q=80',
-      thumb2: 'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?w=400&q=80',
-      badge: 'CITY GETAWAY',
-      badgeBg: 'bg-[#525f71]',
-      features: ['City Skyline View', 'Parties Allowed', 'Terrace Bar & Plunge Tub', 'Open Sundeck'],
-      description: 'Ideal for celebrations, birthdays & friends get-together • Accommodates 8 guests • 3 BHK • Music allowed outdoors',
-      cancellation: 'Free Cancellation till 24 hrs',
-      originalPrice: 16000,
-      price: 12500,
-      taxes: 1500,
-      amenities: ['Private Pool', 'Wi-Fi', 'AC', 'Parties Allowed', 'Bar'],
-    },
-  ], []);
-
-  // Backend query fallback
-  const { data: backendHotels } = useQuery({
-    queryKey: ['hotelsSearch', city],
-    queryFn: () => searchHotelsApi({ city }),
-    staleTime: 60000,
+    staleTime: 30000,
   });
+
+  // Map API items into PropertyItem cards
+  const liveProperties = useMemo(() => {
+    if (!apiHotels) return [];
+    return apiHotels.map(mapHotelResponse);
+  }, [apiHotels]);
 
   // Filtered properties
   const filteredProperties = useMemo(() => {
-    let list: PropertyItem[] = (backendHotels && backendHotels.length > 0) ? (backendHotels as any as PropertyItem[]) : [...defaultProperties];
+    let list: PropertyItem[] = [...liveProperties];
 
     // Quick filter
     if (selectedQuickFilter === 'Private Pool') {
-      list = list.filter((p) => p.amenities.includes('Private Pool'));
+      list = list.filter((p) => p.amenities.some(a => a.toLowerCase().includes('pool')));
     } else if (selectedQuickFilter === 'Pet Friendly') {
-      list = list.filter((p) => p.features.some((f: string) => f.includes('Pet')));
+      list = list.filter((p) => p.features.some((f: string) => f.toLowerCase().includes('pet')));
     } else if (selectedQuickFilter === 'Entire Villa') {
-      list = list.filter((p) => p.propertyType === 'Entire Villa');
+      list = list.filter((p) => p.propertyType.toLowerCase().includes('villa') || p.propertyType.toLowerCase().includes('homestay'));
     }
 
     // Amenities filter
@@ -167,7 +140,7 @@ export const HotelSearchPage: React.FC<HotelSearchPageProps> = ({
 
     // Property type
     if (propertyTypes.length > 0) {
-      list = list.filter((p) => propertyTypes.includes(p.propertyType));
+      list = list.filter((p) => propertyTypes.some(pt => p.propertyType.includes(pt)));
     }
 
     // Price
@@ -188,11 +161,20 @@ export const HotelSearchPage: React.FC<HotelSearchPageProps> = ({
     }
 
     return list;
-  }, [defaultProperties, selectedQuickFilter, propertyTypes, maxPrice, minRating, sortBy]);
+  }, [liveProperties, selectedQuickFilter, selectedAmenities, propertyTypes, maxPrice, minRating, sortBy]);
 
-  const handleBookProperty = (prop: typeof defaultProperties[0]) => {
+  const handleBookProperty = (prop: PropertyItem) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    // Room ID is preferred for booking items; fallback to hotel id
+    const bookingRefId = prop.roomId || prop.id;
+    if (!bookingRefId || !uuidRegex.test(bookingRefId)) {
+      alert('Data integrity issue: Selected hotel property lacks a valid database UUID. Booking is disabled.');
+      return;
+    }
+
     const item: WebCheckoutItem = {
       serviceType: 'HOTEL',
+      itemId: bookingRefId,
       title: prop.name,
       subtitle: `${prop.location} · ${prop.propertyType}`,
       routeInfo: `Check-in: ${checkIn} | Check-out: ${checkOut} (2 Nights)`,
@@ -204,8 +186,11 @@ export const HotelSearchPage: React.FC<HotelSearchPageProps> = ({
       },
       details: {
         hotelId: prop.id,
-        roomType: 'Entire Villa / 4 BHK',
-        guests: '4 Guests',
+        roomId: prop.roomId,
+        roomType: prop.rooms?.[0]?.room_type || 'Deluxe King Room',
+        guests: '2 Guests',
+        checkIn,
+        checkOut,
       },
     };
 
@@ -228,7 +213,7 @@ export const HotelSearchPage: React.FC<HotelSearchPageProps> = ({
               <div className="flex flex-col">
                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">City / Region</span>
                 <span className="text-sm font-bold text-gray-900 truncate">
-                  {city} (Lonavala, Alibaug, Karjat)
+                  {rawCity}
                 </span>
               </div>
             </div>
@@ -451,7 +436,7 @@ export const HotelSearchPage: React.FC<HotelSearchPageProps> = ({
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl shadow-xs border border-[#E7EBF0]">
               <div>
                 <h1 className="text-lg font-black text-gray-900 leading-tight">
-                  Homestays & Villas in {city}
+                  Hotels & Stays in {rawCity}
                 </h1>
                 <p className="text-xs text-gray-500 mt-0.5">
                   {filteredProperties.length} curated luxury holiday properties available
@@ -499,13 +484,80 @@ export const HotelSearchPage: React.FC<HotelSearchPageProps> = ({
               </button>
             </div>
 
-            {/* Properties List */}
-            {filteredProperties.length === 0 ? (
-              <div className="bg-white rounded-2xl p-12 text-center border border-gray-200 shadow-xs">
-                <p className="text-base font-bold text-gray-800">No properties match your filters</p>
-                <p className="text-xs text-gray-500 mt-1">Try increasing max budget or clearing filters.</p>
+            {/* Filter Notice Banner if viewing all */}
+            {ignoreCityFilter && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between text-xs text-blue-900">
+                <span>Showing all published hotels and villas across destinations.</span>
+                <button
+                  type="button"
+                  onClick={() => setIgnoreCityFilter(false)}
+                  className="font-bold text-[#008cff] hover:underline"
+                >
+                  Filter to {rawCity}
+                </button>
               </div>
-            ) : (
+            )}
+
+            {/* Loading State */}
+            {isLoading && (
+              <div className="bg-white rounded-2xl p-12 text-center border border-gray-200 shadow-xs flex flex-col items-center justify-center">
+                <div className="w-10 h-10 border-4 border-[#008cff] border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-base font-bold text-gray-800">Searching Live Hotel & Villa Inventory...</p>
+                <p className="text-xs text-gray-500 mt-1">Fetching published and verified properties from database</p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {isError && (
+              <div className="bg-red-50 rounded-2xl p-8 text-center border border-red-200 shadow-xs">
+                <p className="text-base font-bold text-red-700">Unable to Fetch Hotel Inventory</p>
+                <p className="text-xs text-red-600 mt-1">{(error as any)?.message || 'An error occurred while connecting to the hotel service.'}</p>
+                <button
+                  type="button"
+                  onClick={() => refetch()}
+                  className="mt-4 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition shadow-xs"
+                >
+                  Retry Search
+                </button>
+              </div>
+            )}
+
+            {/* Properties List / Empty State */}
+            {!isLoading && !isError && filteredProperties.length === 0 ? (
+              <div className="bg-white rounded-2xl p-12 text-center border border-gray-200 shadow-xs">
+                <div className="w-12 h-12 mx-auto mb-3 bg-gray-100 rounded-full flex items-center justify-center text-xl">
+                  🏡
+                </div>
+                <p className="text-base font-bold text-gray-800">No properties found in {rawCity}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Try adjusting filters or explore our luxury listings in Paris, Tokyo, and other verified destinations.
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMaxPrice(150000);
+                      setMinRating(null);
+                      setSelectedAmenities([]);
+                      setPropertyTypes([]);
+                      setSelectedQuickFilter(null);
+                    }}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-lg transition"
+                  >
+                    Reset Filters
+                  </button>
+                  {!ignoreCityFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setIgnoreCityFilter(true)}
+                      className="px-4 py-2 bg-[#008cff] hover:bg-[#0A58CA] text-white text-xs font-bold rounded-lg shadow-xs transition"
+                    >
+                      View All Published Properties
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : !isLoading && !isError && (
               filteredProperties.map((prop) => {
                 const wishlisted = isWishlisted(prop.id);
                 return (

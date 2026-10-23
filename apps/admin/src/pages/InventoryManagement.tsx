@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Plane, Hotel, Bus, Compass, Train, Car, Plus, RefreshCw, MapPin, Trash2,
-  CheckCircle2, Clock
+  CheckCircle2, Clock, Edit3, X
 } from 'lucide-react';
 import { 
   getAdminFlights, getAdminHotels, getAdminBuses, 
   getAdminPackages, getAdminTrains, getAdminCabs,
   createAdminFlight, createAdminHotel, createAdminBus,
   createAdminTrain, createAdminCab, createAdminPackage,
-  deleteAdminInventoryItem,
+  deleteAdminInventoryItem, updateAdminInventoryItem,
   getAdminPendingProperties, approveAdminProperty, rejectAdminProperty
 } from '../services/api';
 
@@ -237,6 +237,76 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
     },
   });
 
+  const [editItem, setEditItem] = useState<{
+    id: string;
+    type: string;
+    title: string;
+    price: number;
+    available_capacity: number;
+    is_active: boolean;
+  } | null>(null);
+
+  const updateItemMutation = useMutation({
+    mutationFn: ({ itemType, itemId, payload }: { itemType: string; itemId: string; payload: any }) =>
+      updateAdminInventoryItem(itemType, itemId, payload),
+    onSuccess: () => {
+      handleRefresh();
+      setEditItem(null);
+    },
+  });
+
+  const handleOpenEdit = (
+    id: string,
+    itemType: string,
+    title: string,
+    price: number,
+    available_capacity: number,
+    is_active: boolean = true
+  ) => {
+    setEditItem({
+      id,
+      type: itemType,
+      title,
+      price: Number(price) || 0,
+      available_capacity: Number(available_capacity) || 0,
+      is_active,
+    });
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editItem) return;
+
+    let payload: Record<string, any> = {
+      is_active: editItem.is_active,
+    };
+
+    if (editItem.type === 'flights') {
+      payload.total_price = Number(editItem.price);
+      payload.available_seats = Number(editItem.available_capacity);
+    } else if (editItem.type === 'hotels') {
+      payload.starting_price = Number(editItem.price);
+    } else if (editItem.type === 'trains') {
+      payload.base_fare = Number(editItem.price);
+      payload.available_seats = Number(editItem.available_capacity);
+    } else if (editItem.type === 'buses') {
+      payload.base_fare = Number(editItem.price);
+      payload.available_seats = Number(editItem.available_capacity);
+    } else if (editItem.type === 'cabs') {
+      payload.base_fare = Number(editItem.price);
+      payload.capacity = Number(editItem.available_capacity);
+    } else if (editItem.type === 'packages') {
+      payload.price_per_person = Number(editItem.price);
+      payload.available_capacity = Number(editItem.available_capacity);
+    }
+
+    updateItemMutation.mutate({
+      itemType: editItem.type,
+      itemId: editItem.id,
+      payload,
+    });
+  };
+
   const isLoading = flightsLoading || hotelsLoading || pendingLoading || trainsLoading || busesLoading || cabsLoading || packagesLoading;
 
   const handleRefresh = () => {
@@ -355,6 +425,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-brand-500/10 text-brand-400 border border-brand-500/20">
                       {f.flight_number || f.flightNumber}
                     </span>
+                    <button
+                      onClick={() => handleOpenEdit(f.id, 'flights', `${f.airline} (${f.flight_number || f.flightNumber})`, f.total_price || f.totalPrice, f.available_seats || 100, f.is_active ?? true)}
+                      title="Edit flight"
+                      className="text-slate-500 hover:text-brand-400 p-1 rounded-md hover:bg-slate-900 transition cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
                     <button
                       onClick={() => handleDelete(f.id)}
                       title="Delete flight"
@@ -483,6 +560,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
                       ★ {h.star_rating || h.starRating} Stars
                     </span>
                     <button
+                      onClick={() => handleOpenEdit(h.id, 'hotels', h.name, h.starting_price || h.startingPrice, 10, h.is_active ?? true)}
+                      title="Edit hotel"
+                      className="text-slate-500 hover:text-brand-400 p-1 rounded-md hover:bg-slate-900 transition cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
                       onClick={() => handleDelete(h.id)}
                       title="Delete property"
                       className="text-slate-500 hover:text-rose-400 p-1 rounded-md hover:bg-slate-900 transition"
@@ -517,6 +601,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
                       {t.train_type}
                     </span>
                     <button
+                      onClick={() => handleOpenEdit(t.id, 'trains', `${t.train_name} (#${t.train_number})`, t.base_fare, t.available_seats, t.is_active ?? true)}
+                      title="Edit train"
+                      className="text-slate-500 hover:text-brand-400 p-1 rounded-md hover:bg-slate-900 transition cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
                       onClick={() => handleDelete(t.id)}
                       title="Delete train"
                       className="text-slate-500 hover:text-rose-400 p-1 rounded-md hover:bg-slate-900 transition"
@@ -547,6 +638,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
                     <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
                       {b.bus_type || b.busType}
                     </span>
+                    <button
+                      onClick={() => handleOpenEdit(b.id, 'buses', `${b.operator_name || b.operatorName} (${b.bus_type || b.busType})`, b.base_fare || b.baseFare, b.available_seats_count || b.available_seats || 30, b.is_active ?? true)}
+                      title="Edit bus"
+                      className="text-slate-500 hover:text-brand-400 p-1 rounded-md hover:bg-slate-900 transition cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
                     <button
                       onClick={() => handleDelete(b.id)}
                       title="Delete bus"
@@ -579,6 +677,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
                       {c.cab_type}
                     </span>
                     <button
+                      onClick={() => handleOpenEdit(c.id, 'cabs', `${c.cab_type} - ${c.vehicle_model}`, c.base_fare, c.capacity, c.is_active ?? true)}
+                      title="Edit cab"
+                      className="text-slate-500 hover:text-brand-400 p-1 rounded-md hover:bg-slate-900 transition cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
                       onClick={() => handleDelete(c.id)}
                       title="Delete cab"
                       className="text-slate-500 hover:text-rose-400 p-1 rounded-md hover:bg-slate-900 transition"
@@ -608,6 +713,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
                     <span className="text-[10px] px-2 py-0.5 rounded bg-brand-500/10 text-brand-400">
                       {p.duration_days || p.durationDays}D / {p.duration_nights || p.durationNights}N
                     </span>
+                    <button
+                      onClick={() => handleOpenEdit(p.id, 'packages', p.title, p.price_per_person || p.pricePerPerson, p.available_capacity || 20, p.is_active ?? true)}
+                      title="Edit package"
+                      className="text-slate-500 hover:text-brand-400 p-1 rounded-md hover:bg-slate-900 transition cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
                     <button
                       onClick={() => handleDelete(p.id)}
                       title="Delete package"
@@ -1077,6 +1189,86 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
                 {createPackageMutation.isPending ? 'Saving...' : 'Save Package'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Inventory Item Modal */}
+      {editItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+            <button
+              onClick={() => setEditItem(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-lg font-bold text-white mb-1">
+              Edit {editItem.type.slice(0, -1).toUpperCase()}
+            </h3>
+            <p className="text-xs text-slate-400 mb-5 font-mono truncate">{editItem.title}</p>
+
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1">
+                  {editItem.type === 'packages' ? 'Price Per Person (₹)' : editItem.type === 'hotels' ? 'Starting Price / Night (₹)' : 'Price / Base Fare (₹)'}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={editItem.price}
+                  onChange={(e) => setEditItem({ ...editItem, price: Number(e.target.value) })}
+                  className="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-brand-500"
+                />
+              </div>
+
+              {editItem.type !== 'hotels' && (
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1">
+                    {editItem.type === 'cabs' ? 'Passenger Capacity' : 'Available Seats / Slots'}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={editItem.available_capacity}
+                    onChange={(e) => setEditItem({ ...editItem, available_capacity: Number(e.target.value) })}
+                    className="w-full px-3 py-2 text-sm rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-brand-500"
+                  />
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 pt-2">
+                <input
+                  type="checkbox"
+                  id="edit-is-active"
+                  checked={editItem.is_active}
+                  onChange={(e) => setEditItem({ ...editItem, is_active: e.target.checked })}
+                  className="w-4 h-4 rounded text-brand-600 focus:ring-brand-500 bg-slate-950 border-slate-700"
+                />
+                <label htmlFor="edit-is-active" className="text-sm text-slate-200 cursor-pointer">
+                  Item is Active (Visible in customer search)
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditItem(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updateItemMutation.isPending}
+                  className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-xs font-semibold text-white transition cursor-pointer disabled:opacity-50"
+                >
+                  {updateItemMutation.isPending ? 'Saving...' : 'Update Inventory'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
