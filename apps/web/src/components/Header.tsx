@@ -287,6 +287,19 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </div>
 
+            {/* Admin Portal Button (when logged in as ADMIN) */}
+            {user?.role === 'ADMIN' && (
+              <a
+                href="http://localhost:5174/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-red-600 to-amber-600 text-white font-extrabold text-[11px] hover:brightness-110 shadow-sm transition"
+              >
+                <span className="material-symbols-outlined text-[15px]">admin_panel_settings</span>
+                <span>Admin Portal</span>
+              </a>
+            )}
+
             {/* Login or User Account Button */}
             {user ? (
               <div className={`flex items-center border backdrop-blur-md rounded-full px-3 py-1 space-x-2 transition ${

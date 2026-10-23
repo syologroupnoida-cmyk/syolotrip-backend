@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
-  LayoutDashboard, Plane, Hotel, Bus, Compass, 
-  Receipt, Tag, FileText, Settings, ShieldAlert 
+  LayoutDashboard, Plane, Hotel, Bus, Train, Car, Compass, 
+  Receipt, Users, Tag, FileText, Settings, ShieldAlert, Globe 
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -14,11 +14,14 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentTab, setCurre
     { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
     { id: 'flights', label: 'Flight Inventory', icon: Plane },
     { id: 'hotels', label: 'Hotel Properties', icon: Hotel },
+    { id: 'trains', label: 'Train Routes', icon: Train },
     { id: 'buses', label: 'Bus Routes', icon: Bus },
+    { id: 'cabs', label: 'Cab Fleets', icon: Car },
     { id: 'packages', label: 'Holiday Packages', icon: Compass },
     { id: 'bookings', label: 'Bookings & Orders', icon: Receipt },
+    { id: 'users', label: 'Users & Customers', icon: Users },
     { id: 'pricing', label: 'Offers & Coupons', icon: Tag },
-    { id: 'audit', label: 'Audit Logs', icon: FileText },
+    { id: 'audit', label: 'Audit Trail Logs', icon: FileText },
     { id: 'settings', label: 'Platform Settings', icon: Settings },
   ];
 
@@ -59,6 +62,21 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentTab, setCurre
             );
           })}
         </nav>
+        {/* Quick link to consumer web app */}
+        <div className="pt-2 border-t border-slate-900">
+          <a
+            href="http://localhost:5173/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 bg-slate-900 hover:bg-slate-800 transition"
+          >
+            <span className="flex items-center gap-2">
+              <Globe className="w-4 h-4 text-brand-400" />
+              <span>Consumer Web App</span>
+            </span>
+            <span className="text-[10px] text-slate-500">5173 ↗</span>
+          </a>
+        </div>
       </div>
 
       {/* Safety Notice Card */}

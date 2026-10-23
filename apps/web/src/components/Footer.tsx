@@ -1,5 +1,5 @@
 import React from 'react';
-import { Instagram, Facebook, Phone, Mail, MapPin } from 'lucide-react';
+import { Instagram, Facebook, Phone, Mail, MapPin, ShieldCheck } from 'lucide-react';
 
 interface FooterProps {
   onNavigate?: (screen: any) => void;
@@ -114,7 +114,19 @@ export const Footer: React.FC<FooterProps> = () => {
         {/* ── 4. COPYRIGHT ── */}
         <div className="mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-[11px] text-gray-500 gap-2 text-center sm:text-left">
           <p>© {new Date().getFullYear()} SS Journey (SuccessSign Journey). All rights reserved.</p>
-          <p className="text-gray-400">100% Verified Travel Platform</p>
+          <div className="flex items-center gap-3 text-gray-400">
+            <span>100% Verified Travel Platform</span>
+            <span>•</span>
+            <a
+              href="http://localhost:5174/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#008cff] hover:text-white font-semibold flex items-center gap-1.5 transition-colors"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-brand-400 text-amber-400" />
+              <span>Admin Portal (Port 5174)</span>
+            </a>
+          </div>
         </div>
       </div>
     </footer>

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Receipt, Search, Filter, RefreshCw, CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-react';
-import { getAdminBookings } from '../services/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Receipt, Search, Filter, RefreshCw, CheckCircle, Clock, XCircle, AlertCircle, Check, X } from 'lucide-react';
+import { getAdminBookings, updateAdminBookingStatus } from '../services/api';
 
 export const BookingsManagement: React.FC = () => {
+  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
 
@@ -11,6 +12,15 @@ export const BookingsManagement: React.FC = () => {
     queryKey: ['adminBookings', statusFilter],
     queryFn: () => getAdminBookings(statusFilter ? { status: statusFilter } : undefined),
   });
+
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      updateAdminBookingStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminBookings'] });
+    },
+  });
+
 
   const bookings = data?.items || [];
 
@@ -132,19 +142,20 @@ export const BookingsManagement: React.FC = () => {
                 <th className="px-5 py-3.5">Total Amount</th>
                 <th className="px-5 py-3.5">Status</th>
                 <th className="px-5 py-3.5">Date Created</th>
+                <th className="px-5 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-slate-500">
+                  <td colSpan={7} className="px-5 py-12 text-center text-slate-500">
                     <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-brand-500" />
                     Loading bookings from backend...
                   </td>
                 </tr>
               ) : filteredBookings.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-slate-500">
+                  <td colSpan={7} className="px-5 py-12 text-center text-slate-500">
                     No bookings found matching filter criteria.
                   </td>
                 </tr>
@@ -157,6 +168,7 @@ export const BookingsManagement: React.FC = () => {
                   const total = b.price_breakdown?.total_amount ?? b.priceBreakdown?.totalAmount ?? 0;
                   const currency = b.price_breakdown?.currency || b.priceBreakdown?.currency || 'INR';
                   const date = b.created_at || b.createdAt ? new Date(b.created_at || b.createdAt).toLocaleString() : 'N/A';
+                  const currentStatus = (b.status || '').toUpperCase();
 
                   return (
                     <tr key={b.id} className="hover:bg-slate-900/40 transition">
@@ -181,6 +193,32 @@ export const BookingsManagement: React.FC = () => {
                       </td>
                       <td className="px-5 py-4 text-slate-400">
                         {date}
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {currentStatus !== 'CONFIRMED' && (
+                            <button
+                              onClick={() => statusMutation.mutate({ id: b.id, status: 'CONFIRMED' })}
+                              disabled={statusMutation.isPending}
+                              title="Mark Confirmed"
+                              className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
+                            >
+                              <Check className="w-3 h-3" />
+                              <span>Confirm</span>
+                            </button>
+                          )}
+                          {currentStatus !== 'CANCELLED' && (
+                            <button
+                              onClick={() => statusMutation.mutate({ id: b.id, status: 'CANCELLED' })}
+                              disabled={statusMutation.isPending}
+                              title="Mark Cancelled"
+                              className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                              <span>Cancel</span>
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
