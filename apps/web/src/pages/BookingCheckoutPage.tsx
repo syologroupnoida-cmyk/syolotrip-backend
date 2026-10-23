@@ -115,6 +115,12 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
     serviceType: string;
   } | null>(null);
 
+  // myBiz Corporate Booking state
+  const [isBizBooking, setIsBizBooking] = useState(false);
+  const [bizCompanyName, setBizCompanyName] = useState('');
+  const [bizGstin, setBizGstin] = useState('');
+  const [bizCostCenter, setBizCostCenter] = useState('');
+
   // Dynamic pricing calculations
   const isCustomItem = Boolean(bookingItem);
   const activeService = bookingItem?.serviceType || 'FLIGHT';
@@ -516,34 +522,115 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
               </>
             )}
 
-            {/* Step 2: Traveller Details */}
+            {/* Step 2: Traveller Details & Corporate myBiz Options */}
             {step >= 2 && (
-              <div className="bg-surface-container-lowest rounded-xl shadow-card overflow-hidden">
-                <div className="bg-primary/5 border-b border-outline-variant/20 px-space-md py-space-sm flex items-center gap-space-sm">
-                  <span className="material-symbols-outlined text-primary text-[20px]">person</span>
-                  <span className="text-label-lg text-on-surface font-bold">Traveller Information</span>
+              <div className="space-y-space-md">
+                <div className="bg-surface-container-lowest rounded-xl shadow-card overflow-hidden">
+                  <div className="bg-primary/5 border-b border-outline-variant/20 px-space-md py-space-sm flex items-center gap-space-sm">
+                    <span className="material-symbols-outlined text-primary text-[20px]">person</span>
+                    <span className="text-label-lg text-on-surface font-bold">Traveller Information</span>
+                  </div>
+                  <div className="p-space-md">
+                    {(bookingItem?.passengers || defaultBookingData.travellers).map((t: any, i: number) => (
+                      <div key={i} className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+                        <div>
+                          <label className="text-label-md text-on-surface-variant block mb-1">Full Name (as on passport)</label>
+                          <input type="text" defaultValue={t.name} className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all" />
+                        </div>
+                        <div>
+                          <label className="text-label-md text-on-surface-variant block mb-1">Passport Number</label>
+                          <input type="text" defaultValue={t.passport} className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all" />
+                        </div>
+                        <div>
+                          <label className="text-label-md text-on-surface-variant block mb-1">Email Address</label>
+                          <input type="email" defaultValue={t.email} className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all" />
+                        </div>
+                        <div>
+                          <label className="text-label-md text-on-surface-variant block mb-1">Phone Number</label>
+                          <input type="tel" defaultValue={t.phone} className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="p-space-md">
-                  {(bookingItem?.passengers || defaultBookingData.travellers).map((t: any, i: number) => (
-                    <div key={i} className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
-                      <div>
-                        <label className="text-label-md text-on-surface-variant block mb-1">Full Name (as on passport)</label>
-                        <input type="text" defaultValue={t.name} className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all" />
+
+                {/* ── myBiz Corporate Travel & GST Invoicing ── */}
+                <div className="bg-surface-container-lowest rounded-xl shadow-card overflow-hidden border border-amber-300/70">
+                  <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border-b border-amber-200/60 px-space-md py-space-sm flex items-center justify-between">
+                    <div className="flex items-center gap-space-sm">
+                      <div className="w-6 h-6 rounded-md bg-amber-500 text-white flex items-center justify-center font-black text-xs">
+                        B
                       </div>
-                      <div>
-                        <label className="text-label-md text-on-surface-variant block mb-1">Passport Number</label>
-                        <input type="text" defaultValue={t.passport} className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all" />
-                      </div>
-                      <div>
-                        <label className="text-label-md text-on-surface-variant block mb-1">Email Address</label>
-                        <input type="email" defaultValue={t.email} className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all" />
-                      </div>
-                      <div>
-                        <label className="text-label-md text-on-surface-variant block mb-1">Phone Number</label>
-                        <input type="tel" defaultValue={t.phone} className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-space-sm text-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all" />
-                      </div>
+                      <span className="text-label-lg text-on-surface font-bold">
+                        myBiz Corporate Booking & GST Invoicing
+                      </span>
                     </div>
-                  ))}
+                    <span className="text-[10px] uppercase font-black bg-amber-500/20 text-amber-800 px-2 py-0.5 rounded border border-amber-500/30">
+                      Input Tax Credit
+                    </span>
+                  </div>
+
+                  <div className="p-space-md space-y-3">
+                    <label className="flex items-center space-x-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isBizBooking}
+                        onChange={(e) => setIsBizBooking(e.target.checked)}
+                        className="rounded text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
+                      />
+                      <span className="text-label-md font-semibold text-on-surface">
+                        Book as myBiz corporate travel & get GST tax invoice (Claim up to 18% ITC)
+                      </span>
+                    </label>
+
+                    {isBizBooking && (
+                      <div className="pt-2 border-t border-outline-variant/20 grid grid-cols-1 sm:grid-cols-3 gap-space-sm">
+                        <div>
+                          <label className="text-label-sm text-on-surface-variant block mb-1 font-semibold">
+                            Company Name <span className="text-error">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Acme Tech Pvt Ltd"
+                            value={bizCompanyName}
+                            onChange={(e) => setBizCompanyName(e.target.value)}
+                            className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-1.5 text-body-sm text-on-surface focus:border-amber-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-label-sm text-on-surface-variant block mb-1 font-semibold">
+                            Company GSTIN <span className="text-error">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. 27AAAAA0000A1Z5"
+                            value={bizGstin}
+                            onChange={(e) => setBizGstin(e.target.value.toUpperCase())}
+                            className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-1.5 text-body-sm text-on-surface uppercase focus:border-amber-500 outline-none font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-label-sm text-on-surface-variant block mb-1 font-semibold">
+                            Cost Center / Dept
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Engineering / Sales"
+                            value={bizCostCenter}
+                            onChange={(e) => setBizCostCenter(e.target.value)}
+                            className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg px-space-sm py-1.5 text-body-sm text-on-surface focus:border-amber-500 outline-none"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-3 bg-amber-50/70 border border-amber-200/60 rounded-lg p-2.5 flex items-center justify-between text-[11px] text-amber-900">
+                          <span className="flex items-center gap-1.5">
+                            <span className="font-bold">✔ Assured GST Tax Invoice:</span> Will be automatically filed into your company myBiz dashboard.
+                          </span>
+                          <span className="font-bold text-emerald-700">Policy Compliant</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

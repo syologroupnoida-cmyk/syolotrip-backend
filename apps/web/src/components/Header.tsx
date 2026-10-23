@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { UserProfile } from '../services/api';
+import { UserProfile, MyBizContext } from '../services/api';
 
-export type ScreenType = 'explore' | 'flights' | 'hotels' | 'checkout' | 'trips' | 'list-property';
+export type ScreenType = 'explore' | 'flights' | 'hotels' | 'trains' | 'buses' | 'cabs' | 'packages' | 'checkout' | 'trips' | 'list-property' | 'mybiz' | 'mybiz-dashboard';
 
 interface HeaderProps {
   activeScreen: ScreenType;
   setActiveScreen: (screen: ScreenType) => void;
   user?: UserProfile | null;
+  bizContext?: MyBizContext | null;
   onOpenAuth: () => void;
   onLogout: () => void;
   onOpenWishlist?: () => void;
@@ -17,6 +18,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeScreen, 
   setActiveScreen,
   user,
+  bizContext,
   onOpenAuth,
   onLogout,
   onOpenWishlist,
@@ -67,9 +69,6 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}>
                   SS JOURNEY
                 </span>
-                {/* <span className="text-[9px] text-[#f28c1c] tracking-[0.2em] font-black uppercase bg-[#f28c1c]/15 px-1.5 py-0.2 rounded border border-[#f28c1c]/30">
-                  GLOBAL
-                </span> */}
               </div>
               <span className={`text-[8.5px] sm:text-[9.5px] uppercase tracking-[0.14em] font-bold -mt-0.5 transition-colors ${
                 isTransparent ? 'text-blue-100/90' : 'text-[#008cff]'
@@ -83,25 +82,38 @@ export const Header: React.FC<HeaderProps> = ({
           <div className={`flex items-center space-x-2 sm:space-x-4 lg:space-x-5 text-xs font-semibold transition-colors ${
             isTransparent ? 'text-white' : 'text-gray-700'
           }`}>
-            {/* Introducing myBiz */}
-            <div 
-              onClick={() => alert('💼 myBiz by SS Journey: Complete Corporate & Business Travel Management with automated GST invoicing and employee travel policies.')}
-              className={`hidden md:flex items-center space-x-2 py-1 px-2.5 rounded-lg transition cursor-pointer ${
-                isTransparent ? 'hover:bg-white/15' : 'hover:bg-gray-100'
+            {/* Introducing myBiz / myBiz Dashboard */}
+            <button 
+              type="button"
+              onClick={() => setActiveScreen(bizContext?.is_biz_user ? 'mybiz-dashboard' : 'mybiz')}
+              className={`hidden md:flex items-center space-x-2 py-1.5 px-2.5 rounded-lg transition cursor-pointer ${
+                activeScreen === 'mybiz' || activeScreen === 'mybiz-dashboard'
+                  ? isTransparent
+                    ? 'bg-white/20 ring-1 ring-amber-400/50 shadow-xs'
+                    : 'bg-amber-50 text-amber-900 ring-1 ring-amber-300 shadow-xs'
+                  : isTransparent 
+                    ? 'hover:bg-white/15' 
+                    : 'hover:bg-gray-100'
               }`}
             >
-              <div className="w-5 h-5 rounded-md bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-[10px] text-white font-black shadow-xs">
+              <div className="w-5 h-5 rounded-md bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-[10px] text-white font-black shadow-xs shrink-0">
                 B
               </div>
               <div className="text-left leading-tight">
-                <p className={`text-[11px] font-bold ${isTransparent ? 'text-white' : 'text-gray-900'}`}>
-                  Introducing myBiz
+                <p className={`text-[11px] font-bold ${
+                  activeScreen === 'mybiz' || activeScreen === 'mybiz-dashboard'
+                    ? isTransparent ? 'text-amber-300' : 'text-amber-800'
+                    : isTransparent ? 'text-white' : 'text-gray-900'
+                }`}>
+                  {bizContext?.is_biz_user ? 'myBiz Dashboard' : 'Introducing myBiz'}
                 </p>
                 <p className={`text-[9px] ${isTransparent ? 'text-white/80' : 'text-gray-500'}`}>
-                  Business Travel Solution
+                  {bizContext?.is_biz_user
+                    ? bizContext.company_name || 'Business Account'
+                    : 'Business Travel Solution'}
                 </p>
               </div>
-            </div>
+            </button>
 
             {/* List Your Property */}
             <button

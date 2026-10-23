@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { WebCheckoutItem } from './BookingCheckoutPage';
+import { ScreenType } from '../components/Header';
 import { AppDownloadBanner } from '../components/AppDownloadBanner';
 import { useWishlist } from '../context/WishlistContext';
 import { 
@@ -79,7 +80,7 @@ export type ServiceCategory =
   | 'insurance';
 
 interface ExplorePageProps {
-  onNavigate?: (screen: 'explore' | 'flights' | 'hotels' | 'checkout' | 'trips' | 'list-property') => void;
+  onNavigate?: (screen: ScreenType) => void;
   onSearchFlights?: (params: FlightSearchParams) => void;
   onSearchHotels?: (params: HotelSearchParams) => void;
   onInitiateCheckout?: (item: WebCheckoutItem) => void;
@@ -179,40 +180,23 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
     } else if (searchMode === 'hotels') {
       handleExecuteHotelSearch();
     } else if (searchMode === 'villas') {
-      handleBookVilla({
-        name: 'Villa Sol Candolim - 4BHK Private Pool Villa',
-        location: 'Candolim Beach, North Goa',
-        price: 14500,
-      });
+      handleExecuteHotelSearch();
     } else if (searchMode === 'trains') {
-      handleBookTrain({
-        name: 'Vande Bharat Express (20172)',
-        from: originAirport.city,
-        to: destinationAirport.city,
-        price: 1750,
-        class: 'AC Chair Car (CC)',
-      });
+      if (onNavigate) {
+        onNavigate('trains');
+      }
     } else if (searchMode === 'buses') {
-      handleBookBus({
-        name: 'Zingbus Luxury Multi-Axle Volvo AC',
-        from: originAirport.city,
-        to: destinationAirport.city,
-        price: 950,
-      });
+      if (onNavigate) {
+        onNavigate('buses');
+      }
     } else if (searchMode === 'cabs') {
-      handleBookCab({
-        name: 'Airport Prime Sedan',
-        pickup: `${originAirport.code} Airport T3`,
-        drop: `${destinationAirport.city} Central`,
-        price: 650,
-      });
+      if (onNavigate) {
+        onNavigate('cabs');
+      }
     } else if (searchMode === 'holidays') {
-      handleBookPackage({
-        name: 'Goa Golden Beachfront & Cultural Holiday',
-        days: 5,
-        nights: 4,
-        price: 18500,
-      });
+      if (onNavigate) {
+        onNavigate('packages');
+      }
     } else if (searchMode === 'tours') {
       handleBookAttraction({
         name: 'Burj Khalifa: At The Top (124th + 125th Floor)',

@@ -1,484 +1,764 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { searchFlightsApi } from '../services/api';
-
-// ─── Fallback Mock Data ──────────────────────────────────
-const fallbackFlights = [
-  {
-    id: 1,
-    airline: 'Japan Airlines',
-    airlineCode: 'JAL',
-    logo: 'https://lh3.googleusercontent.com/aida-public/AB6AXuChy_1e2TRhqdPTL4LemJdD5k-S7yE4-UvuMNkQHQi5y4FVeWE4KJzsYxXNtNbONczY3T26uYtSycQdCbhVUssm7643tqJhXO7-j42_l5yYf0dkH9V9LYHCcPJCjyUIn8LMUrA95lVsp8wGAlmBtbNNMTCY5gYfzJrymS79IWZSYMmXHEuRiY1sWX6Qg6H__TIxzIbWXOu5g6s_iLldzntFYBCSaCSptq-ytfRGbPTzQ5VvBEsAXV20',
-    departure: '08:30',
-    arrival: '14:45+1',
-    from: 'SFO',
-    to: 'HND',
-    duration: '11h 15m',
-    stops: 'Non-stop',
-    price: 64890,
-    originalPrice: 68500,
-    cabin: 'Economy',
-    tags: ['Lowest Fare', 'Free Cancel'],
-    aircraft: 'Boeing 787-9 Dreamliner',
-    emissions: '287 kg CO₂e',
-    emissionsRating: 'low',
-    baggage: '2 × 23kg checked',
-  },
-  {
-    id: 2,
-    airline: 'United Airlines',
-    airlineCode: 'UA',
-    logo: null,
-    departure: '10:15',
-    arrival: '16:30+1',
-    from: 'SFO',
-    to: 'HND',
-    duration: '11h 15m',
-    stops: 'Non-stop',
-    price: 66800,
-    originalPrice: null,
-    cabin: 'Economy',
-    tags: ['Wi-Fi Included'],
-    aircraft: 'Boeing 777-300ER',
-    emissions: '312 kg CO₂e',
-    emissionsRating: 'medium',
-    baggage: '2 × 23kg checked',
-  },
-  {
-    id: 3,
-    airline: 'ANA',
-    airlineCode: 'NH',
-    logo: null,
-    departure: '13:45',
-    arrival: '17:10+1',
-    from: 'SFO',
-    to: 'NRT',
-    duration: '10h 25m',
-    stops: 'Non-stop',
-    price: 69500,
-    originalPrice: 75800,
-    cabin: 'Economy',
-    tags: ['Best Rated', 'Eco-Certified'],
-    aircraft: 'Airbus A380',
-    emissions: '265 kg CO₂e',
-    emissionsRating: 'low',
-    baggage: '2 × 23kg checked',
-  },
-  {
-    id: 4,
-    airline: 'Korean Air',
-    airlineCode: 'KE',
-    logo: null,
-    departure: '09:00',
-    arrival: '20:35+1',
-    from: 'SFO',
-    to: 'HND',
-    duration: '14h 35m',
-    stops: '1 stop · ICN (2h 15m)',
-    price: 52800,
-    originalPrice: null,
-    cabin: 'Economy',
-    tags: ['Value Pick'],
-    aircraft: 'Boeing 777-200',
-    emissions: '384 kg CO₂e',
-    emissionsRating: 'high',
-    baggage: '1 × 23kg checked',
-  },
-  {
-    id: 5,
-    airline: 'Singapore Airlines',
-    airlineCode: 'SQ',
-    logo: null,
-    departure: '23:45',
-    arrival: '12:20+2',
-    from: 'SFO',
-    to: 'HND',
-    duration: '15h 35m',
-    stops: '1 stop · SIN (3h 40m)',
-    price: 58900,
-    originalPrice: 64200,
-    cabin: 'Economy',
-    tags: ['Premium Carrier'],
-    aircraft: 'Airbus A350-900',
-    emissions: '340 kg CO₂e',
-    emissionsRating: 'medium',
-    baggage: '2 × 23kg checked',
-  },
-];
-
-const sortOptions = ['Best Match', 'Lowest Price', 'Shortest Duration', 'Earliest Departure', 'Fewest Stops'];
-const sidebarFilters = [
-  { label: 'Stops', options: ['Non-stop', '1 Stop', '2+ Stops'] },
-  { label: 'Airlines', options: ['Japan Airlines', 'United Airlines', 'ANA', 'Korean Air', 'Singapore Airlines'] },
-  { label: 'Departure Time', options: ['Early Morning (00-06)', 'Morning (06-12)', 'Afternoon (12-18)', 'Evening (18-00)'] },
-  { label: 'Price Range', options: ['Under ₹50,000', '₹50,000 - ₹60,000', '₹60,000 - ₹70,000', '₹70,000+'] },
-];
-
-import type { FlightSearchParams } from './ExplorePage';
+import { ScreenType } from '../components/Header';
+import { FlightSearchParams } from './ExplorePage';
+import { WebCheckoutItem } from './BookingCheckoutPage';
 
 interface FlightSearchPageProps {
-  onNavigate?: (screen: 'explore' | 'flights' | 'hotels' | 'checkout' | 'trips') => void;
+  onNavigate?: (screen: ScreenType) => void;
   searchParams?: FlightSearchParams;
+  onInitiateCheckout?: (item: WebCheckoutItem) => void;
 }
 
-// ─── Component ───────────────────────────────────────────
-export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({ 
+export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({
   onNavigate,
   searchParams,
+  onInitiateCheckout,
 }) => {
-  const [activeSort, setActiveSort] = useState('Best Match');
-  const [selectedFlight, setSelectedFlight] = useState<any>(null);
-  const [selectedDateIndex, setSelectedDateIndex] = useState(2);
-  const [alertActive, setAlertActive] = useState(false);
+  const fromCode = searchParams?.fromCode || 'DEL';
+  const toCode = searchParams?.toCode || 'BLR';
+  const fromCity = searchParams?.fromCity || 'Delhi';
+  const toCity = searchParams?.toCity || 'Bengaluru';
+  const departDate = searchParams?.departDate || '2026-10-24';
 
-  const fromCode = searchParams?.fromCode || 'SFO';
-  const toCode = searchParams?.toCode || 'HND';
-  const fromCity = searchParams?.fromCity || 'San Francisco';
-  const toCity = searchParams?.toCity || 'Tokyo Haneda';
+  // Filters state
+  const [activeSort, setActiveSort] = useState<'CHEAPEST' | 'NONSTOP' | 'EARLIEST' | 'FASTEST'>('CHEAPEST');
+  const [selectedFareDay, setSelectedFareDay] = useState(3);
+  const [maxPrice, setMaxPrice] = useState(18000);
+  const [stopsFilter, setStopsFilter] = useState<'ALL' | 'NONSTOP' | '1STOP'>('ALL');
+  const [timeSlotFilter, setTimeSlotFilter] = useState<'ALL' | 'BEFORE_6' | '6_12' | '12_18' | 'AFTER_18'>('ALL');
+  const [selectedAirlines, setSelectedAirlines] = useState<string[]>(['IndiGo', 'Air India', 'Akasa Air']);
+  const [freeMealOnly, setFreeMealOnly] = useState(false);
+  const [expandedFlightId, setExpandedFlightId] = useState<string | null>(null);
+  const [flightDetailTab, setFlightDetailTab] = useState<'info' | 'fare' | 'policy'>('info');
+  const [zeroCancelProtection, setZeroCancelProtection] = useState(false);
 
-  const { data: apiFlights, isLoading } = useQuery({
-    queryKey: ['flightsSearch', fromCode, toCode],
-    queryFn: async () => {
-      // 1. First try matching route
-      let flights = await searchFlightsApi({ from_code: fromCode, to_code: toCode });
-      // 2. If no exact match found in demo DB, fetch all available flights
-      if (!flights || flights.length === 0) {
-        flights = await searchFlightsApi();
-      }
-      return flights;
+  // 7-day fare strip data
+  const fareDays = [
+    { label: 'Wed, 21 Oct', price: 7250, isCheapest: false },
+    { label: 'Thu, 22 Oct', price: 6850, isCheapest: false },
+    { label: 'Fri, 23 Oct', price: 7100, isCheapest: false },
+    { label: 'Sat, 24 Oct', price: 6499, isCheapest: true },
+    { label: 'Sun, 25 Oct', price: 7800, isCheapest: false },
+    { label: 'Mon, 26 Oct', price: 6200, isCheapest: false },
+    { label: 'Tue, 27 Oct', price: 6990, isCheapest: false },
+  ];
+
+  // Flights dataset matching Stitch design
+  const defaultFlights = useMemo(() => [
+    {
+      id: 'flight-6e-2134',
+      airline: 'IndiGo',
+      airlineCode: '6E',
+      flightNumber: '6E 2134',
+      aircraft: 'Airbus A321',
+      brandBg: 'bg-[#005bab]',
+      depTime: '06:00',
+      depCode: fromCode,
+      depTerminal: 'Terminal 2',
+      arrTime: '08:45',
+      arrCode: toCode,
+      arrTerminal: 'Terminal 1',
+      duration: '02h 45m',
+      durationMinutes: 165,
+      isNonStop: true,
+      stopsText: 'NON STOP',
+      originalPrice: 7200,
+      price: 6499,
+      tags: ['Lowest Price in 7 Days'],
+      hasFreeMeal: false,
+      cabinBaggage: '7 kg',
+      checkinBaggage: '15 kg',
+      baseFare: 5150,
+      taxes: 1349,
+      timeSlot: '6_12',
     },
+    {
+      id: 'flight-ai-803',
+      airline: 'Air India',
+      airlineCode: 'AI',
+      flightNumber: 'AI 803',
+      aircraft: 'Boeing 787-8 Dreamliner',
+      brandBg: 'bg-[#bb0017]',
+      depTime: '09:30',
+      depCode: fromCode,
+      depTerminal: 'Terminal 3',
+      arrTime: '12:15',
+      arrCode: toCode,
+      arrTerminal: 'Terminal 2',
+      duration: '02h 45m',
+      durationMinutes: 165,
+      isNonStop: true,
+      stopsText: 'NON STOP',
+      originalPrice: 7900,
+      price: 7149,
+      tags: ['Widebody Dreamliner', 'Complimentary Meal'],
+      hasFreeMeal: true,
+      cabinBaggage: '7 kg',
+      checkinBaggage: '20 kg',
+      baseFare: 5800,
+      taxes: 1349,
+      timeSlot: '6_12',
+    },
+    {
+      id: 'flight-qp-1362',
+      airline: 'Akasa Air',
+      airlineCode: 'QP',
+      flightNumber: 'QP 1362',
+      aircraft: 'Boeing 737 MAX 8',
+      brandBg: 'bg-[#f4511e]',
+      depTime: '14:10',
+      depCode: fromCode,
+      depTerminal: 'Terminal 2',
+      arrTime: '16:55',
+      arrCode: toCode,
+      arrTerminal: 'Terminal 1',
+      duration: '02h 45m',
+      durationMinutes: 165,
+      isNonStop: true,
+      stopsText: 'NON STOP',
+      originalPrice: 7400,
+      price: 6680,
+      tags: ['Modern Fleet', 'Cafe Akasa'],
+      hasFreeMeal: false,
+      cabinBaggage: '7 kg',
+      checkinBaggage: '15 kg',
+      baseFare: 5331,
+      taxes: 1349,
+      timeSlot: '12_18',
+    },
+    {
+      id: 'flight-ix-742',
+      airline: 'Air India Express',
+      airlineCode: 'IX',
+      flightNumber: 'IX 742',
+      aircraft: 'Boeing 737-800',
+      brandBg: 'bg-[#d81b60]',
+      depTime: '19:40',
+      depCode: fromCode,
+      depTerminal: 'Terminal 3',
+      arrTime: '22:20',
+      arrCode: toCode,
+      arrTerminal: 'Terminal 1',
+      duration: '02h 40m',
+      durationMinutes: 160,
+      isNonStop: true,
+      stopsText: 'NON STOP',
+      originalPrice: 7600,
+      price: 6900,
+      tags: ['Fastest Flight'],
+      hasFreeMeal: false,
+      cabinBaggage: '7 kg',
+      checkinBaggage: '15 kg',
+      baseFare: 5551,
+      taxes: 1349,
+      timeSlot: 'AFTER_18',
+    },
+    {
+      id: 'flight-6e-5011',
+      airline: 'IndiGo',
+      airlineCode: '6E',
+      flightNumber: '6E 5011',
+      aircraft: 'Airbus A320neo',
+      brandBg: 'bg-[#005bab]',
+      depTime: '05:15',
+      depCode: fromCode,
+      depTerminal: 'Terminal 2',
+      arrTime: '08:00',
+      arrCode: toCode,
+      arrTerminal: 'Terminal 1',
+      duration: '02h 45m',
+      durationMinutes: 165,
+      isNonStop: true,
+      stopsText: 'NON STOP',
+      originalPrice: 6999,
+      price: 6200,
+      tags: ['Early Bird Saver'],
+      hasFreeMeal: false,
+      cabinBaggage: '7 kg',
+      checkinBaggage: '15 kg',
+      baseFare: 4851,
+      taxes: 1349,
+      timeSlot: 'BEFORE_6',
+    },
+  ], [fromCode, toCode]);
+
+  // Query backend flights if available
+  const { data: backendFlights } = useQuery({
+    queryKey: ['flightsSearch', fromCode, toCode],
+    queryFn: () => searchFlightsApi({ from_code: fromCode, to_code: toCode }),
+    staleTime: 60000,
   });
 
-  const displayFlights = (apiFlights && apiFlights.length > 0)
-    ? apiFlights.map((f: any) => ({
-        id: f.id,
-        airline: f.airline,
-        airlineCode: f.airline_code,
-        logo: f.logo_url || null,
-        departure: f.departure_time,
-        arrival: f.arrival_time,
-        from: f.origin?.code || fromCode,
-        to: f.destination?.code || toCode,
-        duration: `${Math.floor(f.duration_minutes / 60)}h ${f.duration_minutes % 60}m`,
-        stops: f.stops === 0 ? 'Non-stop' : `${f.stops} stop`,
-        price: f.total_price,
-        originalPrice: Math.round(f.total_price * 1.08),
-        cabin: f.cabin_class === 'ECONOMY' ? 'Economy' : f.cabin_class,
-        tags: f.tags?.length ? f.tags : ['Verified DB Route'],
-        aircraft: f.aircraft,
-        emissions: f.emissions_kg ? `${f.emissions_kg} kg CO₂e` : '285 kg CO₂e',
-        emissionsRating: 'low',
-        baggage: f.baggage_info || '2 × 23kg checked',
-      }))
-    : fallbackFlights;
+  // Filtered flights
+  const filteredFlights = useMemo(() => {
+    let list = (backendFlights && backendFlights.length > 0) ? backendFlights : [...defaultFlights];
+
+    // Airline filter
+    if (selectedAirlines.length > 0) {
+      list = list.filter((f) => selectedAirlines.includes(f.airline));
+    }
+
+    // Price filter
+    list = list.filter((f) => f.price <= maxPrice);
+
+    // Stops filter
+    if (stopsFilter === 'NONSTOP') {
+      list = list.filter((f) => f.isNonStop);
+    } else if (stopsFilter === '1STOP') {
+      list = list.filter((f) => !f.isNonStop);
+    }
+
+    // Time slot filter
+    if (timeSlotFilter !== 'ALL') {
+      list = list.filter((f) => f.timeSlot === timeSlotFilter);
+    }
+
+    // Free meal filter
+    if (freeMealOnly) {
+      list = list.filter((f) => f.hasFreeMeal);
+    }
+
+    // Sorting
+    if (activeSort === 'CHEAPEST') {
+      list.sort((a, b) => a.price - b.price);
+    } else if (activeSort === 'EARLIEST') {
+      list.sort((a, b) => a.depTime.localeCompare(b.depTime));
+    } else if (activeSort === 'FASTEST') {
+      list.sort((a, b) => a.durationMinutes - b.durationMinutes);
+    }
+
+    return list;
+  }, [defaultFlights, selectedAirlines, maxPrice, stopsFilter, timeSlotFilter, freeMealOnly, activeSort]);
+
+  const handleBookFlight = (flight: typeof defaultFlights[0]) => {
+    const item: WebCheckoutItem = {
+      serviceType: 'FLIGHT',
+      title: `${flight.airline} (${flight.flightNumber})`,
+      subtitle: `${flight.depCode} → ${flight.arrCode} · ${flight.stopsText} (${flight.duration})`,
+      routeInfo: `${fromCity} (${flight.depCode}) to ${toCity} (${flight.arrCode})`,
+      pricing: {
+        baseAmount: flight.baseFare,
+        taxes: flight.taxes,
+        discount: 300,
+        insurance: zeroCancelProtection ? 399 : 0,
+      },
+      details: {
+        flightId: flight.id,
+        airline: flight.airline,
+        departure: `${departDate} ${flight.depTime}`,
+        arrival: `${departDate} ${flight.arrTime}`,
+        cabin: 'Economy',
+      },
+    };
+
+    if (onInitiateCheckout) {
+      onInitiateCheckout(item);
+    } else if (onNavigate) {
+      onNavigate('checkout');
+    }
+  };
+
+  const handleResetFilters = () => {
+    setMaxPrice(18000);
+    setStopsFilter('ALL');
+    setTimeSlotFilter('ALL');
+    setSelectedAirlines(['IndiGo', 'Air India', 'Akasa Air']);
+    setFreeMealOnly(false);
+  };
 
   return (
-    <div className="w-full bg-background">
-      {/* ── Search Summary Bar ── */}
-      <section className="bg-primary text-on-primary">
-        <div className="max-w-[1280px] mx-auto px-gutter py-space-md">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-space-sm">
-            <div className="flex items-center gap-space-md flex-wrap">
-              <div className="flex items-center gap-space-sm">
-                <div className="flex items-center gap-space-xs">
-                  <span className="text-headline-sm font-bold">{fromCode}</span>
-                  <span className="text-body-sm text-primary-fixed">{fromCity}</span>
-                </div>
-                <div className="flex items-center gap-space-xs text-primary-fixed">
-                  <span className="material-symbols-outlined text-[20px]">flight</span>
-                  <span className="w-16 h-[1px] bg-primary-fixed/40" />
-                  <span className="material-symbols-outlined text-[16px]">radio_button_unchecked</span>
-                  <span className="w-16 h-[1px] bg-primary-fixed/40" />
-                </div>
-                <div className="flex items-center gap-space-xs">
-                  <span className="text-headline-sm font-bold">{toCode}</span>
-                  <span className="text-body-sm text-primary-fixed">{toCity}</span>
+    <div className="min-h-screen bg-[#F2F4F8] text-[#1b1c1c] font-sans pb-20">
+      {/* ── TOP STICKY SEARCH & 7-DAY FARE STRIP (Stitch Exact Replica) ── */}
+      <section className="sticky top-16 sm:top-[70px] z-30 bg-white shadow-xs border-b border-[#E7EBF0]">
+        <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col gap-3">
+          {/* Quick Modifier Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-[#F2F4F8] p-3 rounded-xl border border-[#E7EBF0]">
+            <div className="flex flex-wrap items-center gap-4">
+              {/* Origin */}
+              <div className="flex items-center space-x-2">
+                <span className="p-1.5 rounded-full bg-[#d5e3ff] text-[#005cab] flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                  </svg>
+                </span>
+                <div className="flex flex-col">
+                  <span className="font-bold text-sm text-[#1b1c1c]">
+                    {fromCity} ({fromCode})
+                  </span>
+                  <span className="text-xs text-[#525f71]">Airport T2 / T3</span>
                 </div>
               </div>
-              <div className="flex items-center gap-space-xs text-label-md text-primary-fixed">
-                <span className="material-symbols-outlined text-[16px]">calendar_today</span>
-                <span>{searchParams?.departDate ? new Date(searchParams.departDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Oct 24'} {searchParams?.returnDate ? `- ${new Date(searchParams.returnDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}</span>
-                <span className="mx-1">·</span>
-                <span>Round Trip</span>
-                <span className="mx-1">·</span>
-                <span>1 Adult</span>
-                <span className="mx-1">·</span>
-                <span>Economy</span>
+
+              {/* Arrow */}
+              <span className="text-[#008cff] font-bold text-lg">&rarr;</span>
+
+              {/* Destination */}
+              <div className="flex items-center space-x-2">
+                <span className="p-1.5 rounded-full bg-[#d6e4f9] text-[#0f1c2c] flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                </span>
+                <div className="flex flex-col">
+                  <span className="font-bold text-sm text-[#1b1c1c]">
+                    {toCity} ({toCode})
+                  </span>
+                  <span className="text-xs text-[#525f71]">Airport T1</span>
+                </div>
+              </div>
+
+              {/* Date & Passsengers */}
+              <div className="hidden lg:flex items-center space-x-6 pl-4 border-l border-gray-300">
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Departure Date</span>
+                  <span className="text-xs font-semibold text-gray-900">{departDate}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Passenger & Class</span>
+                  <span className="text-xs font-semibold text-gray-900">1 Adult, Economy</span>
+                </div>
               </div>
             </div>
-            <button 
-              onClick={() => onNavigate?.('explore')}
-              className="flex items-center gap-space-xs bg-white/15 hover:bg-white/25 backdrop-blur-md px-space-md py-space-sm rounded-lg text-label-lg transition-all"
+
+            {/* Modify Search CTA */}
+            <button
+              onClick={() => onNavigate && onNavigate('explore')}
+              className="px-4 py-2 rounded-lg bg-white hover:bg-gray-50 text-[#008cff] font-bold text-xs flex items-center space-x-1 shadow-xs border border-gray-200 transition"
             >
-              <span className="material-symbols-outlined text-[18px]">edit</span>
-              <span>Modify Search</span>
+              <span>MODIFY SEARCH</span>
+            </button>
+          </div>
+
+          {/* 7-Day Low Fare Scroll Strip */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {fareDays.map((fd, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setSelectedFareDay(idx)}
+                className={`shrink-0 flex flex-col items-center justify-center py-2 px-4 rounded-xl text-left transition-all ${
+                  selectedFareDay === idx
+                    ? 'bg-[#d5e3ff] text-[#001c3b] ring-2 ring-[#005cab] shadow-xs'
+                    : 'bg-[#F2F4F8] hover:bg-gray-200/70 text-[#1b1c1c]'
+                }`}
+              >
+                <div className="flex items-center space-x-1">
+                  <span className="text-xs font-medium text-gray-600">{fd.label}</span>
+                  {fd.isCheapest && (
+                    <span className="bg-[#1A7F37] text-white text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider">
+                      Cheapest
+                    </span>
+                  )}
+                </div>
+                <span className="text-sm font-black mt-0.5">₹{fd.price.toLocaleString('en-IN')}</span>
+              </button>
+            ))}
+
+            <button
+              type="button"
+              className="shrink-0 flex items-center justify-center px-3 py-2 rounded-xl text-[#008cff] hover:bg-blue-50 font-bold text-xs gap-1 border border-blue-200"
+            >
+              <span>📅 View 30-Day Fare Matrix</span>
             </button>
           </div>
         </div>
       </section>
 
-      {/* ── Fare Matrix Quick Select ── */}
-      <section className="bg-surface-container-low border-b border-outline-variant/30">
-        <div className="max-w-[1280px] mx-auto px-gutter py-space-sm">
-          <div className="flex items-center gap-space-sm overflow-x-auto">
-            <span className="text-label-sm text-on-surface-variant uppercase tracking-wider whitespace-nowrap">Nearby Dates:</span>
-            {[
-              { date: 'Oct 12', day: 'Sun', price: '₹66,800' },
-              { date: 'Oct 13', day: 'Mon', price: '₹65,400' },
-              { date: 'Oct 14', day: 'Tue', price: '₹64,890' },
-              { date: 'Oct 15', day: 'Wed', price: '₹65,900' },
-              { date: 'Oct 16', day: 'Thu', price: '₹62,200', lowest: true },
-              { date: 'Oct 17', day: 'Fri', price: '₹68,100' },
-              { date: 'Oct 18', day: 'Sat', price: '₹71,500' },
-            ].map((d, i) => (
+      {/* ── MAIN CONTENT (12-COLUMN STITCH LAYOUT) ── */}
+      <div className="max-w-[1240px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* ── LEFT SIDEBAR FILTERS (3 Cols) ── */}
+          <aside className="lg:col-span-3 flex flex-col gap-4 bg-white p-4 sm:p-5 rounded-2xl shadow-xs border border-[#E7EBF0]">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+              <span className="font-bold text-base text-gray-900">Filters</span>
               <button
-                key={i}
                 type="button"
-                onClick={() => setSelectedDateIndex(i)}
-                className={`flex flex-col items-center px-space-sm py-space-xs rounded-lg whitespace-nowrap transition-all cursor-pointer ${
-                  selectedDateIndex === i
-                    ? 'bg-primary text-on-primary shadow-sm font-bold'
-                    : d.lowest
-                    ? 'bg-tertiary/10 text-tertiary border border-tertiary/30 hover:bg-tertiary/20'
-                    : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high border border-outline-variant/30'
-                }`}
+                onClick={handleResetFilters}
+                className="text-xs font-bold text-[#bb0017] hover:underline"
               >
-                <span className="text-label-sm">{d.date} · {d.day}</span>
-                <span className={`text-label-lg font-bold tabular-nums ${d.lowest && selectedDateIndex !== i ? 'text-tertiary' : ''}`}>{d.price}</span>
-                {d.lowest && <span className="text-[9px] text-tertiary font-bold uppercase">Lowest</span>}
+                RESET ALL
               </button>
-            ))}
-          </div>
-        </div>
-      </section>
+            </div>
 
-      {/* ── Main Content: Sidebar + Results ── */}
-      <div className="max-w-[1280px] mx-auto px-gutter py-space-lg">
-        <div className="flex gap-space-lg">
-          {/* ── LEFT SIDEBAR FILTERS ── */}
-          <aside className="hidden lg:block w-72 flex-shrink-0">
-            <div className="sticky top-24 flex flex-col gap-space-md">
-              <div className="flex items-center justify-between">
-                <h3 className="text-headline-sm text-on-surface font-bold">Filters</h3>
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setActiveSort('Best Match');
-                    setSelectedDateIndex(2);
-                    setAlertActive(false);
-                  }}
-                  className="text-label-md text-primary hover:underline cursor-pointer"
-                >
-                  Reset All
-                </button>
-              </div>
-
-              {sidebarFilters.map((filter, fi) => (
-                <div key={fi} className="bg-surface-container-lowest rounded-xl p-space-md shadow-card">
-                  <h4 className="text-label-lg text-on-surface font-bold mb-space-sm">{filter.label}</h4>
-                  <div className="flex flex-col gap-space-xs">
-                    {filter.options.map((opt, oi) => (
-                      <label key={oi} className="flex items-center gap-space-sm cursor-pointer hover:text-primary transition-colors">
-                        <input type="checkbox" defaultChecked={oi === 0 && fi === 0} className="accent-primary rounded w-4 h-4 cursor-pointer" />
-                        <span className="text-body-sm text-on-surface-variant">{opt}</span>
-                      </label>
-                    ))}
+            {/* Popular Filters */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                Popular Filters
+              </span>
+              {[
+                { label: 'Non Stop Flights', count: 18, check: stopsFilter === 'NONSTOP', toggle: () => setStopsFilter(stopsFilter === 'NONSTOP' ? 'ALL' : 'NONSTOP') },
+                { label: 'Late Departures (After 6 PM)', count: 7, check: timeSlotFilter === 'AFTER_18', toggle: () => setTimeSlotFilter(timeSlotFilter === 'AFTER_18' ? 'ALL' : 'AFTER_18') },
+                { label: 'IndiGo (6E)', count: 12, check: selectedAirlines.includes('IndiGo'), toggle: () => setSelectedAirlines(prev => prev.includes('IndiGo') ? prev.filter(a => a !== 'IndiGo') : [...prev, 'IndiGo']) },
+                { label: 'Free Meal Included', count: 5, check: freeMealOnly, toggle: () => setFreeMealOnly(!freeMealOnly) },
+              ].map((pf, i) => (
+                <label key={i} className="flex items-center justify-between p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer text-xs">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={pf.check}
+                      onChange={pf.toggle}
+                      className="w-4 h-4 rounded text-[#008cff] focus:ring-0 cursor-pointer"
+                    />
+                    <span className="text-gray-800">{pf.label}</span>
                   </div>
-                </div>
+                  <span className="text-gray-400 font-medium">{pf.count}</span>
+                </label>
               ))}
+            </div>
 
-              {/* Price Alert CTA */}
-              <div className="bg-primary/5 border border-primary/20 rounded-xl p-space-md flex flex-col gap-space-sm">
-                <div className="flex items-center gap-space-xs">
-                  <span className={`material-symbols-outlined text-[20px] ${alertActive ? 'text-tertiary' : 'text-primary'}`}>
-                    {alertActive ? 'check_circle' : 'notifications_active'}
-                  </span>
-                  <span className="text-label-lg text-primary font-bold">
-                    {alertActive ? 'Price Alert Active' : 'Set Price Alert'}
-                  </span>
-                </div>
-                <p className="text-body-sm text-on-surface-variant">
-                  {alertActive 
-                    ? `Tracking ${fromCode} → ${toCode}. We will send you an email alert when prices drop below current fare!` 
-                    : `Get notified when ${fromCode} → ${toCode} drops below your target price.`}
-                </p>
-                <button 
+            {/* Price Slider */}
+            <div className="flex flex-col gap-2 p-3 bg-[#F2F4F8] rounded-xl border border-gray-200">
+              <div className="flex items-center justify-between text-xs font-semibold">
+                <span className="text-gray-600 uppercase text-[10px] tracking-wider">One Way Price</span>
+                <span className="text-[#008cff] font-bold">Up to ₹{maxPrice.toLocaleString('en-IN')}</span>
+              </div>
+              <input
+                type="range"
+                min="5400"
+                max="18000"
+                step="500"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(Number(e.target.value))}
+                className="w-full accent-[#008cff] h-1.5 bg-gray-200 rounded-lg cursor-pointer"
+              />
+              <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
+                <span>₹5,400</span>
+                <span>₹18,000+</span>
+              </div>
+            </div>
+
+            {/* Stops Filter */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Stops from {fromCity}</span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
                   type="button"
-                  onClick={() => setAlertActive(!alertActive)}
-                  className={`w-full py-space-sm rounded-lg text-label-lg transition-colors font-bold cursor-pointer ${
-                    alertActive 
-                      ? 'bg-tertiary text-on-tertiary hover:bg-tertiary/90' 
-                      : 'bg-primary text-on-primary hover:bg-primary-container'
+                  onClick={() => setStopsFilter('NONSTOP')}
+                  className={`flex flex-col items-center justify-center p-2 rounded-xl text-xs font-semibold transition ${
+                    stopsFilter === 'NONSTOP'
+                      ? 'bg-[#d5e3ff] text-[#005cab] ring-1 ring-[#005cab]'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
                   }`}
                 >
-                  {alertActive ? 'Alert Subscribed ✓' : 'Create Alert'}
+                  <span className="font-bold">Non Stop</span>
+                  <span className="text-[11px] text-gray-500">₹6,499</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStopsFilter('1STOP')}
+                  className={`flex flex-col items-center justify-center p-2 rounded-xl text-xs font-semibold transition ${
+                    stopsFilter === '1STOP'
+                      ? 'bg-[#d5e3ff] text-[#005cab] ring-1 ring-[#005cab]'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
+                  }`}
+                >
+                  <span className="font-bold">1 Stop</span>
+                  <span className="text-[11px] text-gray-500">₹8,200+</span>
                 </button>
               </div>
             </div>
-          </aside>
 
-          {/* ── RIGHT RESULTS ── */}
-          <div className="flex-1 flex flex-col gap-space-md">
-            {/* Sort Bar */}
-            <div className="flex items-center justify-between flex-wrap gap-space-sm">
-              <div className="flex items-center gap-space-xs">
-                <span className="text-label-lg text-on-surface font-bold">{displayFlights.length} flights found</span>
-                <span className="text-body-sm text-on-surface-variant">· Prices include taxes and fees</span>
-              </div>
-              <div className="flex items-center gap-space-xs overflow-x-auto">
-                <span className="text-label-sm text-on-surface-variant">Sort:</span>
-                {sortOptions.map(opt => (
+            {/* Departure Time Slots */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Departure Time</span>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {[
+                  { id: 'BEFORE_6', label: 'Before 6 AM', sub: 'Early Bird', icon: '🌅' },
+                  { id: '6_12', label: '6 AM - 12 PM', sub: 'Morning', icon: '☀️' },
+                  { id: '12_18', label: '12 PM - 6 PM', sub: 'Afternoon', icon: '🌤️' },
+                  { id: 'AFTER_18', label: 'After 6 PM', sub: 'Evening', icon: '🌙' },
+                ].map((slot) => (
                   <button
-                    key={opt}
-                    onClick={() => setActiveSort(opt)}
-                    className={`text-label-md px-space-sm py-space-xs rounded-full whitespace-nowrap transition-colors ${
-                      activeSort === opt
-                        ? 'bg-primary text-on-primary'
-                        : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                    key={slot.id}
+                    type="button"
+                    onClick={() => setTimeSlotFilter(timeSlotFilter === slot.id ? 'ALL' : slot.id as any)}
+                    className={`flex flex-col items-center p-2 rounded-xl text-left transition ${
+                      timeSlotFilter === slot.id
+                        ? 'bg-[#008cff] text-white shadow-xs'
+                        : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
                     }`}
                   >
-                    {opt}
+                    <span className="text-sm">{slot.icon}</span>
+                    <span className="font-bold text-[11px] mt-0.5">{slot.label}</span>
+                    <span className={`text-[10px] ${timeSlotFilter === slot.id ? 'text-blue-100' : 'text-gray-500'}`}>
+                      {slot.sub}
+                    </span>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Flight Result Cards */}
-            {isLoading ? (
-              <div className="py-20 flex flex-col items-center justify-center gap-3 bg-surface-container-lowest rounded-xl shadow-card">
-                <span className="material-symbols-outlined animate-spin text-[36px] text-primary">progress_activity</span>
-                <span className="text-body-md text-on-surface font-semibold">Searching live fares for {fromCode} → {toCode}...</span>
+            {/* Airlines Checkboxes with Brand Logos */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Airlines</span>
+              {[
+                { name: 'IndiGo', code: '6E', color: 'bg-[#005bab]', price: '₹6,499' },
+                { name: 'Air India', code: 'AI', color: 'bg-[#bb0017]', price: '₹7,149' },
+                { name: 'Akasa Air', code: 'QP', color: 'bg-[#f4511e]', price: '₹6,680' },
+                { name: 'Air India Express', code: 'IX', color: 'bg-[#d81b60]', price: '₹6,900' },
+              ].map((al) => {
+                const checked = selectedAirlines.includes(al.name);
+                return (
+                  <label key={al.code} className="flex items-center justify-between p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer text-xs">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          setSelectedAirlines(prev => checked ? prev.filter(x => x !== al.name) : [...prev, al.name]);
+                        }}
+                        className="w-4 h-4 rounded text-[#008cff] focus:ring-0 cursor-pointer"
+                      />
+                      <div className={`w-5 h-5 rounded-md ${al.color} flex items-center justify-center text-[10px] text-white font-bold`}>
+                        {al.code}
+                      </div>
+                      <span className="text-gray-800 font-medium">{al.name}</span>
+                    </div>
+                    <span className="text-gray-500 font-semibold">{al.price}</span>
+                  </label>
+                );
+              })}
+            </div>
+
+            {/* MMT Assured Guarantee Box */}
+            <div className="p-3.5 rounded-xl bg-[#E8F5E9] border border-emerald-200 flex flex-col gap-1">
+              <div className="flex items-center space-x-1.5 text-[#1A7F37]">
+                <span className="text-base">🛡️</span>
+                <span className="font-bold text-xs uppercase tracking-wider">MMT Assured</span>
               </div>
-            ) : (
-              displayFlights.map(flight => (
-                <div
-                  key={flight.id}
-                onClick={() => setSelectedFlight(selectedFlight === flight.id ? null : flight.id)}
-                className={`bg-surface-container-lowest rounded-xl overflow-hidden shadow-card card-hover cursor-pointer border transition-all ${
-                  selectedFlight === flight.id ? 'border-primary ring-2 ring-primary/20' : 'border-transparent'
+              <p className="text-xs text-gray-800 leading-relaxed">
+                Instant refund on flight delays over 2 hours &bull; Priority baggage tags &bull; Free flight meal on selected carriers.
+              </p>
+            </div>
+          </aside>
+
+          {/* ── RIGHT MAIN CONTENT (9 Cols) ── */}
+          <main className="lg:col-span-9 flex flex-col gap-4">
+            {/* Sorting Tabs Bar */}
+            <div className="bg-white rounded-2xl p-2 shadow-xs border border-[#E7EBF0] flex items-center justify-between overflow-x-auto scrollbar-none">
+              <div className="flex items-center space-x-2">
+                {[
+                  { id: 'CHEAPEST', title: 'CHEAPEST', subtitle: '₹6,499 • 2h 45m' },
+                  { id: 'NONSTOP', title: 'NON STOP FIRST', subtitle: `${filteredFlights.filter(f => f.isNonStop).length} Flights` },
+                  { id: 'EARLIEST', title: 'EARLIEST DEPARTURE', subtitle: '05:15 DEL' },
+                  { id: 'FASTEST', title: 'FASTEST', subtitle: '2h 40m' },
+                ].map((sort) => (
+                  <button
+                    key={sort.id}
+                    type="button"
+                    onClick={() => setActiveSort(sort.id as any)}
+                    className={`px-4 py-2.5 rounded-xl flex flex-col items-start transition whitespace-nowrap ${
+                      activeSort === sort.id
+                        ? 'bg-[#005cab] text-white shadow-xs'
+                        : 'bg-[#F2F4F8] hover:bg-gray-200 text-gray-800'
+                    }`}
+                  >
+                    <span className="text-[10px] uppercase font-bold tracking-wider opacity-90">{sort.title}</span>
+                    <span className="text-xs font-bold mt-0.5">{sort.subtitle}</span>
+                  </button>
+                ))}
+              </div>
+              <span className="hidden sm:inline-block text-xs text-gray-400 pr-3">Prices per adult</span>
+            </div>
+
+            {/* Zero Cancellation Banner */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50 to-white border border-blue-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-full bg-[#0A58CA] text-white flex items-center justify-center font-bold text-lg shrink-0">
+                  🛡️
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-bold text-sm text-gray-900">Zero Cancellation Guarantee</span>
+                    <span className="bg-[#1A7F37] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">
+                      Popular
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    Cancel anytime up to 24 hrs prior for 100% full airline refund. Starting at only ₹399/traveller.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setZeroCancelProtection(!zeroCancelProtection)}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition shrink-0 ${
+                  zeroCancelProtection
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-[#008cff] hover:bg-[#0A58CA] text-white'
                 }`}
               >
-                <div className="p-space-md grid grid-cols-1 lg:grid-cols-12 gap-space-md items-center">
-                  {/* Airline Info */}
-                  <div className="lg:col-span-2 flex items-center gap-space-sm">
-                    <div className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center flex-shrink-0">
-                      {flight.logo ? (
-                        <img src={flight.logo} alt={flight.airline} className="w-8 h-8 rounded-md object-cover" />
-                      ) : (
-                        <span className="text-label-lg text-primary font-bold">{flight.airlineCode}</span>
-                      )}
-                    </div>
-                    <div>
-                      <span className="text-label-lg text-on-surface font-bold block">{flight.airline}</span>
-                      <span className="text-label-sm text-on-surface-variant">{flight.aircraft}</span>
-                    </div>
-                  </div>
-
-                  {/* Route Timeline */}
-                  <div className="lg:col-span-5 flex items-center gap-space-md justify-center">
-                    <div className="text-right">
-                      <span className="text-headline-md text-on-surface font-bold tabular-nums">{flight.departure}</span>
-                      <span className="text-label-lg text-on-surface font-bold block">{flight.from}</span>
-                    </div>
-
-                    {/* Route Connector */}
-                    <div className="flex flex-col items-center flex-1 max-w-[200px]">
-                      <span className="text-label-sm text-on-surface-variant">{flight.duration}</span>
-                      <div className="w-full flex items-center gap-1 my-1">
-                        <div className="h-[2px] flex-1 bg-outline-variant" />
-                        <span className="material-symbols-outlined text-primary text-[16px]">flight</span>
-                        <div className="h-[2px] flex-1 bg-outline-variant" />
-                      </div>
-                      <span className={`text-label-sm ${flight.stops === 'Non-stop' ? 'text-tertiary font-bold' : 'text-on-surface-variant'}`}>
-                        {flight.stops}
-                      </span>
-                    </div>
-
-                    <div className="text-left">
-                      <span className="text-headline-md text-on-surface font-bold tabular-nums">{flight.arrival}</span>
-                      <span className="text-label-lg text-on-surface font-bold block">{flight.to}</span>
-                    </div>
-                  </div>
-
-                  {/* Tags */}
-                  <div className="lg:col-span-2 flex flex-wrap gap-space-xs">
-                    {(flight.tags || []).map((tag: string, ti: number) => (
-                      <span
-                        key={ti}
-                        className={`text-label-sm px-space-sm py-0.5 rounded-full font-bold ${
-                          tag === 'Lowest Fare' ? 'bg-tertiary/10 text-tertiary'
-                          : tag === 'Best Rated' ? 'bg-primary/10 text-primary'
-                          : tag === 'Eco-Certified' ? 'bg-tertiary/10 text-tertiary'
-                          : tag === 'Value Pick' ? 'bg-secondary/10 text-secondary'
-                          : 'bg-surface-container text-on-surface-variant'
-                        }`}
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Price & Book */}
-                  <div className="lg:col-span-3 flex flex-col items-end gap-space-xs border-l border-outline-variant/30 pl-space-md">
-                    {flight.originalPrice && (
-                      <span className="text-body-sm text-on-surface-variant line-through tabular-nums">₹{flight.originalPrice.toLocaleString('en-IN')}</span>
-                    )}
-                    <span className="text-headline-md text-on-surface font-bold tabular-nums">₹{flight.price.toLocaleString('en-IN')}</span>
-                    <span className="text-label-sm text-on-surface-variant">per person · round trip</span>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onNavigate?.('checkout');
-                      }}
-                      className="w-full bg-secondary-container hover:bg-secondary text-on-secondary py-space-sm rounded-lg text-label-lg font-bold transition-all shadow-sm flex items-center justify-center gap-space-xs mt-space-xs"
-                    >
-                      <span>Select Flight</span>
-                      <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Expanded Details */}
-                {selectedFlight === flight.id && (
-                  <div className="border-t border-outline-variant/30 bg-surface-container-low/50 px-space-md py-space-sm">
-                    <div className="flex items-center gap-space-lg flex-wrap text-body-sm text-on-surface-variant">
-                      <div className="flex items-center gap-space-xs">
-                        <span className="material-symbols-outlined text-[16px] text-primary">luggage</span>
-                        <span>{flight.baggage}</span>
-                      </div>
-                      <div className="flex items-center gap-space-xs">
-                        <span className="material-symbols-outlined text-[16px] text-primary">eco</span>
-                        <span className={`${flight.emissionsRating === 'low' ? 'text-tertiary' : flight.emissionsRating === 'high' ? 'text-error' : 'text-on-surface-variant'}`}>
-                          {flight.emissions}
-                          {flight.emissionsRating === 'low' && ' · Low emissions'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-space-xs">
-                        <span className="material-symbols-outlined text-[16px] text-primary">airline_seat_recline_extra</span>
-                        <span>{flight.cabin}</span>
-                      </div>
-                      <div className="flex items-center gap-space-xs">
-                        <span className="material-symbols-outlined text-[16px] text-primary">info</span>
-                        <span>{flight.aircraft}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )))}
-
-            {/* Load More */}
-            <div className="flex justify-center pt-space-md">
-              <button 
-                type="button"
-                onClick={() => alert(`All verified flights for ${fromCode} → ${toCode} are currently displayed.`)}
-                className="text-label-lg text-primary hover:text-primary-container flex items-center gap-space-xs transition-colors cursor-pointer"
-              >
-                <span>All {displayFlights.length} Flights Loaded ✓</span>
-                <span className="material-symbols-outlined text-[18px]">done</span>
+                {zeroCancelProtection ? 'PROTECTION ACTIVE ✔' : 'ADD PROTECTION'}
               </button>
             </div>
-          </div>
+
+            {/* Flight Cards List */}
+            {filteredFlights.length === 0 ? (
+              <div className="bg-white rounded-2xl p-12 text-center border border-gray-200 shadow-xs">
+                <p className="text-base font-bold text-gray-800">No flights match the selected filters</p>
+                <p className="text-xs text-gray-500 mt-1">Try resetting price sliders or removing airline filters.</p>
+                <button
+                  onClick={handleResetFilters}
+                  className="mt-4 px-4 py-2 bg-[#008cff] text-white text-xs font-bold rounded-lg"
+                >
+                  Reset Filters
+                </button>
+              </div>
+            ) : (
+              filteredFlights.map((flight) => {
+                const isExpanded = expandedFlightId === flight.id;
+                return (
+                  <article
+                    key={flight.id}
+                    className="bg-white rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow border border-[#E7EBF0] flex flex-col gap-4 relative overflow-hidden"
+                  >
+                    {/* Top Tag Badge */}
+                    {flight.tags.length > 0 && (
+                      <div className="absolute top-0 left-0 bg-[#1A7F37] text-white px-3 py-0.5 rounded-br-lg text-[10px] font-bold uppercase tracking-wider flex items-center space-x-1">
+                        <span>👍 {flight.tags[0]}</span>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
+                      {/* Airline Info */}
+                      <div className="flex items-center space-x-3 min-w-[190px]">
+                        <div className={`w-11 h-11 rounded-xl ${flight.brandBg} text-white font-black text-sm flex items-center justify-center shadow-xs`}>
+                          {flight.airlineCode}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-base text-gray-900 leading-tight">{flight.airline}</span>
+                          <span className="text-xs text-gray-500 mt-0.5">{flight.flightNumber} &bull; {flight.aircraft}</span>
+                        </div>
+                      </div>
+
+                      {/* Route Timings Graphic */}
+                      <div className="flex items-center space-x-4 flex-1 max-w-[420px] justify-between">
+                        {/* Origin */}
+                        <div className="flex flex-col text-left">
+                          <span className="text-xl font-black text-gray-900">{flight.depTime}</span>
+                          <span className="text-sm font-bold text-gray-800">{flight.depCode}</span>
+                          <span className="text-[11px] text-gray-500">{flight.depTerminal}</span>
+                        </div>
+
+                        {/* Route Indicator */}
+                        <div className="flex flex-col items-center flex-1 px-2">
+                          <span className="text-xs text-gray-600 font-semibold">{flight.duration}</span>
+                          <div className="w-full flex items-center gap-1 my-1">
+                            <div className="h-0.5 flex-1 bg-[#008cff]" />
+                            <span className="text-[#008cff] text-xs">✈</span>
+                            <div className="h-0.5 flex-1 bg-[#008cff]" />
+                          </div>
+                          <span className="text-[10px] font-bold text-[#1A7F37] uppercase">{flight.stopsText}</span>
+                        </div>
+
+                        {/* Destination */}
+                        <div className="flex flex-col text-right">
+                          <span className="text-xl font-black text-gray-900">{flight.arrTime}</span>
+                          <span className="text-sm font-bold text-gray-800">{flight.arrCode}</span>
+                          <span className="text-[11px] text-gray-500">{flight.arrTerminal}</span>
+                        </div>
+                      </div>
+
+                      {/* Price & Booking Button */}
+                      <div className="flex flex-col md:items-end justify-between gap-1 min-w-[160px]">
+                        <div className="flex flex-col md:text-right">
+                          <span className="text-xs text-gray-400 line-through">₹{flight.originalPrice.toLocaleString('en-IN')}</span>
+                          <span className="text-2xl font-black text-[#005cab]">₹{flight.price.toLocaleString('en-IN')}</span>
+                          <span className="text-[11px] text-gray-500">per adult</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleBookFlight(flight)}
+                          className="w-full md:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#008cff] to-[#0A58CA] hover:from-[#0A58CA] hover:to-[#005cab] text-white font-extrabold text-sm shadow-md transition transform active:scale-95 text-center"
+                        >
+                          BOOK NOW
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Bottom Amenities Strip */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 bg-[#F2F4F8] -mx-5 -mb-5 px-5 py-2.5 rounded-b-2xl border-t border-[#E7EBF0]">
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
+                        <span className="flex items-center gap-1 text-[#1A7F37] bg-[#E8F5E9] px-2 py-0.5 rounded-full font-semibold text-[11px]">
+                          ✔ Free Web Check-in
+                        </span>
+                        <span>🎒 {flight.cabinBaggage} Cabin &bull; 🧳 {flight.checkinBaggage} Check-in</span>
+                        {flight.hasFreeMeal ? (
+                          <span className="text-[#005cab] font-semibold">🍽️ Free Hot Meal</span>
+                        ) : (
+                          <span>🍽️ Meals for purchase</span>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setExpandedFlightId(isExpanded ? null : flight.id)}
+                        className="text-xs font-bold text-[#008cff] hover:underline flex items-center space-x-0.5"
+                      >
+                        <span>{isExpanded ? 'Hide Flight Details' : 'View Flight Details'}</span>
+                        <span>{isExpanded ? '▲' : '▼'}</span>
+                      </button>
+                    </div>
+
+                    {/* Expandable Flight Details Drawer */}
+                    {isExpanded && (
+                      <div className="p-4 bg-white rounded-xl border border-gray-200 mt-2 space-y-3">
+                        <div className="flex items-center space-x-4 border-b border-gray-200 pb-2 text-xs font-bold">
+                          <button
+                            type="button"
+                            onClick={() => setFlightDetailTab('info')}
+                            className={`pb-1 ${flightDetailTab === 'info' ? 'text-[#008cff] border-b-2 border-[#008cff]' : 'text-gray-500'}`}
+                          >
+                            Flight Information
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFlightDetailTab('fare')}
+                            className={`pb-1 ${flightDetailTab === 'fare' ? 'text-[#008cff] border-b-2 border-[#008cff]' : 'text-gray-500'}`}
+                          >
+                            Fare Breakup
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFlightDetailTab('policy')}
+                            className={`pb-1 ${flightDetailTab === 'policy' ? 'text-[#008cff] border-b-2 border-[#008cff]' : 'text-gray-500'}`}
+                          >
+                            Baggage & Cancellation Policy
+                          </button>
+                        </div>
+
+                        {flightDetailTab === 'info' && (
+                          <div className="text-xs text-gray-700 space-y-1">
+                            <p><strong>{flight.airline} {flight.flightNumber}:</strong> Departs {flight.depCode} ({flight.depTerminal}) at {flight.depTime}. Arrives {flight.arrCode} ({flight.arrTerminal}) at {flight.arrTime}. Total flight duration {flight.duration}. Aircraft type: {flight.aircraft}.</p>
+                            <p className="text-gray-500">Economy Saver Class &bull; Guaranteed Seat Confirmation.</p>
+                          </div>
+                        )}
+
+                        {flightDetailTab === 'fare' && (
+                          <div className="text-xs text-gray-700 space-y-1">
+                            <p>Base Fare: <strong>₹{flight.baseFare.toLocaleString('en-IN')}</strong></p>
+                            <p>Airline Taxes & Regulatory Fees: <strong>₹{flight.taxes.toLocaleString('en-IN')}</strong></p>
+                            <p>Special Instant Discount: <strong className="text-[#1A7F37]">- ₹300</strong></p>
+                            <p className="border-t border-gray-200 pt-1 font-bold text-gray-900">Total Fare: ₹{flight.price.toLocaleString('en-IN')}</p>
+                          </div>
+                        )}
+
+                        {flightDetailTab === 'policy' && (
+                          <div className="text-xs text-gray-700 space-y-1">
+                            <p><strong>Cancellation Penalty:</strong> ₹3,000 fee applies up to 2 hours prior to departure. Non-refundable within 2 hours of departure.</p>
+                            <p><strong>Date Change:</strong> Permitted with fare difference + ₹2,500 date change fee.</p>
+                            <p className="text-emerald-700 font-semibold">100% full refund available if Zero Cancellation guarantee is purchased.</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </article>
+                );
+              })
+            )}
+          </main>
         </div>
       </div>
     </div>
