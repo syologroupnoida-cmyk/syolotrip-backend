@@ -38,9 +38,15 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
   const [activeCategory, setActiveCategory] = useState<CategoryMode>('flights');
   const [tripType, setTripType] = useState<'oneway' | 'roundtrip' | 'multicity'>('oneway');
   const [originCode, setOriginCode] = useState('DEL');
-  const [originCity, setOriginCity] = useState('New Delhi, India');
-  const [destCode, setDestCode] = useState('BOM');
-  const [destCity, setDestCity] = useState('Mumbai, India');
+  const [originCity, setOriginCity] = useState('Delhi');
+  const [destCode, setDestCode] = useState('GOI');
+  const [destCity, setDestCity] = useState('Goa');
+  const [departureDate, setDepartureDate] = useState('15 Oct 2026');
+  const [departureDay, setDepartureDay] = useState('Wed');
+  const [returnDate, setReturnDate] = useState('22 Oct 2026');
+  const [returnDay, setReturnDay] = useState('Wed');
+  const [travellersText, setTravellersText] = useState('2 Adults, 1 Child');
+  const [travelClass, setTravelClass] = useState('Economy');
   const [specialFare, setSpecialFare] = useState('regular');
   const [offersTab, setOffersTab] = useState<'all' | 'flights' | 'hotels' | 'holidays' | 'trains'>('all');
 
@@ -217,8 +223,8 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
       originCity,
       destCode,
       destCity,
-      datesText: 'Oct 24 - Oct 31, 2026',
-      travelersText: '1 Traveler, Economy',
+      datesText: tripType === 'roundtrip' ? `${departureDate} - ${returnDate}` : `${departureDate}`,
+      travelersText: `${travellersText}, ${travelClass}`,
       seat: '12B',
       hasInsurance: true,
       travelerName: 'Alexander Vanderbilt',
@@ -290,7 +296,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                 : 'Where to? Search flights, hotels & stays'}
             </Text>
             <Text style={styles.topSearchSubtitle} numberOfLines={1}>
-              {originCity.split(',')[0]} ➔ {destCity.split(',')[0]} · Oct 24–31 · Tap to Search
+              {originCity} ➔ {destCity} · {departureDate} · Tap to Search
             </Text>
           </View>
           <View style={styles.topSearchActionBadge}>
@@ -353,230 +359,179 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
         </ScrollView>
       </View>
 
-      {/* ── 3. SEARCH ENGINE CONSOLE WIDGET CARD (Stitch Replica) ── */}
+      {/* ── 3. SEARCH ENGINE CONSOLE WIDGET CARD (Exact Pixel-Perfect Screenshot Replica) ── */}
       <View style={styles.searchCard}>
-        {/* Trip Mode Radio Bar */}
-        <View style={styles.tripTypeRow}>
-          {(['oneway', 'roundtrip', 'multicity'] as const).map((mode) => {
-            const isSelected = tripType === mode;
+        {/* Top Row: Trip Mode Radio Buttons */}
+        <View style={styles.radioRow}>
+          {([
+            { id: 'oneway' as const, label: 'One way' },
+            { id: 'roundtrip' as const, label: 'Round trip' },
+            { id: 'multicity' as const, label: 'Multi-city' },
+          ]).map((tab) => {
+            const isSelected = tripType === tab.id;
             return (
               <TouchableOpacity
-                key={mode}
-                style={[
-                  styles.tripTypeTab,
-                  isSelected && styles.tripTypeTabSelected,
-                ]}
-                onPress={() => setTripType(mode)}
+                key={tab.id}
+                style={styles.radioOption}
+                onPress={() => setTripType(tab.id)}
                 activeOpacity={0.7}
               >
-                <View
-                  style={[
-                    styles.radioCircle,
-                    isSelected && styles.radioCircleSelected,
-                  ]}
-                >
-                  {isSelected && <View style={styles.radioInner} />}
+                <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
+                  {isSelected && <View style={styles.radioCircleDot} />}
                 </View>
-                <Text
-                  style={[
-                    styles.tripTypeText,
-                    isSelected && styles.tripTypeTextSelected,
-                  ]}
-                >
-                  {mode === 'oneway' ? 'One Way' : mode === 'roundtrip' ? 'Round Trip' : 'Multi City'}
+                <Text style={[styles.radioOptionText, isSelected && styles.radioOptionTextActive]}>
+                  {tab.label}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* FROM & TO Segment with Centered Swap Icon */}
-        <View style={styles.routeContainer}>
-          {/* FROM Input */}
+        {/* Row 2: FROM & TO Segment with Centered Swap Icon */}
+        <View style={styles.routeRowWrapper}>
+          {/* FROM tile */}
           <TouchableOpacity
-            style={styles.routeBox}
+            style={styles.routeTile}
             onPress={() => {
               if (originCode === 'DEL') {
-                setOriginCode('SFO');
-                setOriginCity('San Francisco, USA');
+                setOriginCode('BOM');
+                setOriginCity('Mumbai');
               } else {
                 setOriginCode('DEL');
-                setOriginCity('New Delhi, India');
+                setOriginCity('Delhi');
               }
             }}
             activeOpacity={0.8}
           >
-            <View style={styles.routeMeta}>
-              <Text style={styles.routeLabel}>FROM</Text>
-              <View style={styles.codeRow}>
-                <Text style={styles.airportCode}>{originCode}</Text>
-                <Text style={styles.cityName} numberOfLines={1}>{originCity.split(',')[0]}</Text>
-              </View>
-              <Text style={styles.subAirport} numberOfLines={1}>{originCity}</Text>
+            <MaterialIcons name="flight-takeoff" size={24} color="#0066FF" style={styles.tileIcon} />
+            <View style={styles.tileCol}>
+              <Text style={styles.tileLabel}>From</Text>
+              <Text style={styles.tileMainText} numberOfLines={1}>{originCity}</Text>
+              <Text style={styles.tileSubText}>{originCode}</Text>
             </View>
-            <MaterialIcons name="flight-takeoff" size={20} color="#707785" />
           </TouchableOpacity>
 
-          {/* Swap Floating Button */}
-          <View style={styles.swapDivider}>
-            <View style={styles.dividerLine} />
-            <TouchableOpacity
-              style={styles.swapFab}
-              onPress={handleSwapRoutes}
-              activeOpacity={0.8}
-            >
-              <Animated.View style={{ transform: [{ rotate: spin }] }}>
-                <MaterialIcons name="sync-alt" size={18} color="#005cab" />
-              </Animated.View>
-            </TouchableOpacity>
-          </View>
-
-          {/* TO Input */}
+          {/* Center Swap Button */}
           <TouchableOpacity
-            style={styles.routeBox}
+            style={styles.centerSwapFab}
+            onPress={handleSwapRoutes}
+            activeOpacity={0.8}
+          >
+            <Animated.View style={{ transform: [{ rotate: spin }] }}>
+              <MaterialIcons name="sync-alt" size={18} color="#0F172A" />
+            </Animated.View>
+          </TouchableOpacity>
+
+          {/* TO tile */}
+          <TouchableOpacity
+            style={styles.routeTile}
             onPress={() => {
-              if (destCode === 'BOM') {
-                setDestCode('HND');
-                setDestCity('Tokyo Haneda, Japan');
+              if (destCode === 'GOI') {
+                setDestCode('BLR');
+                setDestCity('Bengaluru');
               } else {
-                setDestCode('BOM');
-                setDestCity('Mumbai, India');
+                setDestCode('GOI');
+                setDestCity('Goa');
               }
             }}
             activeOpacity={0.8}
           >
-            <View style={styles.routeMeta}>
-              <Text style={styles.routeLabel}>TO</Text>
-              <View style={styles.codeRow}>
-                <Text style={styles.airportCode}>{destCode}</Text>
-                <Text style={styles.cityName} numberOfLines={1}>{destCity.split(',')[0]}</Text>
-              </View>
-              <Text style={styles.subAirport} numberOfLines={1}>{destCity}</Text>
+            <MaterialIcons name="flight-land" size={24} color="#0066FF" style={styles.tileIcon} />
+            <View style={styles.tileCol}>
+              <Text style={styles.tileLabel}>To</Text>
+              <Text style={styles.tileMainText} numberOfLines={1}>{destCity}</Text>
+              <Text style={styles.tileSubText}>{destCode}</Text>
             </View>
-            <MaterialIcons name="flight-land" size={20} color="#707785" />
           </TouchableOpacity>
         </View>
 
-        {/* Departure & Return Grid */}
-        <View style={styles.dateGrid}>
-          <TouchableOpacity style={styles.dateCell} activeOpacity={0.8}>
-            <Text style={styles.routeLabel}>DEPARTURE DATE</Text>
-            <View style={styles.dateNumberRow}>
-              <Text style={styles.dateDayNumber}>24</Text>
-              <Text style={styles.dateMonth}>Oct'26</Text>
+        {/* Row 3: Departure & Return Grid */}
+        <View style={styles.datesRow}>
+          {/* Departure tile */}
+          <TouchableOpacity
+            style={styles.dateTile}
+            onPress={() => {
+              if (departureDate === '15 Oct 2026') {
+                setDepartureDate('16 Oct 2026');
+                setDepartureDay('Thu');
+              } else {
+                setDepartureDate('15 Oct 2026');
+                setDepartureDay('Wed');
+              }
+            }}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="calendar-today" size={22} color="#0066FF" style={styles.tileIcon} />
+            <View style={styles.tileCol}>
+              <Text style={styles.tileLabel}>Departure</Text>
+              <Text style={styles.tileDateMainText}>{departureDate}</Text>
+              <Text style={styles.tileSubText}>{departureDay}</Text>
             </View>
-            <Text style={styles.dateDayName}>Saturday</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.dateCell} activeOpacity={0.8}>
-            <View style={styles.returnHeader}>
-              <MaterialIcons name="add-circle" size={14} color="#005cab" />
-              <Text style={[styles.routeLabel, { color: '#005cab' }]}>RETURN DATE</Text>
+          {/* Return tile */}
+          <TouchableOpacity
+            style={[styles.dateTile, tripType === 'oneway' && styles.dateTileDimmed]}
+            onPress={() => {
+              if (tripType === 'oneway') {
+                setTripType('roundtrip');
+              } else {
+                if (returnDate === '22 Oct 2026') {
+                  setReturnDate('24 Oct 2026');
+                  setReturnDay('Fri');
+                } else {
+                  setReturnDate('22 Oct 2026');
+                  setReturnDay('Wed');
+                }
+              }
+            }}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="calendar-today" size={22} color="#0066FF" style={styles.tileIcon} />
+            <View style={styles.tileCol}>
+              <Text style={styles.tileLabel}>Return</Text>
+              <Text style={styles.tileDateMainText}>{returnDate}</Text>
+              <Text style={styles.tileSubText}>{returnDay}</Text>
             </View>
-            <Text style={styles.returnPrompt}>Tap to add return for bigger savings</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Travellers & Class */}
-        <TouchableOpacity style={styles.travellersBox} activeOpacity={0.8}>
-          <View>
-            <Text style={styles.routeLabel}>TRAVELLERS &amp; CLASS</Text>
-            <View style={styles.travellersValueRow}>
-              <Text style={styles.travellersCount}>1 Traveller</Text>
-              <Text style={styles.travellersClass}>• Economy / Premium</Text>
+        {/* Row 4: Travellers & Class Full Width Box */}
+        <TouchableOpacity
+          style={styles.travellersTile}
+          onPress={() => {
+            if (travellersText === '2 Adults, 1 Child') {
+              setTravellersText('1 Adult');
+              setTravelClass('Economy');
+            } else if (travellersText === '1 Adult') {
+              setTravellersText('2 Adults');
+              setTravelClass('Premium Economy');
+            } else {
+              setTravellersText('2 Adults, 1 Child');
+              setTravelClass('Economy');
+            }
+          }}
+          activeOpacity={0.8}
+        >
+          <View style={styles.travellersLeft}>
+            <MaterialIcons name="person-outline" size={26} color="#0066FF" style={styles.tileIcon} />
+            <View style={styles.tileCol}>
+              <Text style={styles.tileLabel}>Travellers & Class</Text>
+              <Text style={styles.tileMainText}>{travellersText}</Text>
+              <Text style={styles.tileSubText}>{travelClass}</Text>
             </View>
           </View>
-          <MaterialIcons name="arrow-forward-ios" size={14} color="#707785" />
+          <MaterialIcons name="keyboard-arrow-down" size={24} color="#0F172A" />
         </TouchableOpacity>
 
-        {/* Special Fares Selection */}
-        <View style={styles.specialFaresSection}>
-          <View style={styles.specialFaresHeader}>
-            <Text style={styles.specialFaresTitle}>Special Fares (Optional):</Text>
-            <Text style={styles.savingsTag}>Extra Savings Active</Text>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.specialFaresRow}
-          >
-            {[
-              { id: 'regular', label: 'Regular Fares' },
-              { id: 'student', label: 'Student Fares' },
-              { id: 'senior', label: 'Senior Citizen' },
-              { id: 'armed', label: 'Armed Forces' },
-              { id: 'medical', label: 'Doctors & Nurses' },
-            ].map((f) => (
-              <TouchableOpacity
-                key={f.id}
-                style={[
-                  styles.fareChip,
-                  specialFare === f.id && styles.fareChipSelected,
-                ]}
-                onPress={() => setSpecialFare(f.id)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.fareChipText,
-                    specialFare === f.id && styles.fareChipTextSelected,
-                  ]}
-                >
-                  {f.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Trending shortcuts */}
-        <View style={styles.trendingRow}>
-          <Text style={styles.trendingLabel}>Trending:</Text>
-          <TouchableOpacity
-            style={styles.trendingChip}
-            onPress={() => {
-              setOriginCode('DEL');
-              setDestCode('BOM');
-            }}
-          >
-            <Text style={styles.trendingChipText}>DEL → BOM</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.trendingChip}
-            onPress={() => {
-              setOriginCode('SFO');
-              setDestCode('HND');
-            }}
-          >
-            <Text style={styles.trendingChipText}>SFO → HND</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Big Vibrant Gradient Search Button */}
+        {/* Row 5: Solid Royal Blue Search Flights Button */}
         <TouchableOpacity
-          style={styles.searchButton}
+          style={styles.searchFlightsBtn}
           onPress={handleSearchPress}
-          activeOpacity={0.9}
+          activeOpacity={0.88}
         >
-          <LinearGradient
-            colors={['#008cff', '#005cab']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.searchButtonGradient}
-          >
-            <MaterialIcons name="search" size={20} color="#ffffff" />
-            <Text style={styles.searchButtonText}>
-              {activeCategory === 'flights' ? 'SEARCH FLIGHTS' :
-               activeCategory === 'hotels' ? 'SEARCH HOTELS' :
-               activeCategory === 'villas' ? 'SEARCH VILLAS' :
-               activeCategory === 'trains' ? 'BOOK TRAIN' :
-               activeCategory === 'buses' ? 'BOOK BUS' :
-               activeCategory === 'cabs' ? 'RESERVE CAB' :
-               activeCategory === 'tours' ? 'EXPLORE TOURS' :
-               activeCategory === 'visa' ? 'APPLY VISA' :
-               activeCategory === 'insurance' ? 'VIEW INSURANCE PLANS' : 'EXPLORE PACKAGES'}
-            </Text>
-          </LinearGradient>
+          <MaterialIcons name="search" size={22} color="#ffffff" style={styles.searchBtnIcon} />
+          <Text style={styles.searchFlightsBtnText}>Search Flights</Text>
         </TouchableOpacity>
       </View>
 
@@ -1315,276 +1270,176 @@ const styles = StyleSheet.create({
   },
   searchCard: {
     marginHorizontal: 12,
-    marginTop: 12,
+    marginTop: 10,
     backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 14,
-    ...Shadows.md,
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#E7EBF0',
-    gap: 10,
+    borderColor: '#E8EDF5',
+    ...Shadows.md,
   },
-  tripTypeRow: {
-    flexDirection: 'row',
-    backgroundColor: '#F2F4F8',
-    borderRadius: 8,
-    padding: 3,
-    gap: 4,
-  },
-  tripTypeTab: {
-    flex: 1,
+  radioRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    borderRadius: 6,
+    gap: 22,
+    marginBottom: 16,
+    paddingHorizontal: 2,
   },
-  tripTypeTabSelected: {
-    backgroundColor: '#ffffff',
-    ...Shadows.sm,
+  radioOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   radioCircle: {
-    width: 13,
-    height: 13,
-    borderRadius: 7,
-    borderWidth: 1.5,
-    borderColor: '#707785',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioCircleSelected: {
-    borderColor: '#005cab',
-  },
-  radioInner: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#005cab',
-  },
-  tripTypeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#525f71',
-  },
-  tripTypeTextSelected: {
-    color: '#005cab',
-    fontWeight: '700',
-  },
-  routeContainer: {
-    backgroundColor: '#F2F4F8',
-    borderRadius: 12,
-    padding: 12,
-    gap: 8,
-    position: 'relative',
-  },
-  routeBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  routeMeta: {
-    flex: 1,
-  },
-  routeLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#707785',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  codeRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 6,
-    marginTop: 1,
-  },
-  airportCode: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#1b1c1c',
-  },
-  cityName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1b1c1c',
-    flex: 1,
-  },
-  subAirport: {
-    fontSize: 11,
-    color: '#707785',
-    marginTop: 1,
-  },
-  swapDivider: {
-    position: 'relative',
+    width: 20,
     height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dividerLine: {
-    width: '100%',
-    height: 1,
-    backgroundColor: '#c0c7d6',
-  },
-  swapFab: {
-    position: 'absolute',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#B0BAC9',
     backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.sm,
-    borderWidth: 1,
-    borderColor: '#E7EBF0',
   },
-  dateGrid: {
-    flexDirection: 'row',
-    gap: 8,
+  radioCircleActive: {
+    borderColor: '#0066FF',
+    backgroundColor: '#0066FF',
   },
-  dateCell: {
-    flex: 1,
-    backgroundColor: '#F2F4F8',
-    borderRadius: 10,
-    padding: 10,
-    justifyContent: 'center',
+  radioCircleDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#ffffff',
   },
-  dateNumberRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-    marginTop: 2,
+  radioOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1E293B',
   },
-  dateDayNumber: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1b1c1c',
-  },
-  dateMonth: {
-    fontSize: 12,
+  radioOptionTextActive: {
     fontWeight: '700',
-    color: '#1b1c1c',
+    color: '#0F172A',
   },
-  dateDayName: {
-    fontSize: 10,
-    color: '#707785',
+  routeRowWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+    gap: 10,
+  },
+  routeTile: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#ffffff',
+    minHeight: 68,
+  },
+  centerSwapFab: {
+    position: 'absolute',
+    left: '50%',
+    marginLeft: -17,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    ...Shadows.sm,
+  },
+  datesRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  dateTile: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#ffffff',
+    minHeight: 68,
+  },
+  dateTileDimmed: {
+    opacity: 0.65,
+  },
+  tileIcon: {
+    marginRight: 10,
+  },
+  tileCol: {
+    flex: 1,
+  },
+  tileLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+    marginBottom: 1,
+  },
+  tileMainText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  tileDateMainText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  tileSubText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
     marginTop: 1,
   },
-  returnHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  returnPrompt: {
-    fontSize: 10,
-    color: '#707785',
-    marginTop: 3,
-    lineHeight: 13,
-  },
-  travellersBox: {
-    backgroundColor: '#F2F4F8',
-    borderRadius: 10,
-    padding: 10,
+  travellersTile: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  travellersValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 2,
-  },
-  travellersCount: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1b1c1c',
-  },
-  travellersClass: {
-    fontSize: 11,
-    color: '#707785',
-  },
-  specialFaresSection: {
-    gap: 6,
-    paddingTop: 2,
-  },
-  specialFaresHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  specialFaresTitle: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#525f71',
-    textTransform: 'uppercase',
-  },
-  savingsTag: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#1A7F37',
-  },
-  specialFaresRow: {
-    gap: 6,
-  },
-  fareChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     borderRadius: 14,
-    backgroundColor: '#F2F4F8',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: '#ffffff',
+    marginTop: 10,
+    minHeight: 68,
   },
-  fareChipSelected: {
-    backgroundColor: '#d3e1f6',
-  },
-  fareChipText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#525f71',
-  },
-  fareChipTextSelected: {
-    color: '#005cab',
-    fontWeight: '700',
-  },
-  trendingRow: {
+  travellersLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingTop: 2,
+    flex: 1,
   },
-  trendingLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#707785',
-  },
-  trendingChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    backgroundColor: '#F2F4F8',
-    borderRadius: 6,
-  },
-  trendingChipText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#1b1c1c',
-  },
-  searchButton: {
-    marginTop: 4,
-    borderRadius: 12,
-    overflow: 'hidden',
-    ...Shadows.md,
-  },
-  searchButtonGradient: {
+  searchFlightsBtn: {
+    marginTop: 14,
+    backgroundColor: '#0066FF',
+    borderRadius: 14,
+    height: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 13,
+    shadowColor: '#0066FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  searchButtonText: {
-    fontSize: 14,
-    fontWeight: '800',
+  searchBtnIcon: {
+    marginRight: 8,
+  },
+  searchFlightsBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
     color: '#ffffff',
-    letterSpacing: 0.8,
+    letterSpacing: 0.2,
   },
   welcomeBanner: {
     marginHorizontal: 12,

@@ -81,12 +81,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentTab, setCurre
 
       {/* Safety Notice Card */}
       <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-[11px] text-slate-400 space-y-1.5">
-        <div className="flex items-center gap-1.5 text-amber-400 font-bold">
+        <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
           <ShieldAlert className="w-3.5 h-3.5 flex-shrink-0" />
-          <span>Simulated Engine</span>
+          <span>PostgreSQL Live Sync</span>
         </div>
         <p className="leading-relaxed text-[11px] text-slate-400">
-          All inventory mutations in Phase 1 operate on deterministic mock data stores.
+          All inventory & booking mutations sync live to PostgreSQL. Payments are explicitly simulated for demo.
         </p>
       </div>
     </aside>

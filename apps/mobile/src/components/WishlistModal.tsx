@@ -12,7 +12,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useWishlist, MobileWishlistItem } from '../context/WishlistContext';
 import { Colors, Shadows, formatINR } from '../theme/theme';
-import { TripBookingState } from '../types/travel';
+import { TripBookingState, ScreenName, HotelOption, FlightOption } from '../types/travel';
 
 const { height } = Dimensions.get('window');
 
@@ -20,7 +20,9 @@ interface WishlistModalProps {
   isOpen: boolean;
   onClose: () => void;
   onInitiateBooking?: (booking: TripBookingState) => void;
-  onNavigate?: (screen: any) => void;
+  onNavigate?: (screen: ScreenName) => void;
+  onSelectHotel?: (hotel: HotelOption) => void;
+  onSelectFlight?: (flight: FlightOption) => void;
 }
 
 export const WishlistModal: React.FC<WishlistModalProps> = ({
@@ -28,8 +30,71 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
   onClose,
   onInitiateBooking,
   onNavigate,
+  onSelectHotel,
+  onSelectFlight,
 }) => {
   const { wishlist, removeFromWishlist, clearWishlist, wishlistCount } = useWishlist();
+
+  const handleOpenItem = (item: MobileWishlistItem) => {
+    onClose();
+
+    if (item.category === 'HOTEL' || item.category === 'VILLA') {
+      if (onSelectHotel) {
+        onSelectHotel({
+          id: item.id,
+          name: item.title,
+          stars: 5,
+          ratingScore: item.rating || 4.8,
+          ratingLabel: 'Exceptional',
+          reviewCount: 340,
+          neighborhood: item.location.split('·')[0].trim(),
+          distance: item.location.includes('·') ? item.location.split('·')[1].trim() : 'Prime City Location',
+          pricePerNight: item.price,
+          totalPrice: item.price * 2,
+          cancellationText: 'Free cancellation up to 24 hrs before check-in',
+          breakfastIncluded: true,
+          image: item.image,
+          tags: ['LUXE STAY', 'VERIFIED AMENITIES', 'SWIMMING POOL'],
+          lat: 15.525,
+          lng: 73.766,
+        });
+      }
+      if (onNavigate) {
+        onNavigate('hotels');
+      }
+      return;
+    }
+
+    if (item.category === 'FLIGHT') {
+      if (onSelectFlight) {
+        onSelectFlight({
+          id: item.id,
+          airline: item.title.includes('Flight') ? item.title : `${item.title} Air`,
+          flightCode: 'SSJ-340',
+          aircraft: 'Airbus A321neo',
+          originCode: 'DEL',
+          originTerminal: 'Terminal 3',
+          departureTime: '08:30 AM',
+          destCode: 'GOI',
+          destTerminal: 'Terminal 1',
+          arrivalTime: '11:00 AM',
+          duration: '2h 30m',
+          isNextDay: false,
+          stopsText: 'Non-stop',
+          isDirect: true,
+          price: item.price,
+          perks: ['Free carry-on', 'Snack box', 'USB power'],
+        });
+      }
+      if (onNavigate) {
+        onNavigate('flights');
+      }
+      return;
+    }
+
+    // Default to initiating booking for packages, buses, trains, cabs
+    handleBookItem(item);
+  };
 
   const handleBookItem = (item: MobileWishlistItem) => {
     onClose();
@@ -132,7 +197,12 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
               </View>
             ) : (
               wishlist.map((item) => (
-                <View key={item.id} style={styles.card}>
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.card}
+                  onPress={() => handleOpenItem(item)}
+                  activeOpacity={0.88}
+                >
                   <Image source={{ uri: item.image }} style={styles.cardImage} />
                   
                   {item.badge && (
@@ -172,7 +242,10 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
                       <View style={styles.actionsRow}>
                         <TouchableOpacity
                           style={styles.deleteBtn}
-                          onPress={() => removeFromWishlist(item.id)}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            removeFromWishlist(item.id);
+                          }}
                           activeOpacity={0.7}
                         >
                           <MaterialIcons name="delete-outline" size={18} color="#94a3b8" />
@@ -180,15 +253,25 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
 
                         <TouchableOpacity
                           style={styles.bookBtn}
-                          onPress={() => handleBookItem(item)}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleOpenItem(item);
+                          }}
                           activeOpacity={0.85}
                         >
-                          <Text style={styles.bookBtnText}>Book Now</Text>
+                          <Text style={styles.bookBtnText}>
+                            {item.category === 'HOTEL' || item.category === 'VILLA'
+                              ? 'Open Hotel'
+                              : item.category === 'FLIGHT'
+                              ? 'Open Flight'
+                              : 'Open & Book'}
+                          </Text>
+                          <MaterialIcons name="arrow-forward" size={13} color="#ffffff" style={{ marginLeft: 3 }} />
                         </TouchableOpacity>
                       </View>
                     </View>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))
             )}
           </ScrollView>

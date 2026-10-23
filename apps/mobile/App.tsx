@@ -11,6 +11,7 @@ import { FlightResultsScreen } from './src/screens/FlightResultsScreen';
 import { HotelListingsScreen } from './src/screens/HotelListingsScreen';
 import { CheckoutScreen } from './src/screens/CheckoutScreen';
 import { MyTripsScreen } from './src/screens/MyTripsScreen';
+import { MyProfileScreen } from './src/screens/MyProfileScreen';
 import { ScreenName, FlightOption, HotelOption, TripBookingState } from './src/types/travel';
 import { getCurrentUserMobileApi } from './src/services/api';
 import { Colors } from './src/theme/theme';
@@ -42,7 +43,7 @@ function MainApp() {
   const handleGoBack = () => {
     if (currentScreen === 'checkout') {
       setCurrentScreen('flights');
-    } else if (currentScreen === 'flights' || currentScreen === 'hotels' || currentScreen === 'trips') {
+    } else if (currentScreen === 'flights' || currentScreen === 'hotels' || currentScreen === 'trips' || currentScreen === 'profile') {
       setCurrentScreen('explore');
     } else {
       setCurrentScreen('explore');
@@ -61,12 +62,13 @@ function MainApp() {
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <StatusBar style="light" />
 
-        {/* Global App Header with Left Hamburger */}
+        {/* Global App Header with Left Hamburger & Right Notification Bell */}
         <Header
           currentScreen={currentScreen}
           canGoBack={canGoBack}
           onNavigateBack={handleGoBack}
           onPressHamburger={() => setIsDrawerOpen(true)}
+          onPressNotifications={() => setIsNotificationsOpen(true)}
         />
 
         {/* Active Screen View */}
@@ -107,6 +109,16 @@ function MainApp() {
               onOpenAuth={() => setIsAuthOpen(true)}
             />
           )}
+
+          {currentScreen === 'profile' && (
+            <MyProfileScreen
+              onNavigate={handleNavigate}
+              user={user}
+              onOpenAuth={() => setIsAuthOpen(true)}
+              onLogout={() => setUser(null)}
+              onOpenWishlist={() => setIsWishlistOpen(true)}
+            />
+          )}
         </View>
 
         {/* Hamburger Side Drawer Menu */}
@@ -114,7 +126,7 @@ function MainApp() {
           visible={isDrawerOpen}
           onClose={() => setIsDrawerOpen(false)}
           user={user}
-          onPressProfile={() => setIsAuthOpen(true)}
+          onPressProfile={() => setCurrentScreen('profile')}
           onPressWishlist={() => setIsWishlistOpen(true)}
           wishlistCount={wishlistCount}
           onPressTrips={() => setCurrentScreen('trips')}
@@ -126,6 +138,8 @@ function MainApp() {
           onClose={() => setIsWishlistOpen(false)}
           onInitiateBooking={handleInitiateBooking}
           onNavigate={handleNavigate}
+          onSelectHotel={(hotel) => setSelectedHotel(hotel)}
+          onSelectFlight={(flight) => setSelectedFlight(flight)}
         />
 
         {/* Customer Auth Modal */}

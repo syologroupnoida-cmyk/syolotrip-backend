@@ -495,43 +495,75 @@ async def create_hotel_listing(
     db: AsyncSession = Depends(get_db),
 ):
     admin_service = AdminService(db)
+    st_price = float(payload.get("starting_price", payload.get("price_per_night", 7500)))
+    guest_rt = float(payload.get("guest_rating", payload.get("rating_score", payload.get("user_rating", 4.8))))
     hotel = Hotel(
         name=payload.get("name", "Grand Luxury Palace"),
         property_type=payload.get("property_type", "HOTEL"),
         star_rating=int(payload.get("star_rating", 5)),
-        user_rating=float(payload.get("user_rating", 4.8)),
+        guest_rating=guest_rt,
+        rating_label=payload.get("rating_label", "Excellent"),
         review_count=int(payload.get("review_count", 342)),
         address=payload.get("address", "Marine Drive"),
         city=payload.get("city", "Mumbai"),
-        state=payload.get("state", "Maharashtra"),
         country=payload.get("country", "India"),
-        postal_code=payload.get("postal_code", "400020"),
         overview=payload.get("overview", "Premium 5-star property offering scenic views and world-class hospitality."),
         amenities=payload.get("amenities", ["Free Wi-Fi", "Swimming Pool", "Spa & Wellness", "Fine Dining", "Valet Parking"]),
         tags=payload.get("tags", ["Luxury", "Couple Friendly", "Sea View"]),
         featured_image=payload.get("featured_image", "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80"),
         images=payload.get("images", ["https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80"]),
-        starting_price=float(payload.get("starting_price", 7500)),
+        starting_price=st_price,
         currency=payload.get("currency", "INR"),
         is_simulated=True,
-        is_active=True,
+        is_active=bool(payload.get("is_active", True)),
     )
     db.add(hotel)
     await db.flush()
 
-    # Add a default room
-    room = HotelRoom(
-        hotel_id=hotel.id,
-        room_type="Deluxe Sea View King",
-        bed_type="King Bed",
-        max_occupancy=2,
-        price_per_night=hotel.starting_price,
-        taxes_per_night=round(hotel.starting_price * 0.18, 2),
-        available_rooms=10,
-        amenities=["Complimentary Breakfast", "Ocean View", "Free Wi-Fi"],
-        is_available=True,
-    )
-    db.add(room)
+    rooms_list = []
+    if "rooms" in payload and isinstance(payload["rooms"], list) and len(payload["rooms"]) > 0:
+        for r_data in payload["rooms"]:
+            r_price = float(r_data.get("price_per_night", st_price))
+            room = HotelRoom(
+                hotel_id=hotel.id,
+                room_type=r_data.get("room_type", "Deluxe Room"),
+                bed_type=r_data.get("bed_type", "King Bed"),
+                max_occupancy=int(r_data.get("max_occupancy", 2)),
+                price_per_night=r_price,
+                taxes_per_night=float(r_data.get("taxes_per_night", round(r_price * 0.18, 2))),
+                available_rooms=int(r_data.get("available_rooms", 10)),
+                amenities=r_data.get("amenities", ["Free Wi-Fi"]),
+                is_available=True,
+            )
+            db.add(room)
+            await db.flush()
+            rooms_list.append({
+                "id": str(room.id),
+                "room_type": room.room_type,
+                "price_per_night": float(room.price_per_night),
+                "available_rooms": room.available_rooms,
+            })
+    else:
+        # Add a default room
+        room = HotelRoom(
+            hotel_id=hotel.id,
+            room_type="Deluxe Sea View King",
+            bed_type="King Bed",
+            max_occupancy=2,
+            price_per_night=st_price,
+            taxes_per_night=round(st_price * 0.18, 2),
+            available_rooms=10,
+            amenities=["Complimentary Breakfast", "Ocean View", "Free Wi-Fi"],
+            is_available=True,
+        )
+        db.add(room)
+        await db.flush()
+        rooms_list.append({
+            "id": str(room.id),
+            "room_type": room.room_type,
+            "price_per_night": float(room.price_per_night),
+            "available_rooms": room.available_rooms,
+        })
 
     await admin_service.record_audit(
         action="CREATE_HOTEL",
@@ -541,7 +573,17 @@ async def create_hotel_listing(
         details={"hotel_name": hotel.name, "city": hotel.city},
     )
     await db.commit()
-    return ApiResponse(success=True, data={"id": str(hotel.id)}, message="Hotel property created successfully")
+    return ApiResponse(
+        success=True,
+        data={
+            "id": str(hotel.id),
+            "name": hotel.name,
+            "starting_price": float(hotel.starting_price),
+            "price_per_night": float(hotel.starting_price),
+            "rooms": rooms_list,
+        },
+        message="Hotel property created successfully",
+    )
 
 
 @router.post("/buses", status_code=status.HTTP_201_CREATED)
@@ -678,17 +720,39 @@ async def update_inventory_item(
             updated_fields["arrival_time"] = item.arrival_time
 
     elif item_type.lower() == "hotels":
+        new_price = None
         if "starting_price" in payload:
-            item.starting_price = float(payload["starting_price"])
+            new_price = float(payload["starting_price"])
+        elif "price_per_night" in payload:
+            new_price = float(payload["price_per_night"])
+
+        if new_price is not None:
+            item.starting_price = new_price
             updated_fields["starting_price"] = item.starting_price
-            # If hotel has rooms, update first room price to match
+            updated_fields["price_per_night"] = item.starting_price
+            from sqlalchemy.orm import selectinload
+            res_rooms = await db.execute(select(Hotel).options(selectinload(Hotel.rooms)).where(Hotel.id == uid))
+            h_with_rooms = res_rooms.scalar_one_or_none()
+            if h_with_rooms and h_with_rooms.rooms and "rooms" not in payload:
+                for r in h_with_rooms.rooms:
+                    r.price_per_night = item.starting_price
+                    r.taxes_per_night = round(item.starting_price * 0.18, 2)
+
+        if "rooms" in payload and isinstance(payload["rooms"], list):
             from sqlalchemy.orm import selectinload
             res_rooms = await db.execute(select(Hotel).options(selectinload(Hotel.rooms)).where(Hotel.id == uid))
             h_with_rooms = res_rooms.scalar_one_or_none()
             if h_with_rooms and h_with_rooms.rooms:
-                for r in h_with_rooms.rooms:
-                    r.price_per_night = item.starting_price
-                    r.taxes_per_night = round(item.starting_price * 0.18, 2)
+                for r_in in payload["rooms"]:
+                    target_rid = r_in.get("id")
+                    for r in h_with_rooms.rooms:
+                        if not target_rid or str(r.id) == str(target_rid):
+                            if "price_per_night" in r_in:
+                                r.price_per_night = float(r_in["price_per_night"])
+                            if "available_rooms" in r_in:
+                                r.available_rooms = int(r_in["available_rooms"])
+            updated_fields["rooms"] = payload["rooms"]
+
         if "overview" in payload:
             item.overview = str(payload["overview"])
             updated_fields["overview"] = item.overview

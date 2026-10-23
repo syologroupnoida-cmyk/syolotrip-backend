@@ -9,6 +9,8 @@ interface HeaderProps {
   onNavigateBack?: () => void;
   canGoBack?: boolean;
   onPressHamburger?: () => void;
+  onPressNotifications?: () => void;
+  unreadCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,6 +18,8 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigateBack,
   canGoBack = false,
   onPressHamburger,
+  onPressNotifications,
+  unreadCount = 2,
 }) => {
   return (
     <View style={styles.container}>
@@ -61,8 +65,24 @@ export const Header: React.FC<HeaderProps> = ({
           </View>
         </View>
 
-        {/* Clean right group without cluttered buttons */}
-        <View style={styles.rightGroup} />
+        {/* Right: Notification Bell Icon */}
+        <View style={styles.rightGroup}>
+          <TouchableOpacity
+            onPress={onPressNotifications}
+            style={styles.notificationButton}
+            activeOpacity={0.75}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <MaterialIcons name="notifications-none" size={24} color="#005cab" />
+            {unreadCount > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -138,6 +158,34 @@ const styles = StyleSheet.create({
   rightGroup: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  notificationButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(0, 92, 171, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: '#eb2026',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
+  },
+  notificationBadgeText: {
+    color: '#ffffff',
+    fontSize: 9,
+    fontWeight: '800',
   },
 });
 export default Header;
