@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, Shadows, formatINR } from '../theme/theme';
@@ -17,116 +18,46 @@ interface FlightResultsScreenProps {
   onSelectFlight: (flight: FlightOption) => void;
 }
 
-const FLIGHTS_DATA: FlightOption[] = [
-  {
-    id: 'ana-107',
-    airline: 'All Nippon Airways (ANA)',
-    flightCode: 'Flight NH 107',
-    aircraft: 'Boeing 787-9 Dreamliner',
-    originCode: 'SFO',
-    originTerminal: 'Terminal I',
-    departureTime: '11:30 AM',
-    destCode: 'HND',
-    destTerminal: 'Terminal 3',
-    arrivalTime: '3:20 PM',
-    duration: '11h 50m',
-    isNextDay: true,
-    stopsText: 'Non-stop',
-    isDirect: true,
-    price: 64890,
-    badge: 'Top Recommended',
-    badgeVariant: 'recommended',
-    perks: ['2 Free Checked Bags', 'High-speed Wi-Fi', 'Warm Japanese Meal'],
-  },
-  {
-    id: 'jal-001',
-    airline: 'Japan Airlines (JAL)',
-    flightCode: 'Flight JL 001',
-    aircraft: 'Airbus A350-1000',
-    originCode: 'SFO',
-    originTerminal: 'Terminal I',
-    departureTime: '1:15 PM',
-    destCode: 'HND',
-    destTerminal: 'Terminal 3',
-    arrivalTime: '4:45 PM',
-    duration: '11h 30m',
-    isNextDay: true,
-    stopsText: 'Non-stop',
-    isDirect: true,
-    price: 72400,
-    badge: 'Great Schedule',
-    badgeVariant: 'schedule',
-    perks: ['2 Free Checked Bags', 'Wi-Fi & Live TV', 'Sake & Dining'],
-  },
-  {
-    id: 'ua-875',
-    airline: 'United Airlines',
-    flightCode: 'Flight UA 875',
-    aircraft: 'Boeing 777-300ER',
-    originCode: 'SFO',
-    originTerminal: 'Terminal 3',
-    departureTime: '10:45 AM',
-    destCode: 'HND',
-    destTerminal: 'Terminal 3',
-    arrivalTime: '2:05 PM',
-    duration: '11h 20m',
-    isNextDay: true,
-    stopsText: 'Non-stop',
-    isDirect: true,
-    price: 54900,
-    badge: 'Budget Pick',
-    badgeVariant: 'budget',
-    perks: ['1 Free Carry-on', 'Seatback Entertainment', 'Standard Meal'],
-  },
-  {
-    id: 'sq-11',
-    airline: 'Singapore Airlines',
-    flightCode: 'Flight SQ 11',
-    aircraft: 'Boeing 777-300ER',
-    originCode: 'SFO',
-    originTerminal: 'Terminal I',
-    departureTime: '2:30 PM',
-    destCode: 'HND',
-    destTerminal: 'Terminal 3',
-    arrivalTime: '6:40 PM',
-    duration: '12h 10m',
-    isNextDay: true,
-    stopsText: 'Non-stop',
-    isDirect: true,
-    price: 79800,
-    badge: 'Luxury Comfort',
-    badgeVariant: 'recommended',
-    perks: ['2 Checked Bags', 'World-Class Dining', 'Extra Legroom'],
-  },
-];
-
 export const FlightResultsScreen: React.FC<FlightResultsScreenProps> = ({
   onNavigate,
   onSelectFlight,
 }) => {
-  const [flights, setFlights] = useState<FlightOption[]>(FLIGHTS_DATA);
+  const [flights, setFlights] = useState<FlightOption[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [activeSort, setActiveSort] = useState<'best' | 'cheapest' | 'fastest'>('best');
-  const [nonStopOnly, setNonStopOnly] = useState(true);
+  const [nonStopOnly, setNonStopOnly] = useState(false);
   const [priceAlerts, setPriceAlerts] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
 
+  const loadFlights = async () => {
+    setIsLoading(true);
+    setErrorMsg(null);
+    try {
+      const data = await fetchFlightsApi();
+      setFlights(data);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Unable to connect to live flight catalog.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetchFlightsApi(FLIGHTS_DATA).then((data) => {
-      if (data && data.length > 0) {
-        setFlights(data);
-      }
-    });
+    loadFlights();
   }, []);
 
-  const filteredFlights = flights.filter((f) => {
-    if (nonStopOnly && !f.isDirect) return false;
-    if (selectedFilter === 'under60k' && f.price > 60000) return false;
-    return true;
-  }).sort((a, b) => {
-    if (activeSort === 'cheapest') return a.price - b.price;
-    if (activeSort === 'fastest') return a.duration.localeCompare(b.duration);
-    return 0; // default 'best'
-  });
+  const filteredFlights = flights
+    .filter((f) => {
+      if (nonStopOnly && !f.isDirect) return false;
+      if (selectedFilter === 'under60k' && f.price > 60000) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      if (activeSort === 'cheapest') return a.price - b.price;
+      if (activeSort === 'fastest') return a.duration.localeCompare(b.duration);
+      return 0; // default 'best'
+    });
 
   const handleSelect = (flight: FlightOption) => {
     onSelectFlight(flight);
@@ -297,7 +228,54 @@ export const FlightResultsScreen: React.FC<FlightResultsScreenProps> = ({
 
       {/* Flight Cards List */}
       <View style={styles.flightList}>
-        {filteredFlights.map((flight) => {
+        {isLoading && (
+          <View style={{ padding: 40, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={{ marginTop: 12, fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '600' }}>
+              Searching verified live flights...
+            </Text>
+          </View>
+        )}
+
+        {!isLoading && errorMsg && (
+          <View style={{ padding: 24, backgroundColor: 'rgba(239, 68, 68, 0.08)', borderRadius: BorderRadius.lg, marginHorizontal: Spacing.md, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', alignItems: 'center' }}>
+            <MaterialIcons name="error-outline" size={36} color="#ef4444" />
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#ef4444', marginTop: 8 }}>
+              Unable to Load Flights
+            </Text>
+            <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, textAlign: 'center', marginTop: 4, marginBottom: 12 }}>
+              {errorMsg}
+            </Text>
+            <TouchableOpacity
+              onPress={loadFlights}
+              style={{ backgroundColor: Colors.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: BorderRadius.md }}
+              activeOpacity={0.8}
+            >
+              <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 13 }}>Retry Connection</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {!isLoading && !errorMsg && filteredFlights.length === 0 && (
+          <View style={{ padding: 40, alignItems: 'center', backgroundColor: Colors.surfaceContainerLow, borderRadius: BorderRadius.lg, marginHorizontal: Spacing.md }}>
+            <MaterialIcons name="flight-takeoff" size={44} color={Colors.onSurfaceVariant} />
+            <Text style={{ fontSize: 16, fontWeight: '700', color: Colors.onSurface, marginTop: 8 }}>
+              No Flights Found
+            </Text>
+            <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, textAlign: 'center', marginTop: 4, marginBottom: 16 }}>
+              There are currently no active flights matching your filters.
+            </Text>
+            <TouchableOpacity
+              onPress={() => { setNonStopOnly(false); setSelectedFilter('all'); loadFlights(); }}
+              style={{ backgroundColor: Colors.primaryContainer, paddingHorizontal: 16, paddingVertical: 8, borderRadius: BorderRadius.md }}
+              activeOpacity={0.8}
+            >
+              <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 13 }}>Reset Filters</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {!isLoading && !errorMsg && filteredFlights.map((flight) => {
           return (
             <View key={flight.id} style={styles.flightCard}>
               {/* Badge strip if available */}

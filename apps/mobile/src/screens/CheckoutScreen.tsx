@@ -9,6 +9,7 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  Alert,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, Shadows, formatINR } from '../theme/theme';
@@ -39,11 +40,13 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   const [selectedSeat, setSelectedSeat] = useState('23A');
   const [isSeatModalOpen, setIsSeatModalOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
-  const [confirmedBookingRef, setConfirmedBookingRef] = useState('SSJ-849201');
+  const [confirmedBookingRef, setConfirmedBookingRef] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form states
   const [legalName, setLegalName] = useState(bookingState?.travelerName || 'Alexander Vanderbilt');
+  const [contactEmail, setContactEmail] = useState('traveler@ssjourney.com');
+  const [contactPhone, setContactPhone] = useState('+91 98765 43210');
   const [dob, setDob] = useState(bookingState?.dob || '10 / 14 / 1988');
   const [passport, setPassport] = useState(bookingState?.passportNumber || 'A94821038');
   const [frequentFlyer, setFrequentFlyer] = useState(bookingState?.frequentFlyer || 'NH-Diamond Club #8892019');
@@ -64,30 +67,79 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   const currentTotal =
     basePrice + taxes - discount + (hasInsurance ? insurancePrice : 0);
 
+  const rawItemId = selectedFlight?.id ||
+    selectedHotel?.defaultRoomId ||
+    selectedHotel?.id ||
+    bookingState?.selectedTrain?.id ||
+    bookingState?.selectedBus?.id ||
+    bookingState?.selectedCab?.id ||
+    bookingState?.selectedPackage?.id;
+
+  const tripTitle = selectedFlight
+    ? `${selectedFlight.airline} (${selectedFlight.flightCode})`
+    : selectedHotel
+    ? selectedHotel.name
+    : bookingState?.selectedTrain
+    ? `${bookingState.selectedTrain.trainName} (${bookingState.selectedTrain.trainNumber})`
+    : bookingState?.selectedBus
+    ? `${bookingState.selectedBus.operatorName} (${bookingState.selectedBus.busType})`
+    : bookingState?.selectedCab
+    ? `${bookingState.selectedCab.vehicleModel} (${bookingState.selectedCab.cabType})`
+    : bookingState?.selectedPackage
+    ? bookingState.selectedPackage.title
+    : 'Traveler Booking';
+
+  const tripRoute = selectedFlight
+    ? `${selectedFlight.originCode} ➔ ${selectedFlight.destCode}`
+    : selectedHotel
+    ? `${selectedHotel.neighborhood} • ${selectedHotel.distance}`
+    : bookingState?.selectedTrain
+    ? `${bookingState.selectedTrain.fromStationCode} ➔ ${bookingState.selectedTrain.toStationCode}`
+    : bookingState?.selectedBus
+    ? `${bookingState.selectedBus.fromCity} ➔ ${bookingState.selectedBus.toCity}`
+    : bookingState?.selectedCab
+    ? `${bookingState.selectedCab.city}: ${bookingState.selectedCab.pickupArea} ➔ ${bookingState.selectedCab.dropArea}`
+    : bookingState?.selectedPackage
+    ? `${bookingState.selectedPackage.destination} (${bookingState.selectedPackage.durationDays}D/${bookingState.selectedPackage.durationNights}N)`
+    : 'Confirmed Itinerary';
+
   const toggleSummary = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setSummaryExpanded(!summaryExpanded);
   };
 
   const handleConfirmPay = async () => {
+    if (!rawItemId) {
+      Alert.alert(
+        'Item Selection Missing',
+        'Please select a valid verified item from Flights, Hotels, Trains, Buses, Cabs, or Packages before proceeding to checkout.'
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const res = await submitMobileBookingApi({
         serviceType: resolvedServiceType,
-        itemId: selectedFlight?.id || selectedHotel?.id || bookingState?.selectedTrain?.id || bookingState?.selectedBus?.id || bookingState?.selectedCab?.id || bookingState?.selectedPackage?.id,
+        itemId: rawItemId,
         totalAmount: currentTotal,
-        contactEmail: 'traveler@ssjourney.com',
-        contactPhone: '+91 98765 43210',
-        passengerName: legalName || 'Alex Chen',
+        contactEmail: contactEmail.trim() || 'traveler@ssjourney.com',
+        contactPhone: contactPhone.trim() || '+91 98765 43210',
+        passengerName: legalName.trim() || 'Traveler Passenger',
       });
-      if (res?.bookingId) {
-        setConfirmedBookingRef(res.bookingId);
+      if (res && (res.bookingId || res.bookingReference)) {
+        setConfirmedBookingRef(res.bookingReference || res.bookingId);
+        setIsSuccessModalOpen(true);
+      } else {
+        Alert.alert('Booking Error', 'The server did not return a valid booking confirmation. Please retry.');
       }
-    } catch (e) {
-      console.warn('Booking submit failed', e);
+    } catch (e: any) {
+      Alert.alert(
+        'Booking Failed',
+        e.message || 'Unable to complete booking. Please check your network connection and retry.'
+      );
     } finally {
       setIsSubmitting(false);
-      setIsSuccessModalOpen(true);
     }
   };
 
@@ -123,14 +175,14 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
                 <View style={styles.luggageBadge}>
                   <MaterialIcons name="luggage" size={20} color={Colors.primary} />
                 </View>
-                <View>
+                <View style={{ flex: 1, paddingRight: Spacing.xs }}>
                   <View style={styles.comboDealRow}>
                     <View style={styles.comboTag}>
-                      <Text style={styles.comboTagText}>Combo Deal</Text>
+                      <Text style={styles.comboTagText}>{resolvedServiceType}</Text>
                     </View>
-                    <Text style={styles.comboDuration}>10 Days</Text>
+                    <Text style={styles.comboDuration}>Verified Inventory</Text>
                   </View>
-                  <Text style={styles.tripTitle}>Tokyo Discovery</Text>
+                  <Text style={styles.tripTitle} numberOfLines={1}>{tripTitle}</Text>
                 </View>
               </View>
 
@@ -142,9 +194,9 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
 
             <View style={styles.summarySubRow}>
               <View style={styles.summaryRoute}>
-                <MaterialIcons name="flight-takeoff" size={14} color={Colors.tertiary} />
+                <MaterialIcons name="place" size={14} color={Colors.tertiary} />
                 <Text style={styles.summaryRouteText} numberOfLines={1}>
-                  SFO ➔ HND • Gracery Shinjuku
+                  {tripRoute}
                 </Text>
               </View>
 
@@ -430,7 +482,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
         }}
         onViewTrips={() => {
           setIsSuccessModalOpen(false);
-          onNavigate('explore');
+          onNavigate('trips');
         }}
       />
     </View>

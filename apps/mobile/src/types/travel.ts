@@ -62,6 +62,14 @@ export interface HotelOption {
   tags: string[];
   lat: number;
   lng: number;
+  defaultRoomId?: string;
+  rooms?: Array<{
+    id: string;
+    roomType: string;
+    pricePerNight: number;
+    availableRooms: number;
+    isAvailable: boolean;
+  }>;
 }
 
 export interface TrainOption {

@@ -8,6 +8,7 @@ import {
   Image,
   Dimensions,
   DimensionValue,
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, Shadows, formatINR } from '../theme/theme';
@@ -22,102 +23,36 @@ interface HotelListingsScreenProps {
   onSelectHotel: (hotel: HotelOption) => void;
 }
 
-const HOTELS_DATA: HotelOption[] = [
-  {
-    id: 'park-hyatt',
-    name: 'Park Hyatt Tokyo',
-    stars: 5,
-    ratingScore: 9.4,
-    ratingLabel: 'Exceptional',
-    reviewCount: 1420,
-    neighborhood: 'Shinjuku',
-    distance: '1.2 km to Central Station',
-    pricePerNight: 28500,
-    totalPrice: 199500,
-    cancellationText: 'Free cancellation until Oct 12',
-    breakfastIncluded: true,
-    image:
-      'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=700&auto=format&fit=crop&q=80',
-    tags: ['Free High-speed Wi-Fi', 'Indoor Sky Pool', 'Club Spa'],
-    lat: 35.6852,
-    lng: 139.691,
-  },
-  {
-    id: 'gracery-shinjuku',
-    name: 'Hotel Gracery Shinjuku',
-    stars: 4,
-    ratingScore: 8.9,
-    ratingLabel: 'Excellent',
-    reviewCount: 2150,
-    neighborhood: 'Kabukicho, Shinjuku',
-    distance: '500m to Station',
-    pricePerNight: 14900,
-    totalPrice: 104300,
-    cancellationText: 'Free cancellation until Oct 13',
-    breakfastIncluded: true,
-    image:
-      'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=700&auto=format&fit=crop&q=80',
-    tags: ['Godzilla Terrace', 'Japanese Breakfast', 'Free Wi-Fi'],
-    lat: 35.6953,
-    lng: 139.702,
-  },
-  {
-    id: 'aman-tokyo',
-    name: 'Aman Tokyo',
-    stars: 5,
-    ratingScore: 9.8,
-    ratingLabel: 'Flawless',
-    reviewCount: 890,
-    neighborhood: 'Otemachi',
-    distance: '200m to Station',
-    pricePerNight: 68000,
-    totalPrice: 476000,
-    cancellationText: 'Flexible cancellation',
-    breakfastIncluded: true,
-    image:
-      'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=700&auto=format&fit=crop&q=80',
-    tags: ['Traditional Onsen', 'Panoramic Fuji View', 'Michelin Dining'],
-    lat: 35.6881,
-    lng: 139.764,
-  },
-  {
-    id: 'cerulean-tower',
-    name: 'Cerulean Tower Tokyu Hotel',
-    stars: 5,
-    ratingScore: 9.1,
-    ratingLabel: 'Exceptional',
-    reviewCount: 1780,
-    neighborhood: 'Shibuya',
-    distance: '300m to Shibuya Crossing',
-    pricePerNight: 21500,
-    totalPrice: 150500,
-    cancellationText: 'Free cancellation until Oct 14',
-    breakfastIncluded: false,
-    image:
-      'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=700&auto=format&fit=crop&q=80',
-    tags: ['Shibuya Skyline Bar', 'Fitness Center', 'High-speed Wi-Fi'],
-    lat: 35.6565,
-    lng: 139.699,
-  },
-];
-
 export const HotelListingsScreen: React.FC<HotelListingsScreenProps> = ({
   onNavigate,
   onSelectHotel,
 }) => {
-  const [hotels, setHotels] = useState<HotelOption[]>(HOTELS_DATA);
+  const [hotels, setHotels] = useState<HotelOption[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isMapView, setIsMapView] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>('free-cancel');
   const { isWishlisted, toggleWishlist } = useWishlist();
-  const [selectedMapHotel, setSelectedMapHotel] = useState<HotelOption>(HOTELS_DATA[0]);
+  const [selectedMapHotel, setSelectedMapHotel] = useState<HotelOption | null>(null);
 
-  useEffect(() => {
-    fetchHotelsApi(HOTELS_DATA).then((data) => {
-      if (data && data.length > 0) {
-        setHotels(data);
+  const loadHotels = async () => {
+    setIsLoading(true);
+    setErrorMsg(null);
+    try {
+      const data = await fetchHotelsApi();
+      setHotels(data);
+      if (data.length > 0) {
         setSelectedMapHotel(data[0]);
       }
-    });
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Unable to load hotels from live server.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadHotels();
   }, []);
 
   const handleBook = (hotel: HotelOption) => {
@@ -237,7 +172,30 @@ export const HotelListingsScreen: React.FC<HotelListingsScreenProps> = ({
       </View>
 
       {/* Main Content: List View or Map View */}
-      {!isMapView ? (
+      {isLoading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={{ marginTop: Spacing.md, color: Colors.onSurfaceVariant, fontSize: 14 }}>
+            Searching live verified stays...
+          </Text>
+        </View>
+      ) : errorMsg ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl }}>
+          <MaterialIcons name="error-outline" size={48} color="#ba1a1a" />
+          <Text style={{ fontSize: 16, fontWeight: '700', color: Colors.onSurface, marginTop: Spacing.md, textAlign: 'center' }}>
+            Connection Failed
+          </Text>
+          <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, marginTop: Spacing.xs, textAlign: 'center', marginBottom: Spacing.lg }}>
+            {errorMsg}
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: Colors.primary, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, borderRadius: BorderRadius.full }}
+            onPress={loadHotels}
+          >
+            <Text style={{ color: '#ffffff', fontWeight: 'bold' }}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : !isMapView ? (
         <ScrollView
           style={styles.scrollList}
           contentContainerStyle={styles.scrollListContent}
@@ -246,14 +204,26 @@ export const HotelListingsScreen: React.FC<HotelListingsScreenProps> = ({
           {/* Results Count & Sort Header */}
           <View style={styles.resultsHeader}>
             <View style={styles.resultsCountRow}>
-              <Text style={styles.resultsCountBold}>328 Stays</Text>
-              <Text style={styles.resultsCountCity}>in Tokyo</Text>
+              <Text style={styles.resultsCountBold}>{hotels.length} Stays Available</Text>
+              <Text style={styles.resultsCountCity}>in Selected Destinations</Text>
             </View>
-            <TouchableOpacity style={styles.sortBtn} activeOpacity={0.7}>
-              <MaterialIcons name="swap-vert" size={16} color={Colors.primary} />
-              <Text style={styles.sortBtnText}>Recommended</Text>
+            <TouchableOpacity style={styles.sortBtn} activeOpacity={0.7} onPress={loadHotels}>
+              <MaterialIcons name="refresh" size={16} color={Colors.primary} />
+              <Text style={styles.sortBtnText}>Refresh</Text>
             </TouchableOpacity>
           </View>
+
+          {hotels.length === 0 && (
+            <View style={{ padding: Spacing.xl, alignItems: 'center' }}>
+              <MaterialIcons name="hotel" size={48} color={Colors.onSurfaceVariant} />
+              <Text style={{ fontSize: 16, fontWeight: '600', color: Colors.onSurface, marginTop: Spacing.md }}>
+                No Hotels Found
+              </Text>
+              <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, marginTop: Spacing.xs, textAlign: 'center' }}>
+                There are currently no active hotel listings matching your criteria.
+              </Text>
+            </View>
+          )}
 
           {/* Hotel Cards Feed */}
           {hotels.map((hotel) => {
@@ -401,7 +371,7 @@ export const HotelListingsScreen: React.FC<HotelListingsScreenProps> = ({
 
             {/* Hotel Pins on Map */}
             {hotels.map((h, i) => {
-              const isSelected = selectedMapHotel.id === h.id;
+              const isSelected = selectedMapHotel?.id === h.id;
               const positions: Array<{ top: DimensionValue; left: DimensionValue }> = [
                 { top: '28%', left: '32%' },
                 { top: '44%', left: '55%' },
@@ -435,42 +405,44 @@ export const HotelListingsScreen: React.FC<HotelListingsScreenProps> = ({
           </View>
 
           {/* Docked Hotel Card Preview at bottom of Map */}
-          <View style={styles.mapFloatingCard}>
-            <View style={styles.mapCardRow}>
-              <Image
-                source={{ uri: selectedMapHotel.image }}
-                style={styles.mapCardThumbnail}
-              />
-              <View style={styles.mapCardMeta}>
-                <View style={styles.mapCardRatingRow}>
-                  <Text style={styles.mapCardTitle} numberOfLines={1}>
-                    {selectedMapHotel.name}
-                  </Text>
-                  <View style={styles.mapScorePill}>
-                    <Text style={styles.mapScoreText}>{selectedMapHotel.ratingScore}</Text>
-                  </View>
-                </View>
-                <Text style={styles.mapCardSub}>
-                  {selectedMapHotel.neighborhood} · {selectedMapHotel.distance}
-                </Text>
-                <View style={styles.mapCardPriceRow}>
-                  <Text style={styles.mapCardNight}>
-                    {formatINR(selectedMapHotel.pricePerNight)}{' '}
-                    <Text style={{ fontSize: 11, fontWeight: 'normal', color: Colors.onSurfaceVariant }}>
-                      /night
+          {selectedMapHotel && (
+            <View style={styles.mapFloatingCard}>
+              <View style={styles.mapCardRow}>
+                <Image
+                  source={{ uri: selectedMapHotel.image }}
+                  style={styles.mapCardThumbnail}
+                />
+                <View style={styles.mapCardMeta}>
+                  <View style={styles.mapCardRatingRow}>
+                    <Text style={styles.mapCardTitle} numberOfLines={1}>
+                      {selectedMapHotel.name}
                     </Text>
+                    <View style={styles.mapScorePill}>
+                      <Text style={styles.mapScoreText}>{selectedMapHotel.ratingScore}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.mapCardSub}>
+                    {selectedMapHotel.neighborhood} · {selectedMapHotel.distance}
                   </Text>
-                  <TouchableOpacity
-                    style={styles.mapCardBookBtn}
-                    onPress={() => handleBook(selectedMapHotel)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.mapCardBookText}>Select Room</Text>
-                  </TouchableOpacity>
+                  <View style={styles.mapCardPriceRow}>
+                    <Text style={styles.mapCardNight}>
+                      {formatINR(selectedMapHotel.pricePerNight)}{' '}
+                      <Text style={{ fontSize: 11, fontWeight: 'normal', color: Colors.onSurfaceVariant }}>
+                        /night
+                      </Text>
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.mapCardBookBtn}
+                      onPress={() => handleBook(selectedMapHotel)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.mapCardBookText}>Select Room</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             </View>
-          </View>
+          )}
         </View>
       )}
     </View>

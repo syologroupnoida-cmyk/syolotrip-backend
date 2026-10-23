@@ -174,11 +174,32 @@ export const MyTripsScreen: React.FC<MyTripsScreenProps> = ({ onNavigate, onOpen
             </View>
           ) : (
             filteredTrips.map((trip) => {
-              const isFlight = (trip.service_type || '').toUpperCase() === 'FLIGHT';
-              const isHotel = (trip.service_type || '').toUpperCase() === 'HOTEL';
+              const serviceType = (trip.service_type || '').toUpperCase();
+              const isFlight = serviceType === 'FLIGHT';
+              const isHotel = serviceType === 'HOTEL';
+              const isTrain = serviceType === 'TRAIN';
+              const isBus = serviceType === 'BUS';
+              const isCab = serviceType === 'CAB';
+              const isPackage = serviceType === 'PACKAGE';
               const details = trip.details_snapshot || {};
-              const totalAmount = trip.price_breakdown?.total_amount || 0;
+              const items = Array.isArray(trip.items) ? trip.items : [];
+              const firstItem = items[0] || {};
+              const totalAmount = Number(trip.total_amount ?? trip.price_breakdown?.total_amount ?? 0);
               const isCancelled = (trip.status || '').toUpperCase() === 'CANCELLED';
+
+              const serviceIconName: any = isFlight
+                ? 'flight'
+                : isHotel
+                ? 'hotel'
+                : isTrain
+                ? 'train'
+                : isBus
+                ? 'directions-bus'
+                : isCab
+                ? 'local-taxi'
+                : isPackage
+                ? 'beach-access'
+                : 'luggage';
 
               return (
                 <View key={trip.id} style={styles.tripCard}>
@@ -187,14 +208,14 @@ export const MyTripsScreen: React.FC<MyTripsScreenProps> = ({ onNavigate, onOpen
                     <View style={styles.serviceRow}>
                       <View style={styles.serviceIconCircle}>
                         <MaterialIcons
-                          name={isFlight ? 'flight' : isHotel ? 'hotel' : 'luggage'}
+                          name={serviceIconName}
                           size={16}
                           color={Colors.primary}
                         />
                       </View>
                       <View>
                         <Text style={styles.bookingRefText}>REF: {trip.booking_reference}</Text>
-                        <Text style={styles.serviceTypeText}>{trip.service_type} RESERVATION</Text>
+                        <Text style={styles.serviceTypeText}>{serviceType} RESERVATION</Text>
                       </View>
                     </View>
                     {getStatusBadge(trip.status)}
@@ -204,21 +225,53 @@ export const MyTripsScreen: React.FC<MyTripsScreenProps> = ({ onNavigate, onOpen
                   <View style={styles.tripCardBody}>
                     {isFlight ? (
                       <View style={styles.flightSummary}>
-                        <Text style={styles.itemTitle}>{details.airline || 'All Nippon Airways (ANA)'}</Text>
+                        <Text style={styles.itemTitle}>{details.airline || firstItem.title || 'Scheduled Flight'}</Text>
                         <View style={styles.flightRouteRow}>
-                          <Text style={styles.airportCode}>{details.origin?.code || 'SFO'}</Text>
+                          <Text style={styles.airportCode}>{details.origin?.code || 'DEL'}</Text>
                           <MaterialIcons name="arrow-forward" size={16} color={Colors.primary} />
-                          <Text style={styles.airportCode}>{details.destination?.code || 'HND'}</Text>
+                          <Text style={styles.airportCode}>{details.destination?.code || 'BOM'}</Text>
                         </View>
-                        <Text style={styles.itemMeta}>Flight {details.flight_number || 'NH 107'} · Non-stop</Text>
+                        <Text style={styles.itemMeta}>Flight {details.flight_number || 'AI 102'} · Non-stop</Text>
+                      </View>
+                    ) : isHotel ? (
+                      <View style={styles.hotelSummary}>
+                        <Text style={styles.itemTitle}>{details.hotel_name || firstItem.title || 'Verified Hotel Stay'}</Text>
+                        <Text style={styles.itemMeta}>
+                          {details.city || 'Central City'} · {details.room_type || 'Deluxe Room'}
+                        </Text>
+                        <Text style={styles.itemSub}>{details.nights || 1} Night(s) Confirmed</Text>
+                      </View>
+                    ) : isTrain ? (
+                      <View style={styles.hotelSummary}>
+                        <Text style={styles.itemTitle}>{details.train_name || firstItem.title || 'Express Train'}</Text>
+                        <Text style={styles.itemMeta}>
+                          {details.from_station || 'Origin'} ➔ {details.to_station || 'Destination'}
+                        </Text>
+                        <Text style={styles.itemSub}>Class: {details.train_class || 'Executive'}</Text>
+                      </View>
+                    ) : isBus ? (
+                      <View style={styles.hotelSummary}>
+                        <Text style={styles.itemTitle}>{details.operator_name || firstItem.title || 'Intercity Bus'}</Text>
+                        <Text style={styles.itemMeta}>
+                          {details.from_city || 'Origin'} ➔ {details.to_city || 'Destination'}
+                        </Text>
+                        <Text style={styles.itemSub}>{details.bus_type || 'AC Sleeper'}</Text>
+                      </View>
+                    ) : isCab ? (
+                      <View style={styles.hotelSummary}>
+                        <Text style={styles.itemTitle}>{details.car_model || firstItem.title || 'Dedicated Cab'}</Text>
+                        <Text style={styles.itemMeta}>
+                          {details.pickup_area || 'Pickup Point'} ➔ {details.drop_area || 'Drop Point'}
+                        </Text>
+                        <Text style={styles.itemSub}>Driver Assigned on Dispatch</Text>
                       </View>
                     ) : (
                       <View style={styles.hotelSummary}>
-                        <Text style={styles.itemTitle}>{details.hotel_name || 'Hotel Gracery Shinjuku'}</Text>
+                        <Text style={styles.itemTitle}>{details.package_title || firstItem.title || 'Holiday Package'}</Text>
                         <Text style={styles.itemMeta}>
-                          {details.city || 'Tokyo, Japan'} · {details.room_type || 'Superior Room'}
+                          {details.destination || 'Vacation Destination'}
                         </Text>
-                        <Text style={styles.itemSub}>{details.nights || 7} Nights Confirmed</Text>
+                        <Text style={styles.itemSub}>All-Inclusive Experience</Text>
                       </View>
                     )}
                   </View>

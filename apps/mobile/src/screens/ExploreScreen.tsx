@@ -9,12 +9,19 @@ import {
   Animated,
   Dimensions,
   ImageBackground,
+  Alert,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing, BorderRadius, Shadows, formatINR } from '../theme/theme';
 import { ScreenName, CategoryMode, TripBookingState } from '../types/travel';
 import { useWishlist } from '../context/WishlistContext';
+import {
+  fetchTrainsApi,
+  fetchBusesApi,
+  fetchCabsApi,
+  fetchPackagesApi,
+} from '../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -61,27 +68,141 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
     setDestCity(tempCity);
   };
 
-  const handleSearchPress = () => {
+  const handleSearchPress = async () => {
     if (activeCategory === 'hotels') {
       onNavigate('hotels');
-    } else if (activeCategory === 'flights') {
+      return;
+    }
+    if (activeCategory === 'flights') {
       onNavigate('flights');
-    } else if (activeCategory === 'villas') {
-      handleBookItem('VILLA', 'Candolim Luxury 4BHK Private Pool Villa', 14500);
-    } else if (activeCategory === 'packages') {
-      handleBookItem('PACKAGE', 'Goa Beachfront & Heritage Holiday (5D/4N)', 18500);
-    } else if (activeCategory === 'trains') {
-      handleBookItem('TRAIN', 'Vande Bharat Express (20172)', 1750);
-    } else if (activeCategory === 'buses') {
-      handleBookItem('BUS', 'Zingbus Luxury Multi-Axle Volvo AC', 950);
-    } else if (activeCategory === 'cabs') {
-      handleBookItem('CAB', 'Airport Prime Sedan (IGI T3)', 650);
-    } else if (activeCategory === 'tours') {
-      handleBookItem('TOUR', 'Burj Khalifa At The Top - Fast Track Level 124 & 125', 3850);
-    } else if (activeCategory === 'visa') {
-      handleBookItem('VISA', 'Dubai Express 30-Day Tourist E-Visa', 6499);
-    } else if (activeCategory === 'insurance') {
-      handleBookItem('INSURANCE', 'International Travel Shield - $500k Coverage', 1299);
+      return;
+    }
+
+    try {
+      if (activeCategory === 'trains') {
+        const trains = await fetchTrainsApi();
+        if (trains && trains.length > 0) {
+          const t = trains[0];
+          if (onInitiateBooking) {
+            onInitiateBooking({
+              serviceType: 'TRAIN',
+              originCode: t.fromStationCode,
+              originCity: t.fromStationName,
+              destCode: t.toStationCode,
+              destCity: t.toStationName,
+              datesText: 'Oct 24 - Oct 31, 2026',
+              travelersText: '1 Traveler, Executive Class',
+              seat: 'B4-21',
+              hasInsurance: true,
+              travelerName: 'Alexander Vanderbilt',
+              dob: '10/14/1988',
+              passportNumber: 'A94821038',
+              frequentFlyer: 'IRCTC-PREMIUM',
+              selectedTrain: t,
+            });
+          }
+          onNavigate('checkout');
+          return;
+        } else {
+          Alert.alert('No Trains Available', 'No live train inventory found at this time.');
+          return;
+        }
+      }
+
+      if (activeCategory === 'buses') {
+        const buses = await fetchBusesApi();
+        if (buses && buses.length > 0) {
+          const b = buses[0];
+          if (onInitiateBooking) {
+            onInitiateBooking({
+              serviceType: 'BUS',
+              originCode: 'DEL',
+              originCity: b.fromCity,
+              destCode: 'BOM',
+              destCity: b.toCity,
+              datesText: 'Oct 24 - Oct 31, 2026',
+              travelersText: '1 Traveler, Sleeper',
+              seat: 'L4',
+              hasInsurance: true,
+              travelerName: 'Alexander Vanderbilt',
+              dob: '10/14/1988',
+              passportNumber: 'A94821038',
+              frequentFlyer: 'SSJ-BUS',
+              selectedBus: b,
+            });
+          }
+          onNavigate('checkout');
+          return;
+        } else {
+          Alert.alert('No Buses Available', 'No live bus inventory found at this time.');
+          return;
+        }
+      }
+
+      if (activeCategory === 'cabs') {
+        const cabs = await fetchCabsApi();
+        if (cabs && cabs.length > 0) {
+          const c = cabs[0];
+          if (onInitiateBooking) {
+            onInitiateBooking({
+              serviceType: 'CAB',
+              originCode: 'DEL',
+              originCity: c.pickupArea,
+              destCode: 'BOM',
+              destCity: c.dropArea,
+              datesText: 'Immediate Pickup',
+              travelersText: `${c.capacity} Passengers Max`,
+              seat: 'Standard',
+              hasInsurance: false,
+              travelerName: 'Alexander Vanderbilt',
+              dob: '10/14/1988',
+              passportNumber: 'A94821038',
+              frequentFlyer: 'CAB-PRIME',
+              selectedCab: c,
+            });
+          }
+          onNavigate('checkout');
+          return;
+        } else {
+          Alert.alert('No Cabs Available', 'No live cabs found in this service area.');
+          return;
+        }
+      }
+
+      if (activeCategory === 'packages') {
+        const pkgs = await fetchPackagesApi();
+        if (pkgs && pkgs.length > 0) {
+          const p = pkgs[0];
+          if (onInitiateBooking) {
+            onInitiateBooking({
+              serviceType: 'PACKAGE',
+              originCode: 'DEL',
+              originCity: 'New Delhi',
+              destCode: 'GOA',
+              destCity: p.destination,
+              datesText: `${p.durationDays} Days / ${p.durationNights} Nights`,
+              travelersText: '2 Travelers, All-Inclusive',
+              seat: 'Standard',
+              hasInsurance: true,
+              travelerName: 'Alexander Vanderbilt',
+              dob: '10/14/1988',
+              passportNumber: 'A94821038',
+              frequentFlyer: 'SSJ-HOLIDAY',
+              selectedPackage: p,
+            });
+          }
+          onNavigate('checkout');
+          return;
+        } else {
+          Alert.alert('No Packages Available', 'No live holiday packages found matching this request.');
+          return;
+        }
+      }
+
+      // Default or other services: navigate to flights
+      onNavigate('flights');
+    } catch (err: any) {
+      Alert.alert('Search Failed', err.message || 'Unable to connect to live inventory.');
     }
   };
 
@@ -142,41 +263,43 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
     >
-      {/* ── 1. TROPICAL SKY HERO BACKDROP ── */}
-      <View style={styles.heroWrapper}>
-        <ImageBackground
-          source={require('../../assets/hero-bg-bright.jpg')}
-          style={styles.heroBackground}
-          resizeMode="cover"
+      {/* ── SEARCH TAP CAPSULE (Just below header) ── */}
+      <View style={styles.topSearchTapWrapper}>
+        <TouchableOpacity
+          style={styles.topSearchTapBar}
+          onPress={handleSearchPress}
+          activeOpacity={0.85}
         >
-          <LinearGradient
-            colors={['rgba(0,40,90,0.25)', 'transparent', '#fbf9f8']}
-            style={styles.heroGradient}
-          >
-            {/* Top Micro Badges */}
-            <View style={styles.heroTopRow}>
-              <View style={styles.dealsPill}>
-                <MaterialIcons name="travel-explore" size={14} color="#005cab" />
-                <Text style={styles.dealsPillText}>Explore Global Deals</Text>
-              </View>
-              <View style={styles.specialPill}>
-                <MaterialIcons name="local-fire-department" size={13} color="#ffffff" />
-                <Text style={styles.specialPillText}>SPECIALS</Text>
-              </View>
-            </View>
-
-            {/* Hero Wanderlust Copy */}
-            <View style={styles.heroCopy}>
-              <Text style={styles.heroTitle}>Where to next?</Text>
-              <Text style={styles.heroSubtitle}>
-                Book cheap domestic &amp; international travel
-              </Text>
-            </View>
-          </LinearGradient>
-        </ImageBackground>
+          <View style={styles.topSearchIconCircle}>
+            <MaterialIcons name="search" size={20} color="#ffffff" />
+          </View>
+          <View style={styles.topSearchTextCol}>
+            <Text style={styles.topSearchTitle} numberOfLines={1}>
+              {activeCategory === 'hotels'
+                ? 'Where to stay? Search luxury hotels'
+                : activeCategory === 'flights'
+                ? 'Where to fly? Search verified flights'
+                : activeCategory === 'trains'
+                ? 'Search Vande Bharat & Express Trains'
+                : activeCategory === 'buses'
+                ? 'Search Volvo AC & Sleeper Buses'
+                : activeCategory === 'cabs'
+                ? 'Book Prime Airport & City Cabs'
+                : activeCategory === 'packages'
+                ? 'Explore Holiday Packages & Getaways'
+                : 'Where to? Search flights, hotels & stays'}
+            </Text>
+            <Text style={styles.topSearchSubtitle} numberOfLines={1}>
+              {originCity.split(',')[0]} ➔ {destCity.split(',')[0]} · Oct 24–31 · Tap to Search
+            </Text>
+          </View>
+          <View style={styles.topSearchActionBadge}>
+            <MaterialIcons name="arrow-forward" size={16} color="#005cab" />
+          </View>
+        </TouchableOpacity>
       </View>
 
-      {/* ── 2. CATEGORY NAV PILLS CAROUSEL (Floating) ── */}
+      {/* ── 1. CATEGORY NAV PILLS CAROUSEL ── */}
       <View style={styles.categoryCarouselWrapper}>
         <ScrollView
           horizontal
@@ -484,6 +607,61 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
         </LinearGradient>
       </View>
 
+      {/* ── 4. POPULAR SEARCHES ── */}
+      <View style={styles.popularSearchesSection}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleRow}>
+            <MaterialIcons name="trending-up" size={20} color="#005cab" style={{ marginRight: 6 }} />
+            <Text style={styles.sectionTitle}>Popular Searches</Text>
+          </View>
+          <Text style={{ fontSize: 11, color: '#707785', fontWeight: '500' }}>Updated Today</Text>
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.popularScroll}
+        >
+          {[
+            { id: 'ps-1', from: 'DEL', fromCity: 'New Delhi', to: 'BOM', toCity: 'Mumbai', cat: 'flights' as const, label: 'Delhi ➔ Mumbai', fare: 'From ₹4,290', badge: 'TRENDING' },
+            { id: 'ps-2', from: 'DEL', fromCity: 'New Delhi', to: 'GOI', toCity: 'Goa', cat: 'flights' as const, label: 'Delhi ➔ Goa', fare: 'From ₹4,890', badge: 'BEACH' },
+            { id: 'ps-3', from: 'BOM', fromCity: 'Mumbai', to: 'DXB', toCity: 'Dubai', cat: 'flights' as const, label: 'Mumbai ➔ Dubai', fare: 'From ₹11,990', badge: 'POPULAR' },
+            { id: 'ps-4', from: 'NDLS', fromCity: 'New Delhi', to: 'BSB', toCity: 'Varanasi', cat: 'trains' as const, label: 'Vande Bharat Express', fare: 'From ₹1,750', badge: 'TRAIN' },
+            { id: 'ps-5', from: 'DEL', fromCity: 'New Delhi', to: 'JAI', toCity: 'Jaipur', cat: 'cabs' as const, label: 'Delhi ➔ Jaipur Prime', fare: 'From ₹2,499', badge: 'WEEKEND' },
+            { id: 'ps-6', from: 'BLR', fromCity: 'Bengaluru', to: 'COK', toCity: 'Kochi', cat: 'hotels' as const, label: 'Kerala Backwater Resorts', fare: 'From ₹6,500', badge: 'STAYS' },
+          ].map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.popularCard}
+              onPress={() => {
+                setOriginCode(item.from);
+                setOriginCity(item.fromCity);
+                setDestCode(item.to);
+                setDestCity(item.toCity);
+                setActiveCategory(item.cat);
+                if (item.cat === 'flights') {
+                  onNavigate('flights');
+                } else if (item.cat === 'hotels') {
+                  onNavigate('hotels');
+                } else {
+                  handleSearchPress();
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.popularTopRow}>
+                <View style={styles.popularBadge}>
+                  <Text style={styles.popularBadgeText}>{item.badge}</Text>
+                </View>
+                <MaterialIcons name="north-east" size={14} color="#005cab" />
+              </View>
+              <Text style={styles.popularRouteText}>{item.label}</Text>
+              <Text style={styles.popularFareText}>{item.fare}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
       {/* ── 5. SUPER OFFERS SECTION (Horizontal Carousel) ── */}
       <View style={styles.offersSection}>
         <View style={styles.sectionHeader}>
@@ -639,7 +817,244 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
         </ScrollView>
       </View>
 
-      {/* ── 6. HANDPICKED TRAVEL COLLECTIONS (2x2 Grid) ── */}
+      {/* ── 6. SPONSORED ADS & BANK SPECIALS ── */}
+      <View style={styles.adsSection}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleRow}>
+            <MaterialIcons name="campaign" size={20} color="#b45309" style={{ marginRight: 6 }} />
+            <Text style={styles.sectionTitle}>Partner Specials &amp; Bank Offers</Text>
+            <View style={styles.adPillBadge}>
+              <Text style={styles.adPillText}>AD</Text>
+            </View>
+          </View>
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.adsScroll}
+        >
+          {[
+            {
+              id: 'ad-1',
+              bank: 'HDFC BANK EXCLUSIVE',
+              title: 'Flat ₹2,500 Instant Cashback',
+              desc: 'On domestic & international flights booked with HDFC Credit Cards.',
+              code: 'HDFCFEST',
+              colors: ['#0f2b5c', '#1a4980'] as const,
+              tag: 'SPONSORED',
+            },
+            {
+              id: 'ad-2',
+              bank: 'ICICI BANK REWARDS',
+              title: 'Up to 20% Off Luxury Resorts',
+              desc: 'Applicable on verified Taj, Marriott & Oberoi beach properties.',
+              code: 'ICICISTAY',
+              colors: ['#7c1d1d', '#991b1b'] as const,
+              tag: 'FEATURED',
+            },
+            {
+              id: 'ad-3',
+              bank: 'AXIS BANK EDGE',
+              title: 'Zero Convenience Fee',
+              desc: 'Save 100% on ticketing and platform fee on express trains & buses.',
+              code: 'AXISZERO',
+              colors: ['#4a044e', '#701a75'] as const,
+              tag: 'EXCLUSIVE',
+            },
+          ].map((ad) => (
+            <LinearGradient
+              key={ad.id}
+              colors={ad.colors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.adBannerCard}
+            >
+              <View style={styles.adCardTop}>
+                <Text style={styles.adBankName}>{ad.bank}</Text>
+                <View style={styles.adTagPill}>
+                  <Text style={styles.adTagPillText}>{ad.tag}</Text>
+                </View>
+              </View>
+              <Text style={styles.adCardTitle}>{ad.title}</Text>
+              <Text style={styles.adCardDesc}>{ad.desc}</Text>
+              <View style={styles.adCardBottom}>
+                <View style={styles.adCodePill}>
+                  <Text style={styles.adCodeText}>CODE: {ad.code}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.adClaimBtn}
+                  onPress={() => {
+                    Alert.alert(
+                      'Promo Code Copied!',
+                      `Code "${ad.code}" has been copied. Use it during checkout to claim this special offer.`
+                    );
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.adClaimText}>Claim Offer</Text>
+                  <MaterialIcons name="content-copy" size={13} color="#ffffff" />
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* ── 7. BEST FOR YOU (RECOMMENDED TRAVEL) ── */}
+      <View style={styles.bestForYouSection}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleRow}>
+            <MaterialIcons name="auto-awesome" size={20} color="#7c3aed" style={{ marginRight: 6 }} />
+            <Text style={styles.sectionTitle}>Best for You</Text>
+            <View style={styles.curatedBadge}>
+              <Text style={styles.curatedBadgeText}>CURATED</Text>
+            </View>
+          </View>
+          <TouchableOpacity onPress={() => onNavigate('hotels')}>
+            <Text style={styles.viewAllText}>Explore More</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.bestForYouSub}>Handpicked selections tailored to top traveler preferences</Text>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.bestForYouScroll}
+        >
+          {[
+            {
+              id: 'bfy-hotel-1',
+              category: 'HOTEL',
+              title: 'Taj Exotica Resort & Spa, Goa',
+              location: 'Benaulim Beach, South Goa',
+              rating: 4.9,
+              reviews: '2.4k',
+              price: 14500,
+              priceUnit: '/night',
+              badge: '5★ Luxury Beachfront',
+              image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=700&auto=format&fit=crop&q=80',
+              actionType: 'hotels',
+            },
+            {
+              id: 'bfy-flight-1',
+              category: 'FLIGHT',
+              title: 'Air India Non-stop Prime',
+              location: 'DEL ➔ BOM · 07:15 AM · A321neo',
+              rating: 4.8,
+              reviews: '1.9k',
+              price: 4650,
+              priceUnit: 'total',
+              badge: 'Hot Meal Included',
+              image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=700&auto=format&fit=crop&q=80',
+              actionType: 'flights',
+            },
+            {
+              id: 'bfy-package-1',
+              category: 'PACKAGE',
+              title: 'Kashmir Valley & Gulmarg Escape',
+              location: '5 Days / 4 Nights · Houseboat & Gondola',
+              rating: 4.9,
+              reviews: '870',
+              price: 21990,
+              priceUnit: 'per person',
+              badge: 'All Meals & Tours',
+              image: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=700&auto=format&fit=crop&q=80',
+              actionType: 'packages',
+            },
+            {
+              id: 'bfy-train-1',
+              category: 'TRAIN',
+              title: 'Vande Bharat Express (20172)',
+              location: 'New Delhi ➔ Varanasi (8h 00m)',
+              rating: 4.9,
+              reviews: '3.5k',
+              price: 1750,
+              priceUnit: 'per seat',
+              badge: 'Executive Chair Car',
+              image: 'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=700&auto=format&fit=crop&q=80',
+              actionType: 'trains',
+            },
+          ].map((item) => {
+            const isFav = isWishlisted(item.id);
+            return (
+              <View key={item.id} style={styles.bestForYouCard}>
+                <View style={styles.bfyImageWrapper}>
+                  <Image source={{ uri: item.image }} style={styles.bfyImage} />
+                  <View style={styles.bfyBadgePill}>
+                    <Text style={styles.bfyBadgeText}>{item.badge}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.bfyHeartBtn}
+                    onPress={() =>
+                      toggleWishlist({
+                        id: item.id,
+                        title: item.title,
+                        category: item.category as any,
+                        location: item.location,
+                        price: item.price,
+                        image: item.image,
+                        rating: item.rating,
+                        badge: item.badge,
+                      })
+                    }
+                    activeOpacity={0.7}
+                  >
+                    <MaterialIcons
+                      name={isFav ? 'favorite' : 'favorite-border'}
+                      size={16}
+                      color={isFav ? '#e11d48' : '#ffffff'}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.bfyContent}>
+                  <View style={styles.bfyRatingRow}>
+                    <View style={styles.bfyScoreBadge}>
+                      <MaterialIcons name="star" size={12} color="#ffffff" />
+                      <Text style={styles.bfyScoreText}>{item.rating}</Text>
+                    </View>
+                    <Text style={styles.bfyReviewsText}>({item.reviews})</Text>
+                  </View>
+                  <Text style={styles.bfyTitle} numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                  <Text style={styles.bfyLocation} numberOfLines={1}>
+                    {item.location}
+                  </Text>
+
+                  <View style={styles.bfyPriceRow}>
+                    <View>
+                      <Text style={styles.bfyPrice}>{formatINR(item.price)}</Text>
+                      <Text style={styles.bfyPriceUnit}>{item.priceUnit}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.bfyActionBtn}
+                      onPress={() => {
+                        if (item.actionType === 'flights') {
+                          onNavigate('flights');
+                        } else if (item.actionType === 'hotels') {
+                          onNavigate('hotels');
+                        } else if (item.actionType === 'packages') {
+                          handleBookItem('PACKAGE', item.title, item.price);
+                        } else {
+                          handleSearchPress();
+                        }
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.bfyActionText}>Book</Text>
+                      <MaterialIcons name="arrow-forward" size={13} color="#ffffff" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* ── 8. HANDPICKED TRAVEL COLLECTIONS (2x2 Grid) ── */}
       <View style={styles.collectionsSection}>
         <View style={styles.sectionHeader}>
           <View>
@@ -724,31 +1139,6 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
         </View>
       </View>
 
-      {/* ── 7. VALUE PROPOSITIONS STRIP ── */}
-      <View style={styles.trustSection}>
-        <Text style={styles.trustTitle}>Why Book with SS Journey?</Text>
-        <Text style={styles.trustSubtitle}>
-          Trusted by over 500,000+ happy travelers across India &amp; abroad
-        </Text>
-        <View style={styles.trustGrid}>
-          {[
-            { icon: 'support-agent' as const, title: '24*7 Support', sub: 'Response under 2 min' },
-            { icon: 'security' as const, title: 'Secure Pay', sub: 'UPI, Cards & NetBanking' },
-            { icon: 'price-check' as const, title: 'Lowest Fares', sub: 'Zero hidden surcharges' },
-            { icon: 'sync' as const, title: 'Easy Refunds', sub: 'Instant cancellation credits' },
-          ].map((item) => (
-            <View key={item.title} style={styles.trustItem}>
-              <View style={styles.trustIconCircle}>
-                <MaterialIcons name={item.icon} size={18} color="#005cab" />
-              </View>
-              <View style={styles.trustMeta}>
-                <Text style={styles.trustItemTitle}>{item.title}</Text>
-                <Text style={styles.trustItemSub}>{item.sub}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      </View>
     </ScrollView>
   );
 };
@@ -830,8 +1220,58 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontWeight: '500',
   },
+  topSearchTapWrapper: {
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  topSearchTapBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 30,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#E7EBF0',
+    ...Shadows.md,
+  },
+  topSearchIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#005cab',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topSearchTextCol: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  topSearchTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#071426',
+    letterSpacing: -0.2,
+  },
+  topSearchSubtitle: {
+    fontSize: 10.5,
+    color: '#707785',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  topSearchActionBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(0, 92, 171, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 6,
+  },
   categoryCarouselWrapper: {
-    marginTop: -22,
+    marginTop: 8,
+    marginBottom: 4,
     zIndex: 10,
   },
   categoryCarousel: {
@@ -1426,61 +1866,300 @@ const styles = StyleSheet.create({
     color: '#707785',
     marginTop: 1,
   },
-  trustSection: {
-    marginTop: 18,
-    marginHorizontal: 12,
-    backgroundColor: '#ffffff',
-    borderRadius: 14,
-    padding: 14,
-    ...Shadows.sm,
-    borderWidth: 1,
-    borderColor: '#E7EBF0',
-    gap: 8,
-  },
-  trustTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#1b1c1c',
-    textAlign: 'center',
-  },
-  trustSubtitle: {
-    fontSize: 10,
-    color: '#707785',
-    textAlign: 'center',
+  // Popular Searches Styles
+  popularSearchesSection: {
+    marginTop: 14,
     marginBottom: 4,
   },
-  trustGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  popularScroll: {
+    paddingHorizontal: 12,
     gap: 8,
   },
-  trustItem: {
-    width: (width - 60) / 2,
+  popularCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: '#E7EBF0',
+    ...Shadows.sm,
+    minWidth: 155,
+  },
+  popularTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#F2F4F8',
-    padding: 8,
-    borderRadius: 8,
+    justifyContent: 'space-between',
+    marginBottom: 6,
   },
-  trustIconCircle: {
+  popularBadge: {
+    backgroundColor: 'rgba(0, 92, 171, 0.08)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  popularBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#005cab',
+    letterSpacing: 0.4,
+  },
+  popularRouteText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#071426',
+    letterSpacing: -0.2,
+  },
+  popularFareText: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#059669',
+    marginTop: 3,
+  },
+
+  // Ads & Bank Specials Styles
+  adsSection: {
+    marginTop: 18,
+    marginBottom: 4,
+  },
+  adPillBadge: {
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    marginLeft: 6,
+  },
+  adPillText: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    color: '#b45309',
+  },
+  adsScroll: {
+    paddingHorizontal: 12,
+    gap: 10,
+  },
+  adBannerCard: {
+    width: 280,
+    borderRadius: 16,
+    padding: 14,
+    ...Shadows.md,
+  },
+  adCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  adBankName: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#f8fafc',
+    letterSpacing: 0.8,
+  },
+  adTagPill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  adTagPillText: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  adCardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: -0.2,
+  },
+  adCardDesc: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 3,
+    lineHeight: 15,
+  },
+  adCardBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  adCodePill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderStyle: 'dashed',
+  },
+  adCodeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 0.5,
+  },
+  adClaimBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#005cab',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: BorderRadius.full,
+  },
+  adClaimText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+
+  // Best For You Styles
+  bestForYouSection: {
+    marginTop: 18,
+    marginBottom: 4,
+  },
+  curatedBadge: {
+    backgroundColor: '#f5f3ff',
+    borderWidth: 1,
+    borderColor: '#ddd6fe',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    marginLeft: 6,
+  },
+  curatedBadgeText: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    color: '#7c3aed',
+  },
+  bestForYouSub: {
+    fontSize: 10.5,
+    color: '#707785',
+    paddingHorizontal: 12,
+    marginTop: -2,
+    marginBottom: 10,
+  },
+  bestForYouScroll: {
+    paddingHorizontal: 12,
+    gap: 12,
+  },
+  bestForYouCard: {
+    width: 210,
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E7EBF0',
+    ...Shadows.sm,
+  },
+  bfyImageWrapper: {
+    width: '100%',
+    height: 115,
+    position: 'relative',
+  },
+  bfyImage: {
+    width: '100%',
+    height: '100%',
+  },
+  bfyBadgePill: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  bfyBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  bfyHeartBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#ffffff',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  trustMeta: {
-    flex: 1,
+  bfyContent: {
+    padding: 10,
   },
-  trustItemTitle: {
+  bfyRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  bfyScoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: '#059669',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  bfyScoreText: {
     fontSize: 10,
-    fontWeight: '700',
-    color: '#1b1c1c',
+    fontWeight: '800',
+    color: '#ffffff',
   },
-  trustItemSub: {
-    fontSize: 8,
+  bfyReviewsText: {
+    fontSize: 10,
     color: '#707785',
+  },
+  bfyTitle: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#071426',
+    letterSpacing: -0.2,
+  },
+  bfyLocation: {
+    fontSize: 10,
+    color: '#707785',
+    marginTop: 2,
+  },
+  bfyPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#F2F4F8',
+  },
+  bfyPrice: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#005cab',
+  },
+  bfyPriceUnit: {
+    fontSize: 8.5,
+    color: '#707785',
+  },
+  bfyActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#005cab',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: BorderRadius.full,
+  },
+  bfyActionText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#ffffff',
   },
 });

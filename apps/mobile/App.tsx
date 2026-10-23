@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from './src/components/Header';
-import { BottomNavigation } from './src/components/BottomNavigation';
+import { HamburgerDrawer } from './src/components/HamburgerDrawer';
 import { NotificationsModal } from './src/components/NotificationsModal';
 import { AuthModal } from './src/components/AuthModal';
 import { ExploreScreen } from './src/screens/ExploreScreen';
@@ -22,6 +22,7 @@ function MainApp() {
   const [selectedFlight, setSelectedFlight] = useState<FlightOption | undefined>();
   const [selectedHotel, setSelectedHotel] = useState<HotelOption | undefined>();
   const [bookingState, setBookingState] = useState<TripBookingState | undefined>();
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -60,16 +61,12 @@ function MainApp() {
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <StatusBar style="light" />
 
-        {/* Global App Header matching Stitch */}
+        {/* Global App Header with Left Hamburger */}
         <Header
           currentScreen={currentScreen}
           canGoBack={canGoBack}
           onNavigateBack={handleGoBack}
-          onPressNotifications={() => setIsNotificationsOpen(true)}
-          onPressWishlist={() => setIsWishlistOpen(true)}
-          wishlistCount={wishlistCount}
-          onPressProfile={() => setIsAuthOpen(true)}
-          user={user}
+          onPressHamburger={() => setIsDrawerOpen(true)}
         />
 
         {/* Active Screen View */}
@@ -112,10 +109,15 @@ function MainApp() {
           )}
         </View>
 
-        {/* Bottom Tabs Navigation */}
-        <BottomNavigation
-          currentScreen={currentScreen}
-          onSelectScreen={handleNavigate}
+        {/* Hamburger Side Drawer Menu */}
+        <HamburgerDrawer
+          visible={isDrawerOpen}
+          onClose={() => setIsDrawerOpen(false)}
+          user={user}
+          onPressProfile={() => setIsAuthOpen(true)}
+          onPressWishlist={() => setIsWishlistOpen(true)}
+          wishlistCount={wishlistCount}
+          onPressTrips={() => setCurrentScreen('trips')}
         />
 
         {/* Wishlist / Liked Modal Sheet */}
@@ -133,6 +135,7 @@ function MainApp() {
           user={user}
           onLoginSuccess={(loggedInUser) => setUser(loggedInUser)}
           onLogout={() => setUser(null)}
+          onNavigateToTrips={() => setCurrentScreen('trips')}
         />
 
         {/* Notifications Modal Sheet */}

@@ -21,6 +21,7 @@ interface AuthModalProps {
   user?: any | null;
   onLoginSuccess: (user: any) => void;
   onLogout: () => void;
+  onNavigateToTrips?: () => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -29,6 +30,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   user,
   onLoginSuccess,
   onLogout,
+  onNavigateToTrips,
 }) => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
@@ -124,6 +126,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <Text style={styles.rolePillText}>Verified Customer</Text>
                 </View>
               </View>
+
+              {onNavigateToTrips && (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: Colors.surfaceContainerHigh,
+                    borderRadius: BorderRadius.lg,
+                    paddingVertical: Spacing.sm + 2,
+                    marginBottom: Spacing.sm,
+                    gap: 8,
+                  }}
+                  onPress={() => {
+                    onClose();
+                    onNavigateToTrips();
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <MaterialIcons name="luggage" size={18} color={Colors.primary} />
+                  <Text style={{ color: Colors.primary, fontWeight: '700', fontSize: 14 }}>
+                    View My Trips & Bookings
+                  </Text>
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity style={styles.logoutBtn} onPress={handleSignOut} activeOpacity={0.8}>
                 <MaterialIcons name="logout" size={16} color="#ffffff" />
