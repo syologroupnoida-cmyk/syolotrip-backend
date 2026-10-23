@@ -57,7 +57,7 @@ const mapBusResponse = (b: BusApiResponse): BusOption => {
     seatsAvailable: b.available_seats,
     windowSeats: Math.max(1, Math.floor(b.available_seats / 3)),
     amenities: ['Live GPS Tracking', 'Blanket & Pillow', 'Charging Point', 'Emergency SOS', 'Reading Light'],
-    badges: b.rating >= 4.7 ? ['MMT Primo', 'On-Time Guarantee'] : ['Verified Operator'],
+    badges: b.rating >= 4.7 ? ['SS Primo', 'On-Time Guarantee'] : ['Verified Operator'],
     cancellation: 'Free cancellation up to 6 hrs before departure',
   };
 };
@@ -166,7 +166,7 @@ export const BusSearchPage: React.FC<BusSearchPageProps> = ({
 
   return (
     <div className="min-h-screen bg-[#F2F4F8] text-[#191C1E] font-['Plus_Jakarta_Sans',sans-serif]">
-      {/* ── TOP STICKY MODIFIER BAR (MMT STITCH DESIGN) ── */}
+      {/* ── TOP STICKY MODIFIER BAR (SS STITCH DESIGN) ── */}
       <section className="sticky top-16 sm:top-[70px] z-30 bg-[#005cab] text-white shadow-md">
         <div className="max-w-[1240px] mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center space-x-4">
@@ -183,7 +183,7 @@ export const BusSearchPage: React.FC<BusSearchPageProps> = ({
                   <span>·</span>
                   <span>1 Passenger</span>
                   <span>·</span>
-                  <span className="bg-[#1A7F37] text-white text-[10px] font-bold px-1.5 py-0.2 rounded">MMT Primo Verified</span>
+                  <span className="bg-[#1A7F37] text-white text-[10px] font-bold px-1.5 py-0.2 rounded">SS Primo Verified</span>
                 </p>
               </div>
             </div>
@@ -269,7 +269,7 @@ export const BusSearchPage: React.FC<BusSearchPageProps> = ({
                   />
                   <div>
                     <span className="text-xs font-black text-amber-900 flex items-center space-x-1">
-                      <span>MMT Primo Only</span>
+                      <span>SS Primo Only</span>
                       <span className="bg-amber-400 text-amber-950 text-[9px] px-1 py-0.2 rounded font-black">TOP RATED</span>
                     </span>
                     <p className="text-[10px] text-amber-800 leading-tight mt-0.5">
@@ -353,11 +353,11 @@ export const BusSearchPage: React.FC<BusSearchPageProps> = ({
               </div>
             </div>
 
-            {/* MMT Primo Trust Box */}
+            {/* SS Primo Trust Box */}
             <div className="bg-white rounded-xl p-4 border border-[#E7EBF0] text-xs space-y-2">
               <span className="font-bold text-gray-900 block flex items-center space-x-1">
                 <span className="material-symbols-outlined text-[#1A7F37] text-sm">verified_user</span>
-                <span>Why Book on MakeMyTrip?</span>
+                <span>Why Book on SS Journey?</span>
               </span>
               <ul className="space-y-1.5 text-gray-600 text-[11px]">
                 <li className="flex items-center space-x-1.5">
@@ -512,7 +512,7 @@ export const BusSearchPage: React.FC<BusSearchPageProps> = ({
                           <span className="text-2xl font-black text-gray-900">₹{bus.price.toLocaleString('en-IN')}</span>
                         </div>
                         <span className="text-[10px] font-extrabold text-[#1A7F37] bg-emerald-50 px-1.5 py-0.2 rounded inline-block">
-                          Save ₹{bus.originalPrice - bus.price} with MMTBUS
+                          Save ₹{bus.originalPrice - bus.price} with SSJBUS
                         </span>
                       </div>
                     </div>

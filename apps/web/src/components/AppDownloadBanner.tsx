@@ -59,7 +59,7 @@ export const AppDownloadBanner: React.FC = () => {
               Download App Now !
             </h3>
             <p className="text-xs sm:text-sm text-gray-600 mt-1">
-              Use code <strong className="font-extrabold text-gray-900">WELCOMEMMT</strong> and get{' '}
+              Use code <strong className="font-extrabold text-gray-900">SSJWELCOME</strong> and get{' '}
               <strong className="font-extrabold text-gray-900">FLAT 25% OFF*</strong> on your first Hotel booking
             </p>
 

@@ -69,7 +69,7 @@ def upgrade() -> None:
         initial_coupons = [
             {
                 'id': uuid.uuid4(),
-                'code': 'MMTFLIGHT',
+                'code': 'SSJFLIGHT',
                 'discount_type': 'FLAT',
                 'discount_value': 1250.00,
                 'max_discount_amount': None,
@@ -83,7 +83,7 @@ def upgrade() -> None:
             },
             {
                 'id': uuid.uuid4(),
-                'code': 'MMTHOTEL',
+                'code': 'SSJHOTEL',
                 'discount_type': 'PERCENTAGE',
                 'discount_value': 25.00,
                 'max_discount_amount': 2500.00,
@@ -97,7 +97,7 @@ def upgrade() -> None:
             },
             {
                 'id': uuid.uuid4(),
-                'code': 'MMTHOLIDAY',
+                'code': 'SSJHOLIDAY',
                 'discount_type': 'FLAT',
                 'discount_value': 2500.00,
                 'max_discount_amount': None,
@@ -111,7 +111,7 @@ def upgrade() -> None:
             },
             {
                 'id': uuid.uuid4(),
-                'code': 'MMTTRAIN',
+                'code': 'SSJTRAIN',
                 'discount_type': 'FLAT',
                 'discount_value': 150.00,
                 'max_discount_amount': None,
@@ -125,7 +125,7 @@ def upgrade() -> None:
             },
             {
                 'id': uuid.uuid4(),
-                'code': 'MMTBUS',
+                'code': 'SSJBUS',
                 'discount_type': 'FLAT',
                 'discount_value': 200.00,
                 'max_discount_amount': None,
@@ -139,7 +139,7 @@ def upgrade() -> None:
             },
             {
                 'id': uuid.uuid4(),
-                'code': 'MMTCAB',
+                'code': 'SSJCAB',
                 'discount_type': 'FLAT',
                 'discount_value': 100.00,
                 'max_discount_amount': None,

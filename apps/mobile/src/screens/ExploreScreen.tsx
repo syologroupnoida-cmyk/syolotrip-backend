@@ -594,7 +594,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
             </View>
             <Text style={styles.welcomeTitle}>Up to 25% OFF on Your 1st Booking</Text>
             <Text style={styles.welcomeCode}>
-              Use code <Text style={styles.welcomeCodeBold}>MMTWELCOME</Text> at checkout
+              Use code <Text style={styles.welcomeCodeBold}>SSJWELCOME</Text> at checkout
             </Text>
           </View>
           <TouchableOpacity
@@ -734,7 +734,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
             </Text>
             <View style={styles.dealFooter}>
               <View style={styles.dealCodeBadge}>
-                <Text style={styles.dealCodeText}>CODE: MMTFLY</Text>
+                <Text style={styles.dealCodeText}>CODE: SSJFLY</Text>
               </View>
               <TouchableOpacity
                 onPress={() => onNavigate('flights')}
@@ -769,7 +769,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
             </Text>
             <View style={styles.dealFooter}>
               <View style={styles.dealCodeBadge}>
-                <Text style={styles.dealCodeText}>CODE: MMTSTAY</Text>
+                <Text style={styles.dealCodeText}>CODE: SSJSTAY</Text>
               </View>
               <TouchableOpacity
                 onPress={() => onNavigate('hotels')}
@@ -804,7 +804,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
             </Text>
             <View style={styles.dealFooter}>
               <View style={styles.dealCodeBadge}>
-                <Text style={styles.dealCodeText}>CODE: MMTHOLIDAY</Text>
+                <Text style={styles.dealCodeText}>CODE: SSJHOLIDAY</Text>
               </View>
               <TouchableOpacity
                 onPress={() => handleBookItem('PACKAGE', 'Goa Beachfront & Heritage Package', 18500)}

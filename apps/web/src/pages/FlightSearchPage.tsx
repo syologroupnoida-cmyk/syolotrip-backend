@@ -512,11 +512,11 @@ export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({
               })}
             </div>
 
-            {/* MMT Assured Guarantee Box */}
+            {/* SS Assured Guarantee Box */}
             <div className="p-3.5 rounded-xl bg-[#E8F5E9] border border-emerald-200 flex flex-col gap-1">
               <div className="flex items-center space-x-1.5 text-[#1A7F37]">
                 <span className="text-base">🛡️</span>
-                <span className="font-bold text-xs uppercase tracking-wider">MMT Assured</span>
+                <span className="font-bold text-xs uppercase tracking-wider">SS Assured</span>
               </div>
               <p className="text-xs text-gray-800 leading-relaxed">
                 Instant refund on flight delays over 2 hours &bull; Priority baggage tags &bull; Free flight meal on selected carriers.

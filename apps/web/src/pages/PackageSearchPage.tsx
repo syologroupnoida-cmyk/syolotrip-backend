@@ -65,7 +65,7 @@ const mapPackageResponse = (p: PackageApiResponse): HolidayPackage => {
     pricePerPerson: Math.round(p.price_per_person),
     originalPrice,
     emiStartsAt: emi,
-    assuredBadge: 'MMT Holiday Assured',
+    assuredBadge: 'SS Holiday Assured',
     highlights: p.overview ? [p.overview.slice(0, 100) + '...'] : ['Verified Handcrafted Itinerary'],
   };
 };
@@ -155,7 +155,7 @@ export const PackageSearchPage: React.FC<PackageSearchPageProps> = ({
 
   return (
     <div className="min-h-screen bg-[#F2F4F8] text-[#191C1E] font-['Plus_Jakarta_Sans',sans-serif]">
-      {/* ── TOP STICKY MODIFIER BAR (MMT STITCH DESIGN) ── */}
+      {/* ── TOP STICKY MODIFIER BAR (SS STITCH DESIGN) ── */}
       <section className="sticky top-16 sm:top-[70px] z-30 bg-[#005cab] text-white shadow-md">
         <div className="max-w-[1240px] mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center space-x-3">
@@ -169,7 +169,7 @@ export const PackageSearchPage: React.FC<PackageSearchPageProps> = ({
                 <span>·</span>
                 <span>Customizable Itineraries</span>
                 <span>·</span>
-                <span className="bg-[#1A7F37] text-white text-[10px] font-bold px-1.5 py-0.2 rounded">MMT Holiday Guarantee</span>
+                <span className="bg-[#1A7F37] text-white text-[10px] font-bold px-1.5 py-0.2 rounded">SS Holiday Guarantee</span>
               </p>
             </div>
           </div>
@@ -298,7 +298,7 @@ export const PackageSearchPage: React.FC<PackageSearchPageProps> = ({
 
               {/* Package Promises */}
               <div className="mt-4 pt-3 border-t border-gray-100 space-y-2 text-xs">
-                <span className="font-bold text-gray-800 block">Why MakeMyTrip Holidays?</span>
+                <span className="font-bold text-gray-800 block">Why SS Journey Holidays?</span>
                 <div className="space-y-1.5 text-[11px] text-gray-600">
                   <div className="flex items-center space-x-1.5">
                     <span className="text-[#1A7F37] font-bold">✓</span>

@@ -122,7 +122,7 @@ export const PlatformSettings: React.FC = () => {
                 <span className="font-bold text-white text-xs">Consumer Web Portal</span>
                 <ExternalLink className="w-3.5 h-3.5 text-slate-500 group-hover:text-brand-400" />
               </div>
-              <p className="text-[11px] text-slate-400">MakeMyTrip style desktop booking experience.</p>
+              <p className="text-[11px] text-slate-400">SS Journey desktop booking experience.</p>
               <span className="inline-block mt-2 font-mono text-[10px] text-brand-400">http://localhost:5173/</span>
             </a>
 

@@ -85,7 +85,7 @@ export const MyBizLandingPage: React.FC<MyBizLandingPageProps> = ({
           {/* Breadcrumb / badge */}
           <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-500/20 to-orange-500/10 border border-amber-400/30 px-3.5 py-1.5 rounded-full text-xs font-semibold text-amber-300 mb-6">
             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <span>MakeMyTrip myBiz Feature Parity &bull; Corporate Travel Engine</span>
+            <span>SS Journey myBiz &bull; Corporate Travel Engine</span>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
@@ -270,7 +270,7 @@ export const MyBizLandingPage: React.FC<MyBizLandingPageProps> = ({
             Everything your company needs to control business travel
           </h3>
           <p className="text-slate-600 mt-3 text-sm sm:text-base">
-            Engineered to replicate MakeMyTrip myBiz exact business account suite for SMEs, startups, and large enterprises.
+            Engineered with a high performance business travel suite for SMEs, startups, and large enterprises.
           </p>
         </div>
 

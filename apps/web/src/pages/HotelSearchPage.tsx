@@ -63,7 +63,7 @@ const mapHotelResponse = (h: HotelApiResponse): PropertyItem => {
     mainImg,
     thumb1,
     thumb2,
-    badge: h.publication_status === 'APPROVED' ? 'MMT VERIFIED LUXE' : 'FEATURED STAY',
+    badge: h.publication_status === 'APPROVED' ? 'SS VERIFIED LUXE' : 'FEATURED STAY',
     badgeBg: 'bg-[#1A7F37]',
     features: h.amenities && h.amenities.length > 0 ? h.amenities.slice(0, 4) : ['Verified Amenities', 'Air Conditioned', 'Free WiFi'],
     description: h.overview || `Experience premium comfort at ${h.name} situated in ${h.city}.`,
@@ -469,7 +469,7 @@ export const HotelSearchPage: React.FC<HotelSearchPageProps> = ({
                     Signature Guarantee
                   </span>
                   <h2 className="text-base font-bold text-white">
-                    MMT Homestays Luxe Collection
+                    SS Homestays Luxe Collection
                   </h2>
                   <p className="text-xs text-blue-100 mt-0.5">
                     Handpicked luxury private stays with 100% verified amenities & private pools

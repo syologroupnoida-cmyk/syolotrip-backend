@@ -388,7 +388,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
 
   return (
     <div className="min-h-screen bg-[#f4f6f8] text-[#333333] font-sans antialiased">
-      {/* ── 1. MAKEMYTRIP TROPICAL HERO BACKDROP ── */}
+      {/* ── 1. SS JOURNEY TROPICAL HERO BACKDROP ── */}
       <div className="relative w-full h-[540px] overflow-hidden select-none">
         <img 
           src="/assets/hero-bg-bright.jpg" 
@@ -1032,7 +1032,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                 <div className="md:col-span-4 border-t md:border-t-0 md:border-l border-rose-200 pl-0 md:pl-4">
                   <span className="text-[12px] text-rose-800 font-bold uppercase tracking-wider block">Bundle Savings</span>
                   <span className="text-2xl font-extrabold text-[#eb2026] block">Save 25% Off</span>
-                  <span className="text-[11px] text-rose-700 font-semibold">Coupon MMTHOLIDAY Applied</span>
+                  <span className="text-[11px] text-rose-700 font-semibold">Coupon SSJHOLIDAY Applied</span>
                 </div>
               </div>
 
@@ -1394,13 +1394,13 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                   <span className="text-[11px] text-gray-500">Use Coupon:</span>
                   <button
                     type="button"
-                    onClick={() => handleCopyCode('MMTWELCOME')}
+                    onClick={() => handleCopyCode('SSJWELCOME')}
                     className="font-extrabold text-gray-800 bg-white px-2 py-0.5 rounded border border-gray-200 text-[11px] hover:border-[#008cff] cursor-pointer flex items-center gap-1"
                   >
-                    <span>MMTWELCOME</span>
+                    <span>SSJWELCOME</span>
                     <span className="material-symbols-outlined text-[13px] text-gray-400">content_copy</span>
                   </button>
-                  {copiedCode === 'MMTWELCOME' && (
+                  {copiedCode === 'SSJWELCOME' && (
                     <span className="text-[10px] text-emerald-600 font-bold">Copied!</span>
                   )}
                 </div>
@@ -1470,11 +1470,11 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
               <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
                 <button
                   type="button"
-                  onClick={() => handleCopyCode('MMTFLY')}
+                  onClick={() => handleCopyCode('SSJFLY')}
                   className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded hover:bg-gray-200 cursor-pointer flex items-center gap-1"
                 >
-                  <span>CODE: MMTFLY</span>
-                  {copiedCode === 'MMTFLY' && <span className="text-emerald-600 text-[9px]">Copied</span>}
+                  <span>CODE: SSJFLY</span>
+                  {copiedCode === 'SSJFLY' && <span className="text-emerald-600 text-[9px]">Copied</span>}
                 </button>
                 <button 
                   type="button"
@@ -1508,11 +1508,11 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
               <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
                 <button
                   type="button"
-                  onClick={() => handleCopyCode('MMTSTAY')}
+                  onClick={() => handleCopyCode('SSJSTAY')}
                   className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded hover:bg-gray-200 cursor-pointer flex items-center gap-1"
                 >
-                  <span>CODE: MMTSTAY</span>
-                  {copiedCode === 'MMTSTAY' && <span className="text-emerald-600 text-[9px]">Copied</span>}
+                  <span>CODE: SSJSTAY</span>
+                  {copiedCode === 'SSJSTAY' && <span className="text-emerald-600 text-[9px]">Copied</span>}
                 </button>
                 <button 
                   type="button"
@@ -1546,11 +1546,11 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
               <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
                 <button
                   type="button"
-                  onClick={() => handleCopyCode('MMTHOLIDAY')}
+                  onClick={() => handleCopyCode('SSJHOLIDAY')}
                   className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded hover:bg-gray-200 cursor-pointer flex items-center gap-1"
                 >
-                  <span>CODE: MMTHOLIDAY</span>
-                  {copiedCode === 'MMTHOLIDAY' && <span className="text-emerald-600 text-[9px]">Copied</span>}
+                  <span>CODE: SSJHOLIDAY</span>
+                  {copiedCode === 'SSJHOLIDAY' && <span className="text-emerald-600 text-[9px]">Copied</span>}
                 </button>
                 <button 
                   type="button"
@@ -1767,7 +1767,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
           </div>
         </section>
 
-        {/* ── APP DOWNLOAD BANNER (MakeMyTrip Style) ── */}
+        {/* ── APP DOWNLOAD BANNER (SS Journey Style) ── */}
         <AppDownloadBanner />
 
         {/* ── 7. VALUE PROPOSITIONS / TRUST STRIP ── */}
