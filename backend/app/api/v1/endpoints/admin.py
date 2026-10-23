@@ -464,3 +464,148 @@ async def delete_inventory_item(
     return ApiResponse(success=True, message=f"{item_type[:-1].capitalize()} removed from catalog successfully")
 
 
+# ────────── Partner Marketplace Approvals ──────────
+@router.get("/properties/pending", response_model=ApiResponse[List[Dict[str, Any]]])
+async def list_pending_partner_properties(
+    current_admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy.orm import selectinload
+    from backend.app.models.travel import ListingPublicationStatus
+    from backend.app.models.partner import PartnerProfile
+
+    query = (
+        select(Hotel)
+        .options(selectinload(Hotel.rooms), selectinload(Hotel.partner))
+        .where(Hotel.publication_status == ListingPublicationStatus.PENDING_APPROVAL.value)
+        .order_by(Hotel.created_at.desc())
+    )
+    results = (await db.execute(query)).scalars().all()
+    out = []
+    for h in results:
+        partner_info = None
+        if h.partner:
+            partner_info = {
+                "id": str(h.partner.id),
+                "business_name": h.partner.business_name,
+                "business_type": h.partner.business_type,
+                "phone": h.partner.phone,
+                "city": h.partner.city,
+            }
+        out.append({
+            "id": str(h.id),
+            "name": h.name,
+            "property_type": h.property_type,
+            "publication_status": h.publication_status,
+            "address": h.address,
+            "city": h.city,
+            "country": h.country,
+            "star_rating": h.star_rating,
+            "starting_price": float(h.starting_price),
+            "currency": h.currency,
+            "featured_image": h.featured_image,
+            "rooms_count": len(h.rooms) if h.rooms else 0,
+            "rooms": [
+                {
+                    "id": str(r.id),
+                    "room_type": r.room_type,
+                    "price_per_night": float(r.price_per_night),
+                    "available_rooms": r.available_rooms,
+                }
+                for r in (h.rooms or [])
+            ],
+            "partner": partner_info,
+            "created_at": h.created_at.isoformat() if h.created_at else None,
+        })
+    return ApiResponse(success=True, data=out)
+
+
+@router.post("/properties/{property_id}/approve", response_model=ApiResponse[Dict[str, Any]])
+async def approve_partner_property(
+    property_id: str,
+    current_admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    from datetime import datetime, timezone
+    from backend.app.models.travel import ListingPublicationStatus
+
+    try:
+        pid = uuid.UUID(property_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid property ID format")
+
+    res = await db.execute(select(Hotel).where(Hotel.id == pid))
+    hotel = res.scalar_one_or_none()
+    if not hotel:
+        raise HTTPException(status_code=404, detail="Property not found")
+
+    hotel.publication_status = ListingPublicationStatus.APPROVED.value
+    hotel.admin_rejection_reason = None
+    hotel.approved_at = datetime.now(timezone.utc)
+    hotel.approved_by_user_id = current_admin.id
+
+    admin_service = AdminService(db)
+    await admin_service.record_audit(
+        action="APPROVE_PROPERTY",
+        entity_type="HOTEL",
+        entity_id=str(hotel.id),
+        user_id=current_admin.id,
+        details={"property_name": hotel.name, "property_type": hotel.property_type},
+    )
+    await db.commit()
+    return ApiResponse(
+        success=True,
+        data={
+            "id": str(hotel.id),
+            "publication_status": hotel.publication_status,
+            "approved_at": hotel.approved_at.isoformat() if hotel.approved_at else None,
+        },
+        message=f"Property '{hotel.name}' has been approved and is now live in public search.",
+    )
+
+
+@router.post("/properties/{property_id}/reject", response_model=ApiResponse[Dict[str, Any]])
+async def reject_partner_property(
+    property_id: str,
+    payload: Dict[str, Any],
+    current_admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    from backend.app.models.travel import ListingPublicationStatus
+
+    try:
+        pid = uuid.UUID(property_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid property ID format")
+
+    res = await db.execute(select(Hotel).where(Hotel.id == pid))
+    hotel = res.scalar_one_or_none()
+    if not hotel:
+        raise HTTPException(status_code=404, detail="Property not found")
+
+    reason = payload.get("rejection_reason", "Does not meet platform listing standards.")
+    hotel.publication_status = ListingPublicationStatus.REJECTED.value
+    hotel.admin_rejection_reason = reason
+
+    admin_service = AdminService(db)
+    await admin_service.record_audit(
+        action="REJECT_PROPERTY",
+        entity_type="HOTEL",
+        entity_id=str(hotel.id),
+        user_id=current_admin.id,
+        details={"property_name": hotel.name, "reason": reason},
+    )
+    await db.commit()
+    return ApiResponse(
+        success=True,
+        data={
+            "id": str(hotel.id),
+            "publication_status": hotel.publication_status,
+            "rejection_reason": reason,
+            "admin_rejection_reason": reason,
+        },
+        message=f"Property '{hotel.name}' has been rejected.",
+    )
+
+
+

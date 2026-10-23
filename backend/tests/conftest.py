@@ -9,12 +9,15 @@ from backend.app.models.base import Base
 from backend.app.core.security import create_access_token, hash_password
 from backend.app.models.user import User, UserRole
 
+from sqlalchemy.pool import StaticPool
+
 # In-memory SQLite async engine for fast, isolated test runs
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 test_engine = create_async_engine(
     TEST_DATABASE_URL,
     connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
 
 TestSessionLocal = async_sessionmaker(

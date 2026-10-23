@@ -64,6 +64,10 @@ class BookingService:
                         item_reference_id=item.item_reference_id,
                         title=item.title,
                         quantity=item.quantity,
+                        hotel_id=str(item.hotel_id) if item.hotel_id else None,
+                        room_id=str(item.room_id) if item.room_id else None,
+                        check_in_date=item.check_in_date,
+                        check_out_date=item.check_out_date,
                         unit_price=float(item.unit_price),
                         total_price=float(item.total_price),
                         meta_data=item.meta_data or {},
@@ -86,12 +90,16 @@ class BookingService:
             id=str(b.id),
             booking_reference=b.booking_reference,
             user_id=str(b.user_id) if b.user_id else None,
+            guest_name=b.guest_name,
             service_type=b.service_type,
             status=b.status,
             provider=b.provider,
             is_simulated=b.is_simulated,
             contact_email=b.contact_email,
             contact_phone=b.contact_phone,
+            check_in_date=b.check_in_date,
+            check_out_date=b.check_out_date,
+            cancellation_token=b.cancellation_token,
             base_amount=float(b.base_amount),
             taxes_amount=float(b.taxes_amount),
             discount_amount=float(b.discount_amount),
@@ -104,6 +112,7 @@ class BookingService:
             items=items,
             status_history=history,
         )
+
 
     async def create_booking(
         self,
@@ -183,18 +192,81 @@ class BookingService:
                 )
                 details_snapshot["items_summary"].append({"title": title, "total": item_total})
 
-            elif item_type == "HOTEL_ROOM":
+            elif item_type in ["HOTEL_ROOM", "HOTEL"]:
                 room = await self.travel_repo.get_hotel_room_by_id(ref_uuid)
                 if not room or not room.is_available:
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
                         detail=f"Hotel room {item_req.item_reference_id} is no longer available",
                     )
-                if room.available_rooms < item_req.quantity:
-                    raise HTTPException(
-                        status_code=status.HTTP_409_CONFLICT,
-                        detail="Requested number of rooms is unavailable",
+
+                check_in = item_req.check_in_date or req.check_in_date
+                check_out = item_req.check_out_date or req.check_out_date
+
+                # Check and decrement date-based daily inventory if check_in date is specified
+                if check_in:
+                    from sqlalchemy import select, update
+                    from backend.app.models.travel import RoomDailyInventory
+                    daily_query = select(RoomDailyInventory).where(
+                        RoomDailyInventory.room_id == room.id,
+                        RoomDailyInventory.date == check_in,
                     )
+                    daily_res = await self.db.execute(daily_query)
+                    daily_inv = daily_res.scalar_one_or_none()
+                    if daily_inv:
+                        if daily_inv.is_blocked or daily_inv.available_rooms < item_req.quantity:
+                            raise HTTPException(
+                                status_code=status.HTTP_409_CONFLICT,
+                                detail=f"Requested room is unavailable on {check_in}",
+                            )
+                        daily_stmt = (
+                            update(RoomDailyInventory)
+                            .where(
+                                RoomDailyInventory.id == daily_inv.id,
+                                RoomDailyInventory.is_blocked.is_(False),
+                                RoomDailyInventory.available_rooms >= item_req.quantity,
+                            )
+                            .values(available_rooms=RoomDailyInventory.available_rooms - item_req.quantity)
+                        )
+                        d_res = await self.db.execute(daily_stmt)
+                        if d_res.rowcount == 0:
+                            raise HTTPException(
+                                status_code=status.HTTP_409_CONFLICT,
+                                detail=f"Requested room is unavailable on {check_in}",
+                            )
+                    else:
+                        from sqlalchemy import update
+                        room_stmt = (
+                            update(HotelRoom)
+                            .where(
+                                HotelRoom.id == room.id,
+                                HotelRoom.available_rooms >= item_req.quantity,
+                            )
+                            .values(available_rooms=HotelRoom.available_rooms - item_req.quantity)
+                        )
+                        r_res = await self.db.execute(room_stmt)
+                        if r_res.rowcount == 0:
+                            raise HTTPException(
+                                status_code=status.HTTP_409_CONFLICT,
+                                detail="Requested number of rooms is unavailable",
+                            )
+                else:
+                    from sqlalchemy import update
+                    room_stmt = (
+                        update(HotelRoom)
+                        .where(
+                            HotelRoom.id == room.id,
+                            HotelRoom.available_rooms >= item_req.quantity,
+                        )
+                        .values(available_rooms=HotelRoom.available_rooms - item_req.quantity)
+                    )
+                    r_res = await self.db.execute(room_stmt)
+                    if r_res.rowcount == 0:
+                        raise HTTPException(
+                            status_code=status.HTTP_409_CONFLICT,
+                            detail="Requested number of rooms is unavailable",
+                        )
+
                 nights = (item_req.meta_data or {}).get("nights", 1)
                 unit_base = float(room.price_per_night) * nights
                 unit_tax = float(room.taxes_per_night) * nights
@@ -202,13 +274,15 @@ class BookingService:
                 calculated_base += unit_base * item_req.quantity
                 calculated_taxes += unit_tax * item_req.quantity
 
-                room.available_rooms -= item_req.quantity
-
                 title = f"{room.room_type} ({nights} nights)"
                 booking_items_to_create.append(
                     BookingItem(
                         item_type=item_type,
                         item_reference_id=str(room.id),
+                        hotel_id=room.hotel_id,
+                        room_id=room.id,
+                        check_in_date=check_in,
+                        check_out_date=check_out,
                         title=title,
                         quantity=item_req.quantity,
                         unit_price=unit_base + unit_tax,
@@ -221,6 +295,7 @@ class BookingService:
                     )
                 )
                 details_snapshot["items_summary"].append({"title": title, "total": item_total})
+
 
             elif item_type == "BUS":
                 bus = await self.travel_repo.get_bus_by_id(ref_uuid)
@@ -380,19 +455,24 @@ class BookingService:
             for p in req.passengers
         ]
 
-        # Generate unique reference
+        # Generate unique reference and secure cancellation token
         booking_ref = generate_booking_reference()
+        cancellation_token = secrets.token_urlsafe(32)
 
         # Build booking record
         booking = Booking(
             booking_reference=booking_ref,
             user_id=current_user.id if current_user else None,
+            guest_name=req.guest_name,
             service_type=req.service_type.upper(),
             status=BookingStatus.PENDING.value,
             provider="SIMULATED_SS_JOURNEY",
             is_simulated=True,
             contact_email=req.contact_email.lower().strip(),
             contact_phone=req.contact_phone.strip(),
+            check_in_date=req.check_in_date,
+            check_out_date=req.check_out_date,
+            cancellation_token=cancellation_token,
             base_amount=calculated_base,
             taxes_amount=calculated_taxes,
             discount_amount=discount,
@@ -412,6 +492,7 @@ class BookingService:
         self,
         booking_id_or_ref: str,
         current_user: Optional[User] = None,
+        guest_token: Optional[str] = None,
     ) -> BookingResponse:
         """Retrieves booking with authorization checks."""
         # Check by UUID or by reference
@@ -427,14 +508,29 @@ class BookingService:
 
         # Authorization check:
         # 1. Admin can access any booking
-        # 2. Owner user can access their booking
-        # 3. Unauthenticated guest can access if they know the reference
-        if current_user and current_user.role != UserRole.ADMIN.value:
-            if booking.user_id and booking.user_id != current_user.id:
+        if current_user and current_user.role == UserRole.ADMIN.value:
+            return self._map_booking_response(booking)
+
+        # 2. Account-linked booking: caller must be authenticated and own it
+        if booking.user_id is not None:
+            if not current_user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Authentication required to view this booking",
+                )
+            if booking.user_id != current_user.id:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="You do not have permission to view this booking",
                 )
+            return self._map_booking_response(booking)
+
+        # 3. Guest booking: caller must provide valid token or be authenticated admin
+        if not guest_token or guest_token != booking.cancellation_token:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Valid booking access token required for guest bookings",
+            )
 
         return self._map_booking_response(booking)
 
@@ -448,6 +544,7 @@ class BookingService:
         booking_id_or_ref: str,
         req: BookingCancelRequest,
         current_user: Optional[User] = None,
+        guest_token: Optional[str] = None,
     ) -> BookingResponse:
         """Cancels a booking if eligible and records the transition reason."""
         booking = None
@@ -461,12 +558,27 @@ class BookingService:
             raise HTTPException(status_code=404, detail="Booking not found")
 
         # Permission check
-        if current_user and current_user.role != UserRole.ADMIN.value:
-            if booking.user_id and booking.user_id != current_user.id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You cannot cancel another customer's booking",
-                )
+        is_admin = current_user and current_user.role == UserRole.ADMIN.value
+        if not is_admin:
+            if booking.user_id is not None:
+                if not current_user:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Authentication required to cancel this booking",
+                    )
+                if booking.user_id != current_user.id:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="You cannot cancel another customer's booking",
+                    )
+            else:
+                # Guest booking: check cancellation token in req or param
+                token_to_verify = req.cancellation_token or guest_token
+                if not token_to_verify or token_to_verify != booking.cancellation_token:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Valid cancellation token required to cancel a guest booking",
+                    )
 
         # Check eligibility
         if booking.status in [BookingStatus.CANCELLED.value, BookingStatus.REFUNDED.value]:
@@ -482,3 +594,4 @@ class BookingService:
             changed_by_user_id=current_user.id if current_user else None,
         )
         return self._map_booking_response(updated)
+

@@ -1,5 +1,6 @@
 import uuid
-from typing import List, Optional
+import enum
+from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy import (
     String,
     Integer,
@@ -15,6 +16,24 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import JSONB
 from backend.app.models.base import Base, PrimaryKeyMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from backend.app.models.partner import PartnerProfile
+    from backend.app.models.user import User
+
+
+class PropertyType(str, enum.Enum):
+    HOTEL = "HOTEL"
+    HOMESTAY = "HOMESTAY"
+
+
+class ListingPublicationStatus(str, enum.Enum):
+    DRAFT = "DRAFT"
+    PENDING_APPROVAL = "PENDING_APPROVAL"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    DELISTED = "DELISTED"
+
 
 
 class Flight(Base, PrimaryKeyMixin, TimestampMixin):
@@ -68,6 +87,30 @@ class Hotel(Base, PrimaryKeyMixin, TimestampMixin):
     __tablename__ = "hotels"
 
     name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
+    property_type: Mapped[str] = mapped_column(
+        String(50),
+        default=PropertyType.HOTEL.value,
+        nullable=False,
+        index=True,
+    )
+    partner_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("partner_profiles.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    publication_status: Mapped[str] = mapped_column(
+        String(30),
+        default=ListingPublicationStatus.APPROVED.value,
+        nullable=False,
+        index=True,
+    )
+    admin_rejection_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    approved_at: Mapped[Optional[DateTime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    approved_by_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     star_rating: Mapped[int] = mapped_column(Integer, default=4, nullable=False)
     guest_rating: Mapped[float] = mapped_column(Float, default=8.8, nullable=False)
     rating_label: Mapped[str] = mapped_column(String(50), default="Excellent", nullable=False)
@@ -98,9 +141,15 @@ class Hotel(Base, PrimaryKeyMixin, TimestampMixin):
         back_populates="hotel",
         cascade="all, delete-orphan",
     )
+    partner: Mapped[Optional["PartnerProfile"]] = relationship(
+        "PartnerProfile",
+        back_populates="properties",
+    )
 
     __table_args__ = (
         Index("idx_hotel_search", "city", "star_rating", "is_active"),
+        Index("idx_hotel_partner_status", "partner_id", "publication_status"),
+        Index("idx_hotel_property_type", "property_type", "publication_status", "is_active"),
     )
 
 
@@ -125,6 +174,32 @@ class HotelRoom(Base, PrimaryKeyMixin, TimestampMixin):
     is_available: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     hotel: Mapped["Hotel"] = relationship("Hotel", back_populates="rooms")
+    daily_inventory: Mapped[List["RoomDailyInventory"]] = relationship(
+        "RoomDailyInventory",
+        back_populates="room",
+        cascade="all, delete-orphan",
+    )
+
+
+class RoomDailyInventory(Base, PrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "room_daily_inventory"
+
+    room_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("hotel_rooms.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    date: Mapped[str] = mapped_column(String(10), nullable=False, index=True)  # YYYY-MM-DD
+    available_rooms: Mapped[int] = mapped_column(Integer, nullable=False)
+    price_override: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
+    is_blocked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    __table_args__ = (
+        Index("idx_room_daily_date_unique", "room_id", "date", unique=True),
+    )
+
+    room: Mapped["HotelRoom"] = relationship("HotelRoom", back_populates="daily_inventory")
+
 
 
 class Bus(Base, PrimaryKeyMixin, TimestampMixin):

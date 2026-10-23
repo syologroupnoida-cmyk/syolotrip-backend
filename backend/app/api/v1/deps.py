@@ -87,3 +87,30 @@ async def get_current_admin(
             detail="Administrator access required",
         )
     return current_user
+
+
+async def get_current_partner(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Enforces that the current authenticated user has the PARTNER role and returns their PartnerProfile."""
+    from backend.app.models.partner import PartnerProfile
+
+    if current_user.role != UserRole.PARTNER.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Partner access required",
+        )
+
+    query = select(PartnerProfile).where(PartnerProfile.user_id == current_user.id)
+    result = await db.execute(query)
+    profile = result.scalar_one_or_none()
+
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Partner profile not found. Please register your partner profile.",
+        )
+
+    return profile
+

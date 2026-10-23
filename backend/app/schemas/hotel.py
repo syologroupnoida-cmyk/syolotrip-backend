@@ -23,10 +23,12 @@ class HotelSearchParams(BaseModel):
     max_price: Optional[float] = None
     amenities: Optional[List[str]] = None
     featured_only: Optional[bool] = None
+    property_type: Optional[str] = None  # "HOTEL" or "HOMESTAY"
 
 
 class HotelCreate(BaseModel):
     name: str
+    property_type: str = "HOTEL"
     star_rating: int = 4
     guest_rating: float = 8.8
     rating_label: str = "Excellent"
@@ -48,6 +50,9 @@ class HotelCreate(BaseModel):
 class HotelResponse(BaseModel):
     id: str
     name: str
+    property_type: str = "HOTEL"
+    partner_id: Optional[str] = None
+    publication_status: str = "APPROVED"
     star_rating: int
     guest_rating: float
     rating_label: str
@@ -68,3 +73,4 @@ class HotelResponse(BaseModel):
     rooms: Optional[List[HotelRoomResponse]] = None
 
     model_config = {"from_attributes": True}
+

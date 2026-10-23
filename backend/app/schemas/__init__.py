@@ -45,6 +45,19 @@ from backend.app.schemas.admin import (
     DashboardStatsResponse,
     AuditLogResponse,
 )
+from backend.app.schemas.partner import (
+    PartnerRegisterRequest,
+    PartnerProfileUpdate,
+    PartnerProfileResponse,
+    PartnerPropertyCreate,
+    PartnerPropertyUpdate,
+    PartnerPropertyResponse,
+    PartnerRoomCreate,
+    PartnerRoomUpdate,
+    DailyInventorySetRequest,
+    DailyInventoryResponse,
+    AdminPropertyReviewRequest,
+)
 
 __all__ = [
     "ApiResponse",
@@ -80,4 +93,16 @@ __all__ = [
     "PaymentResponse",
     "DashboardStatsResponse",
     "AuditLogResponse",
+    "PartnerRegisterRequest",
+    "PartnerProfileUpdate",
+    "PartnerProfileResponse",
+    "PartnerPropertyCreate",
+    "PartnerPropertyUpdate",
+    "PartnerPropertyResponse",
+    "PartnerRoomCreate",
+    "PartnerRoomUpdate",
+    "DailyInventorySetRequest",
+    "DailyInventoryResponse",
+    "AdminPropertyReviewRequest",
 ]
+

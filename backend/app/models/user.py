@@ -1,5 +1,5 @@
 import enum
-from typing import List, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy import String, Boolean, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from backend.app.models.base import Base, PrimaryKeyMixin, TimestampMixin
@@ -7,12 +7,14 @@ from backend.app.models.base import Base, PrimaryKeyMixin, TimestampMixin
 if TYPE_CHECKING:
     from backend.app.models.booking import Booking
     from backend.app.models.audit import AuditLog
+    from backend.app.models.partner import PartnerProfile
 
 
 class UserRole(str, enum.Enum):
     CUSTOMER = "CUSTOMER"
     ADMIN = "ADMIN"
     SUPPORT = "SUPPORT"
+    PARTNER = "PARTNER"
 
 
 class User(Base, PrimaryKeyMixin, TimestampMixin):
@@ -62,3 +64,11 @@ class User(Base, PrimaryKeyMixin, TimestampMixin):
         "AuditLog",
         back_populates="user",
     )
+    partner_profile: Mapped[Optional["PartnerProfile"]] = relationship(
+        "PartnerProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+        foreign_keys="[PartnerProfile.user_id]",
+    )
+

@@ -12,6 +12,7 @@ from backend.app.api.v1.endpoints import (
     payments,
     admin,
     mybiz,
+    partner,
 )
 
 api_router = APIRouter()
@@ -27,3 +28,5 @@ api_router.include_router(bookings.router)
 api_router.include_router(payments.router)
 api_router.include_router(admin.router)
 api_router.include_router(mybiz.router)
+api_router.include_router(partner.router)
+

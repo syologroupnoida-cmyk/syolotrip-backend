@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
-  Plane, Hotel, Bus, Compass, Train, Car, Plus, RefreshCw, MapPin, Trash2 
+  Plane, Hotel, Bus, Compass, Train, Car, Plus, RefreshCw, MapPin, Trash2,
+  CheckCircle2, Clock
 } from 'lucide-react';
 import { 
   getAdminFlights, getAdminHotels, getAdminBuses, 
   getAdminPackages, getAdminTrains, getAdminCabs,
   createAdminFlight, createAdminHotel, createAdminBus,
   createAdminTrain, createAdminCab, createAdminPackage,
-  deleteAdminInventoryItem 
+  deleteAdminInventoryItem,
+  getAdminPendingProperties, approveAdminProperty, rejectAdminProperty
 } from '../services/api';
+
 
 interface InventoryManagementProps {
   type: 'flights' | 'hotels' | 'trains' | 'buses' | 'cabs' | 'packages';
@@ -18,8 +21,10 @@ interface InventoryManagementProps {
 export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }) => {
   const queryClient = useQueryClient();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [hotelSubTab, setHotelSubTab] = useState<'published' | 'pending'>('published');
 
   // New Flight state
+
   const [newFlight, setNewFlight] = useState({
     airline: 'Air India',
     airline_code: 'AI',
@@ -128,6 +133,29 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
     enabled: type === 'hotels',
   });
 
+  const { data: pendingProperties, isLoading: pendingLoading, refetch: refetchPending } = useQuery({
+    queryKey: ['adminPendingProperties'],
+    queryFn: getAdminPendingProperties,
+    enabled: type === 'hotels',
+  });
+
+  const approvePropertyMutation = useMutation({
+    mutationFn: approveAdminProperty,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminPendingProperties'] });
+      queryClient.invalidateQueries({ queryKey: ['adminHotels'] });
+    },
+  });
+
+  const rejectPropertyMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) => rejectAdminProperty(id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminPendingProperties'] });
+      queryClient.invalidateQueries({ queryKey: ['adminHotels'] });
+    },
+  });
+
+
   const { data: trainsData, isLoading: trainsLoading, refetch: refetchTrains } = useQuery({
     queryKey: ['adminTrains'],
     queryFn: getAdminTrains,
@@ -209,11 +237,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
     },
   });
 
-  const isLoading = flightsLoading || hotelsLoading || trainsLoading || busesLoading || cabsLoading || packagesLoading;
+  const isLoading = flightsLoading || hotelsLoading || pendingLoading || trainsLoading || busesLoading || cabsLoading || packagesLoading;
 
   const handleRefresh = () => {
     if (type === 'flights') refetchFlights();
-    if (type === 'hotels') refetchHotels();
+    if (type === 'hotels') {
+      refetchHotels();
+      refetchPending();
+    }
     if (type === 'trains') refetchTrains();
     if (type === 'buses') refetchBuses();
     if (type === 'cabs') refetchCabs();
@@ -274,6 +305,38 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
         </div>
       </div>
 
+      {/* Subtab for Hotels (Published vs Partner Approvals Queue) */}
+      {type === 'hotels' && (
+        <div className="flex items-center gap-2 p-1.5 rounded-xl bg-slate-900 border border-slate-800 w-fit">
+          <button
+            onClick={() => setHotelSubTab('published')}
+            className={`px-4 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              hotelSubTab === 'published'
+                ? 'bg-brand-600 text-white shadow'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Live Published Inventory ({hotelList.length})
+          </button>
+          <button
+            onClick={() => setHotelSubTab('pending')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              hotelSubTab === 'pending'
+                ? 'bg-brand-600 text-white shadow'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>Partner Approvals Queue</span>
+            {pendingProperties && pendingProperties.length > 0 && (
+              <span className="px-2 py-0.5 text-[10px] rounded-full bg-amber-500 text-slate-950 font-bold animate-pulse">
+                {pendingProperties.length}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Content Feed */}
       {isLoading ? (
         <div className="p-12 text-center rounded-2xl bg-slate-950 border border-slate-800 text-slate-500">
@@ -322,12 +385,99 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
               </div>
             ))}
 
-          {/* HOTELS */}
-          {type === 'hotels' &&
+          {/* HOTELS - PARTNER PENDING APPROVALS QUEUE */}
+          {type === 'hotels' && hotelSubTab === 'pending' && (
+            <>
+              {(!pendingProperties || pendingProperties.length === 0) ? (
+                <div className="col-span-full p-12 text-center rounded-2xl bg-slate-950 border border-slate-800 text-slate-400 space-y-2">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
+                  <p className="font-bold text-white">No listings currently awaiting review</p>
+                  <p className="text-xs text-slate-500">When partners submit hotel or homestay listings, they will appear here for review and one-click publishing.</p>
+                </div>
+              ) : (
+                pendingProperties.map((p: any) => (
+                  <div key={p.id} className="p-5 rounded-2xl bg-slate-950 border border-amber-500/30 space-y-4 hover:border-amber-500/60 transition shadow-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 uppercase">
+                            {p.property_type || 'HOTEL'}
+                          </span>
+                          <span className="text-[10px] font-semibold text-slate-400">★ {p.star_rating} Stars</span>
+                        </div>
+                        <h3 className="font-bold text-white text-sm">{p.name}</h3>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                        {p.rooms_count} Rooms
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-slate-400 space-y-1">
+                      <p className="flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-brand-400 shrink-0" />
+                        <span>{p.address}, {p.city}</span>
+                      </p>
+                      {p.partner && (
+                        <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px] space-y-0.5">
+                          <span className="text-slate-500 block">Submitted by Partner:</span>
+                          <span className="font-semibold text-slate-200">{p.partner.business_name} ({p.partner.business_type})</span>
+                          {p.partner.phone && <span className="text-slate-400 block">📞 {p.partner.phone}</span>}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-900 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-500 block">Base Price:</span>
+                        <span className="font-bold text-white text-sm">₹{p.starting_price?.toLocaleString()}/night</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            const reason = window.prompt("Enter rejection reason for partner:", "Listing details require clarification.");
+                            if (reason !== null) {
+                              rejectPropertyMutation.mutate({ id: p.id, reason });
+                            }
+                          }}
+                          disabled={rejectPropertyMutation.isPending}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition cursor-pointer"
+                        >
+                          Reject
+                        </button>
+                        <button
+                          onClick={() => approvePropertyMutation.mutate(p.id)}
+                          disabled={approvePropertyMutation.isPending}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition cursor-pointer shadow-sm"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Approve & Publish</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </>
+          )}
+
+          {/* HOTELS - LIVE PUBLISHED */}
+          {type === 'hotels' && hotelSubTab === 'published' &&
             hotelList.map((h: any) => (
               <div key={h.id} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 hover:border-brand-500/40 transition">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-sm">{h.name}</span>
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-400 border border-brand-500/20 uppercase">
+                        {h.property_type || h.propertyType || 'HOTEL'}
+                      </span>
+                      {h.partner_id && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                          Partner
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-bold text-white text-sm">{h.name}</span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
                       ★ {h.star_rating || h.starRating} Stars
@@ -351,6 +501,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
                 </div>
               </div>
             ))}
+
 
           {/* TRAINS */}
           {type === 'trains' &&

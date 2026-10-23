@@ -1,6 +1,45 @@
 // Shared API and Domain Contracts for Traveler Platform
 
-export type UserRole = 'CUSTOMER' | 'ADMIN' | 'SUPPORT';
+export type UserRole = 'CUSTOMER' | 'ADMIN' | 'SUPPORT' | 'PARTNER';
+
+export type PropertyType = 'HOTEL' | 'HOMESTAY';
+
+export type ListingPublicationStatus =
+  | 'DRAFT'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'DELISTED';
+
+export type PartnerStatus = 'PENDING' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED';
+
+export interface PartnerProfileContract {
+  id: string;
+  userId: string;
+  businessName: string;
+  businessType: string;
+  phone?: string;
+  city?: string;
+  address?: string;
+  country: string;
+  taxId?: string;
+  status: PartnerStatus;
+  isVerified: boolean;
+  commissionRate: number;
+  isCommissionActive: boolean;
+  rejectionReason?: string;
+  verifiedAt?: string;
+  createdAt: string;
+}
+
+export interface RoomDailyInventoryContract {
+  id: string;
+  roomId: string;
+  date: string; // YYYY-MM-DD
+  availableRooms: number;
+  priceOverride?: number;
+  isBlocked: boolean;
+}
 
 export interface UserProfile {
   id: string;
@@ -10,6 +49,7 @@ export interface UserProfile {
   role: UserRole;
   isActive: boolean;
   createdAt: string;
+  partnerProfile?: PartnerProfileContract;
 }
 
 export interface AuthTokens {
@@ -22,6 +62,7 @@ export interface AuthResponse {
   user: UserProfile;
   tokens: AuthTokens;
 }
+
 
 // ================= Flight Models =================
 export interface Airport {
@@ -82,6 +123,10 @@ export interface HotelProperty {
   provider: string;
   isSimulated: boolean;
   name: string;
+  propertyType?: PropertyType;
+  partnerId?: string;
+  publicationStatus?: ListingPublicationStatus;
+  adminRejectionReason?: string;
   starRating: number;
   address: string;
   city: string;
@@ -96,6 +141,7 @@ export interface HotelProperty {
   currency: string;
   rooms?: HotelRoom[];
 }
+
 
 // ================= Bus Models =================
 export interface BusSeat {

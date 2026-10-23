@@ -17,6 +17,7 @@ from backend.app.models.base import Base, PrimaryKeyMixin, TimestampMixin
 if TYPE_CHECKING:
     from backend.app.models.user import User
     from backend.app.models.payment import Payment
+    from backend.app.models.travel import Hotel, HotelRoom
 
 
 class BookingStatus(str, enum.Enum):
@@ -73,8 +74,13 @@ class Booking(Base, PrimaryKeyMixin, TimestampMixin):
         nullable=False,
     )
 
+    guest_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     contact_email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     contact_phone: Mapped[str] = mapped_column(String(50), nullable=False)
+
+    check_in_date: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    check_out_date: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    cancellation_token: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
 
     base_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     taxes_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0.0, nullable=False)
@@ -110,6 +116,7 @@ class Booking(Base, PrimaryKeyMixin, TimestampMixin):
 
     __table_args__ = (
         Index("idx_booking_user_status", "user_id", "status"),
+        Index("idx_booking_cancellation_token", "cancellation_token"),
     )
 
 
@@ -126,11 +133,27 @@ class BookingItem(Base, PrimaryKeyMixin, TimestampMixin):
     title: Mapped[str] = mapped_column(String(250), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
+    hotel_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("hotels.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    room_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("hotel_rooms.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    check_in_date: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    check_out_date: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+
     unit_price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     total_price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     meta_data: Mapped[Optional[dict]] = mapped_column(JSON, default=dict, nullable=True)
 
     booking: Mapped["Booking"] = relationship("Booking", back_populates="items")
+    hotel: Mapped[Optional["Hotel"]] = relationship("Hotel")
+    room: Mapped[Optional["HotelRoom"]] = relationship("HotelRoom")
+
 
 
 class Passenger(Base, PrimaryKeyMixin, TimestampMixin):

@@ -1,6 +1,22 @@
 from backend.app.models.base import Base, PrimaryKeyMixin, TimestampMixin
 from backend.app.models.user import User, UserRole
-from backend.app.models.travel import Flight, Hotel, HotelRoom, Bus, HolidayPackage
+from backend.app.models.partner import (
+    PartnerProfile,
+    PartnerStatus,
+    PartnerBusinessType,
+)
+from backend.app.models.travel import (
+    Flight,
+    Hotel,
+    HotelRoom,
+    RoomDailyInventory,
+    Bus,
+    HolidayPackage,
+    Train,
+    Cab,
+    PropertyType,
+    ListingPublicationStatus,
+)
 from backend.app.models.booking import (
     Booking,
     BookingItem,
@@ -29,11 +45,19 @@ __all__ = [
     "TimestampMixin",
     "User",
     "UserRole",
+    "PartnerProfile",
+    "PartnerStatus",
+    "PartnerBusinessType",
     "Flight",
     "Hotel",
     "HotelRoom",
+    "RoomDailyInventory",
+    "PropertyType",
+    "ListingPublicationStatus",
     "Bus",
     "HolidayPackage",
+    "Train",
+    "Cab",
     "Booking",
     "BookingItem",
     "Passenger",

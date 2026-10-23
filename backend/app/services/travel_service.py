@@ -142,6 +142,9 @@ class TravelService:
         return HotelResponse(
             id=str(h.id),
             name=h.name,
+            property_type=h.property_type or "HOTEL",
+            partner_id=str(h.partner_id) if h.partner_id else None,
+            publication_status=h.publication_status or "APPROVED",
             star_rating=h.star_rating,
             guest_rating=float(h.guest_rating),
             rating_label=h.rating_label,
@@ -174,6 +177,7 @@ class TravelService:
             min_stars=params.min_stars,
             max_price=params.max_price,
             featured_only=params.featured_only,
+            property_type=params.property_type,
             limit=limit,
             offset=offset,
         )
@@ -184,10 +188,11 @@ class TravelService:
             h_uuid = uuid.UUID(hotel_id)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid hotel ID format")
-        h = await self.travel_repo.get_hotel_by_id(h_uuid)
-        if not h or not h.is_active:
+        h = await self.travel_repo.get_published_hotel_by_id(h_uuid)
+        if not h:
             raise HTTPException(status_code=404, detail="Hotel not found")
         return self._map_hotel(h)
+
 
     # ────────── Bus Methods ──────────
     def _map_bus(self, b: Bus) -> BusResponse:

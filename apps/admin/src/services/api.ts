@@ -158,5 +158,23 @@ export const deleteAdminInventoryItem = async (itemType: string, itemId: string)
   return response.data;
 };
 
+export const getAdminPendingProperties = async () => {
+  const response = await adminApiClient.get('/admin/properties/pending');
+  return response.data.data;
+};
+
+export const approveAdminProperty = async (propertyId: string) => {
+  const response = await adminApiClient.post(`/admin/properties/${propertyId}/approve`);
+  return response.data;
+};
+
+export const rejectAdminProperty = async (propertyId: string, rejectionReason?: string) => {
+  const response = await adminApiClient.post(`/admin/properties/${propertyId}/reject`, {
+    rejection_reason: rejectionReason || 'Does not meet platform standards',
+  });
+  return response.data;
+};
+
+
 
 

@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Header, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.database import get_db
@@ -45,11 +45,14 @@ async def get_my_trips(
 @router.get("/{id_or_ref}", response_model=ApiResponse[BookingResponse])
 async def get_booking_details(
     id_or_ref: str,
+    token: Optional[str] = Query(None, description="Access token for guest bookings"),
+    x_booking_token: Optional[str] = Header(None, alias="X-Booking-Token"),
     current_user: Optional[User] = Depends(get_optional_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     service = BookingService(db)
-    booking = await service.get_booking(id_or_ref, current_user=current_user)
+    guest_token = token or x_booking_token
+    booking = await service.get_booking(id_or_ref, current_user=current_user, guest_token=guest_token)
     return ApiResponse(success=True, data=booking)
 
 
@@ -57,14 +60,18 @@ async def get_booking_details(
 async def cancel_booking(
     id_or_ref: str,
     req: BookingCancelRequest,
+    token: Optional[str] = Query(None, description="Cancellation token for guest bookings"),
+    x_booking_token: Optional[str] = Header(None, alias="X-Booking-Token"),
     current_user: Optional[User] = Depends(get_optional_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     service = BookingService(db)
-    cancelled = await service.cancel_booking(id_or_ref, req, current_user=current_user)
+    guest_token = req.cancellation_token or token or x_booking_token
+    cancelled = await service.cancel_booking(id_or_ref, req, current_user=current_user, guest_token=guest_token)
     await db.commit()
     return ApiResponse(
         success=True,
         data=cancelled,
         message="Booking cancelled successfully.",
     )
+

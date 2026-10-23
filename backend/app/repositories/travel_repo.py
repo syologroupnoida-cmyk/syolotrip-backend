@@ -79,10 +79,14 @@ class TravelRepository:
         min_stars: Optional[int] = None,
         max_price: Optional[float] = None,
         featured_only: Optional[bool] = None,
+        property_type: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[Hotel], int]:
-        filters = [Hotel.is_active.is_(True)]
+        filters = [
+            Hotel.is_active.is_(True),
+            Hotel.publication_status == "APPROVED",
+        ]
 
         if city:
             filters.append(Hotel.city.ilike(f"%{city.strip()}%"))
@@ -92,6 +96,8 @@ class TravelRepository:
             filters.append(Hotel.starting_price <= max_price)
         if featured_only:
             filters.append(Hotel.featured.is_(True))
+        if property_type:
+            filters.append(Hotel.property_type == property_type.upper())
 
         count_query = select(func.count(Hotel.id)).where(and_(*filters))
         total = (await self.db.execute(count_query)).scalar_one()
@@ -115,7 +121,22 @@ class TravelRepository:
         )
         return (await self.db.execute(query)).scalar_one_or_none()
 
+    async def get_published_hotel_by_id(self, hotel_id: uuid.UUID) -> Optional[Hotel]:
+        query = (
+            select(Hotel)
+            .options(selectinload(Hotel.rooms))
+            .where(
+                and_(
+                    Hotel.id == hotel_id,
+                    Hotel.is_active.is_(True),
+                    Hotel.publication_status == "APPROVED",
+                )
+            )
+        )
+        return (await self.db.execute(query)).scalar_one_or_none()
+
     async def get_hotel_room_by_id(self, room_id: uuid.UUID) -> Optional[HotelRoom]:
+
         query = select(HotelRoom).where(HotelRoom.id == room_id)
         return (await self.db.execute(query)).scalar_one_or_none()
 
