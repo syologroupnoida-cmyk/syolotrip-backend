@@ -39,6 +39,7 @@ class PaymentService:
         self,
         req: PaymentCreateRequest,
         current_user: Optional[User] = None,
+        guest_token: Optional[str] = None,
     ) -> PaymentResponse:
         try:
             b_uuid = uuid.UUID(req.booking_id)
@@ -49,25 +50,57 @@ class PaymentService:
         if not booking:
             raise HTTPException(status_code=404, detail="Booking not found")
 
-        # Authorization: owner user or admin
-        if current_user and current_user.role != UserRole.ADMIN.value:
-            if booking.user_id and booking.user_id != current_user.id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You are not authorized to pay for this booking",
-                )
+        # SEC-04 Authorization check
+        is_admin = current_user and current_user.role == UserRole.ADMIN.value
+        if not is_admin:
+            if booking.user_id is not None:
+                # 1. Account-linked booking: caller MUST be authenticated and own it
+                if not current_user:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Authentication required to pay for this account-linked booking",
+                    )
+                if booking.user_id != current_user.id:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="You are not authorized to pay for another user's booking",
+                    )
+            else:
+                # 2. Guest booking: caller MUST provide a valid guest access token
+                token_to_verify = req.guest_token or guest_token
+                if not token_to_verify or token_to_verify != booking.cancellation_token:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Valid guest booking access token required to process payment",
+                    )
 
-        # Idempotency / repeated safety check:
-        if booking.status == BookingStatus.CONFIRMED.value:
-            # Check if there is already a successful payment
-            for p in booking.payments:
-                if p.status == PaymentStatus.SUCCESS.value:
-                    return self._map_payment_response(p)
-
+        # SEC-04 State transition and idempotency checks
         if booking.status == BookingStatus.CANCELLED.value:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot pay for a cancelled booking",
+            )
+
+        if booking.status == BookingStatus.REFUNDED.value:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot pay for a refunded booking",
+            )
+
+        if booking.status == BookingStatus.CONFIRMED.value:
+            # Cannot retroactively fail an already confirmed booking
+            if req.simulate_failure:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot simulate failure on an already confirmed booking",
+                )
+            # Idempotent replay: return existing successful payment
+            for p in booking.payments:
+                if p.status == PaymentStatus.SUCCESS.value:
+                    return self._map_payment_response(p)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Booking is already confirmed",
             )
 
         pay_ref = generate_payment_reference()

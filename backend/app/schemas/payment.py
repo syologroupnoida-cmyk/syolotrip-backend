@@ -7,6 +7,7 @@ class PaymentCreateRequest(BaseModel):
     payment_method: str = "DEMO_SIMULATION"  # CARD, UPI, APPLEPAY, DEMO_SIMULATION
     simulate_failure: bool = False
     card_last_four: Optional[str] = "4242"
+    guest_token: Optional[str] = Field(None, description="Access token for authorizing payment on guest bookings")
 
 
 class PaymentResponse(BaseModel):

@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Header, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.database import get_db
@@ -15,11 +15,14 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
 @router.post("/demo", response_model=ApiResponse[PaymentResponse], status_code=status.HTTP_200_OK)
 async def process_demo_payment(
     req: PaymentCreateRequest,
+    token: Optional[str] = Query(None, description="Guest booking access token"),
+    x_booking_token: Optional[str] = Header(None, alias="X-Booking-Token"),
     current_user: Optional[User] = Depends(get_optional_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     service = PaymentService(db)
-    payment = await service.process_demo_payment(req, current_user=current_user)
+    guest_token = req.guest_token or token or x_booking_token
+    payment = await service.process_demo_payment(req, current_user=current_user, guest_token=guest_token)
     await db.commit()
     msg = (
         "Demo payment approved and booking confirmed."

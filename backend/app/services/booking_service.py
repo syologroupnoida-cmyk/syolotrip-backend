@@ -12,8 +12,19 @@ from backend.app.models.booking import (
     Passenger,
     BookingStatus,
     BookingServiceType,
+    BookingStatusHistory,
 )
-from backend.app.models.travel import Flight, HotelRoom, Bus, HolidayPackage, Train, Cab
+from backend.app.models.travel import (
+    Flight,
+    Hotel,
+    HotelRoom,
+    RoomDailyInventory,
+    Bus,
+    HolidayPackage,
+    Train,
+    Cab,
+)
+from backend.app.models.coupon import Coupon
 from backend.app.repositories.booking_repo import BookingRepository
 from backend.app.repositories.travel_repo import TravelRepository
 from backend.app.schemas.booking import (
@@ -142,107 +153,130 @@ class BookingService:
             "promo_code": req.promo_code,
         }
 
-        for item_req in req.items:
-            try:
-                ref_uuid = uuid.UUID(item_req.item_reference_id)
-            except ValueError:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid item reference ID: {item_req.item_reference_id}",
-                )
-
-            item_type = item_req.item_type.upper()
-
-            if item_type == "FLIGHT":
-                flight = await self.travel_repo.get_flight_by_id(ref_uuid)
-                if not flight or not flight.is_active:
+        try:
+            for item_req in req.items:
+                try:
+                    ref_uuid = uuid.UUID(item_req.item_reference_id)
+                except ValueError:
                     raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail=f"Flight {item_req.item_reference_id} is no longer available",
-                    )
-                if flight.available_seats < item_req.quantity:
-                    raise HTTPException(
-                        status_code=status.HTTP_409_CONFLICT,
-                        detail=f"Only {flight.available_seats} seats remaining on flight {flight.flight_number}",
-                    )
-                unit_base = float(flight.base_fare)
-                unit_tax = float(flight.taxes)
-                item_total = (unit_base + unit_tax) * item_req.quantity
-                calculated_base += unit_base * item_req.quantity
-                calculated_taxes += unit_tax * item_req.quantity
-
-                flight.available_seats -= item_req.quantity
-
-                title = f"{flight.airline} ({flight.origin_code} ➔ {flight.destination_code})"
-                booking_items_to_create.append(
-                    BookingItem(
-                        item_type=item_type,
-                        item_reference_id=str(flight.id),
-                        title=title,
-                        quantity=item_req.quantity,
-                        unit_price=unit_base + unit_tax,
-                        total_price=item_total,
-                        meta_data={
-                            "airline": flight.airline,
-                            "flight_number": flight.flight_number,
-                            "origin": flight.origin_code,
-                            "destination": flight.destination_code,
-                            "departure_time": flight.departure_time,
-                        },
-                    )
-                )
-                details_snapshot["items_summary"].append({"title": title, "total": item_total})
-
-            elif item_type in ["HOTEL_ROOM", "HOTEL"]:
-                room = await self.travel_repo.get_hotel_room_by_id(ref_uuid)
-                if not room:
-                    hotel = await self.travel_repo.get_hotel_by_id(ref_uuid)
-                    if hotel and hotel.rooms:
-                        room = next((r for r in hotel.rooms if r.is_available), hotel.rooms[0])
-                if not room or not room.is_available:
-                    raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail=f"Hotel room {item_req.item_reference_id} is no longer available",
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Invalid item reference ID: {item_req.item_reference_id}",
                     )
 
-                check_in = item_req.check_in_date or req.check_in_date
-                check_out = item_req.check_out_date or req.check_out_date
+                item_type = item_req.item_type.upper()
 
-                # Check and decrement date-based daily inventory if check_in date is specified
-                if check_in:
-                    from backend.app.models.travel import RoomDailyInventory
-                    daily_query = select(RoomDailyInventory).where(
-                        RoomDailyInventory.room_id == room.id,
-                        RoomDailyInventory.date == check_in,
-                    )
-                    daily_res = await self.db.execute(daily_query)
-                    daily_inv = daily_res.scalar_one_or_none()
-                    if daily_inv:
-                        if daily_inv.is_blocked or daily_inv.available_rooms < item_req.quantity:
-                            raise HTTPException(
-                                status_code=status.HTTP_409_CONFLICT,
-                                detail=f"Requested room is unavailable on {check_in}",
-                            )
-                        daily_stmt = (
-                            update(RoomDailyInventory)
-                            .where(
-                                RoomDailyInventory.id == daily_inv.id,
-                                RoomDailyInventory.is_blocked.is_(False),
-                                RoomDailyInventory.available_rooms >= item_req.quantity,
-                            )
-                            .values(available_rooms=RoomDailyInventory.available_rooms - item_req.quantity)
+                if item_type == "FLIGHT":
+                    flight = await self.travel_repo.get_flight_by_id(ref_uuid)
+                    if not flight or not flight.is_active:
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Flight {item_req.item_reference_id} is no longer available",
                         )
-                        d_res = await self.db.execute(daily_stmt)
-                        if d_res.rowcount == 0:
-                            raise HTTPException(
-                                status_code=status.HTTP_409_CONFLICT,
-                                detail=f"Requested room is unavailable on {check_in}",
+
+                    # SEC-06: Atomic conditional decrement preventing overselling
+                    flight_stmt = (
+                        update(Flight)
+                        .where(
+                            Flight.id == flight.id,
+                            Flight.is_active.is_(True),
+                            Flight.available_seats >= item_req.quantity,
+                        )
+                        .values(available_seats=Flight.available_seats - item_req.quantity)
+                    )
+                    f_res = await self.db.execute(flight_stmt)
+                    if f_res.rowcount == 0:
+                        raise HTTPException(
+                            status_code=status.HTTP_409_CONFLICT,
+                            detail=f"Only {flight.available_seats} seats remaining on flight {flight.flight_number}",
+                        )
+
+                    unit_base = float(flight.base_fare)
+                    unit_tax = float(flight.taxes)
+                    item_total = (unit_base + unit_tax) * item_req.quantity
+                    calculated_base += unit_base * item_req.quantity
+                    calculated_taxes += unit_tax * item_req.quantity
+
+                    title = f"{flight.airline} ({flight.origin_code} ➔ {flight.destination_code})"
+                    booking_items_to_create.append(
+                        BookingItem(
+                            item_type=item_type,
+                            item_reference_id=str(flight.id),
+                            title=title,
+                            quantity=item_req.quantity,
+                            unit_price=unit_base + unit_tax,
+                            total_price=item_total,
+                            meta_data={
+                                "airline": flight.airline,
+                                "flight_number": flight.flight_number,
+                                "origin": flight.origin_code,
+                                "destination": flight.destination_code,
+                                "departure_time": flight.departure_time,
+                            },
+                        )
+                    )
+                    details_snapshot["items_summary"].append({"title": title, "total": item_total})
+
+                elif item_type in ["HOTEL_ROOM", "HOTEL"]:
+                    room = await self.travel_repo.get_hotel_room_by_id(ref_uuid)
+                    if not room:
+                        hotel = await self.travel_repo.get_hotel_by_id(ref_uuid)
+                        if hotel and hotel.rooms:
+                            room = next((r for r in hotel.rooms if r.is_available), hotel.rooms[0])
+                    if not room or not room.is_available:
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Hotel room {item_req.item_reference_id} is no longer available",
+                        )
+
+                    check_in = item_req.check_in_date or req.check_in_date
+                    check_out = item_req.check_out_date or req.check_out_date
+
+                    # SEC-06: Atomic conditional decrement for hotel inventory
+                    if check_in:
+                        daily_query = select(RoomDailyInventory).where(
+                            RoomDailyInventory.room_id == room.id,
+                            RoomDailyInventory.date == check_in,
+                        )
+                        daily_res = await self.db.execute(daily_query)
+                        daily_inv = daily_res.scalar_one_or_none()
+                        if daily_inv:
+                            daily_stmt = (
+                                update(RoomDailyInventory)
+                                .where(
+                                    RoomDailyInventory.id == daily_inv.id,
+                                    RoomDailyInventory.is_blocked.is_(False),
+                                    RoomDailyInventory.available_rooms >= item_req.quantity,
+                                )
+                                .values(available_rooms=RoomDailyInventory.available_rooms - item_req.quantity)
                             )
+                            d_res = await self.db.execute(daily_stmt)
+                            if d_res.rowcount == 0:
+                                raise HTTPException(
+                                    status_code=status.HTTP_409_CONFLICT,
+                                    detail=f"Requested room is unavailable on {check_in}",
+                                )
+                        else:
+                            room_stmt = (
+                                update(HotelRoom)
+                                .where(
+                                    HotelRoom.id == room.id,
+                                    HotelRoom.is_available.is_(True),
+                                    HotelRoom.available_rooms >= item_req.quantity,
+                                )
+                                .values(available_rooms=HotelRoom.available_rooms - item_req.quantity)
+                            )
+                            r_res = await self.db.execute(room_stmt)
+                            if r_res.rowcount == 0:
+                                raise HTTPException(
+                                    status_code=status.HTTP_409_CONFLICT,
+                                    detail="Requested number of rooms is unavailable",
+                                )
                     else:
                         room_stmt = (
                             update(HotelRoom)
                             .where(
                                 HotelRoom.id == room.id,
+                                HotelRoom.is_available.is_(True),
                                 HotelRoom.available_rooms >= item_req.quantity,
                             )
                             .values(available_rooms=HotelRoom.available_rooms - item_req.quantity)
@@ -253,200 +287,292 @@ class BookingService:
                                 status_code=status.HTTP_409_CONFLICT,
                                 detail="Requested number of rooms is unavailable",
                             )
-                else:
-                    room_stmt = (
-                        update(HotelRoom)
-                        .where(
-                            HotelRoom.id == room.id,
-                            HotelRoom.available_rooms >= item_req.quantity,
+
+                    nights = (item_req.meta_data or {}).get("nights", 1)
+                    unit_base = float(room.price_per_night) * nights
+                    unit_tax = float(room.taxes_per_night) * nights
+                    item_total = (unit_base + unit_tax) * item_req.quantity
+                    calculated_base += unit_base * item_req.quantity
+                    calculated_taxes += unit_tax * item_req.quantity
+
+                    title = f"{room.room_type} ({nights} nights)"
+                    booking_items_to_create.append(
+                        BookingItem(
+                            item_type=item_type,
+                            item_reference_id=str(room.id),
+                            hotel_id=room.hotel_id,
+                            room_id=room.id,
+                            check_in_date=check_in,
+                            check_out_date=check_out,
+                            title=title,
+                            quantity=item_req.quantity,
+                            unit_price=unit_base + unit_tax,
+                            total_price=item_total,
+                            meta_data={
+                                "room_type": room.room_type,
+                                "nights": nights,
+                                "hotel_id": str(room.hotel_id),
+                            },
                         )
-                        .values(available_rooms=HotelRoom.available_rooms - item_req.quantity)
                     )
-                    r_res = await self.db.execute(room_stmt)
-                    if r_res.rowcount == 0:
+                    details_snapshot["items_summary"].append({"title": title, "total": item_total})
+
+                elif item_type == "BUS":
+                    bus = await self.travel_repo.get_bus_by_id(ref_uuid)
+                    if not bus or not bus.is_active:
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Bus schedule not found",
+                        )
+                    # SEC-06: Atomic conditional decrement for bus seats
+                    bus_stmt = (
+                        update(Bus)
+                        .where(
+                            Bus.id == bus.id,
+                            Bus.is_active.is_(True),
+                            Bus.available_seats >= item_req.quantity,
+                        )
+                        .values(available_seats=Bus.available_seats - item_req.quantity)
+                    )
+                    b_res = await self.db.execute(bus_stmt)
+                    if b_res.rowcount == 0:
                         raise HTTPException(
                             status_code=status.HTTP_409_CONFLICT,
-                            detail="Requested number of rooms is unavailable",
+                            detail="Requested number of bus seats is unavailable",
                         )
 
-                nights = (item_req.meta_data or {}).get("nights", 1)
-                unit_base = float(room.price_per_night) * nights
-                unit_tax = float(room.taxes_per_night) * nights
-                item_total = (unit_base + unit_tax) * item_req.quantity
-                calculated_base += unit_base * item_req.quantity
-                calculated_taxes += unit_tax * item_req.quantity
+                    unit_base = float(bus.base_fare)
+                    unit_tax = 0.0
+                    item_total = unit_base * item_req.quantity
+                    calculated_base += item_total
 
-                title = f"{room.room_type} ({nights} nights)"
-                booking_items_to_create.append(
-                    BookingItem(
-                        item_type=item_type,
-                        item_reference_id=str(room.id),
-                        hotel_id=room.hotel_id,
-                        room_id=room.id,
-                        check_in_date=check_in,
-                        check_out_date=check_out,
-                        title=title,
-                        quantity=item_req.quantity,
-                        unit_price=unit_base + unit_tax,
-                        total_price=item_total,
-                        meta_data={
-                            "room_type": room.room_type,
-                            "nights": nights,
-                            "hotel_id": str(room.hotel_id),
-                        },
+                    title = f"{bus.operator_name} ({bus.from_city} ➔ {bus.to_city})"
+                    booking_items_to_create.append(
+                        BookingItem(
+                            item_type=item_type,
+                            item_reference_id=str(bus.id),
+                            title=title,
+                            quantity=item_req.quantity,
+                            unit_price=unit_base,
+                            total_price=item_total,
+                            meta_data={"operator": bus.operator_name},
+                        )
                     )
-                )
-                details_snapshot["items_summary"].append({"title": title, "total": item_total})
+                    details_snapshot["items_summary"].append({"title": title, "total": item_total})
 
+                elif item_type == "PACKAGE":
+                    pkg = await self.travel_repo.get_package_by_id(ref_uuid)
+                    if not pkg or not pkg.is_active:
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Holiday package not found",
+                        )
+                    # SEC-06: Atomic conditional decrement for package capacity
+                    pkg_stmt = (
+                        update(HolidayPackage)
+                        .where(
+                            HolidayPackage.id == pkg.id,
+                            HolidayPackage.is_active.is_(True),
+                            HolidayPackage.available_capacity >= item_req.quantity,
+                        )
+                        .values(available_capacity=HolidayPackage.available_capacity - item_req.quantity)
+                    )
+                    p_res = await self.db.execute(pkg_stmt)
+                    if p_res.rowcount == 0:
+                        raise HTTPException(
+                            status_code=status.HTTP_409_CONFLICT,
+                            detail="Requested holiday package capacity is unavailable",
+                        )
 
-            elif item_type == "BUS":
-                bus = await self.travel_repo.get_bus_by_id(ref_uuid)
-                if not bus or not bus.is_active:
+                    unit_base = float(pkg.price_per_person)
+                    item_total = unit_base * item_req.quantity
+                    calculated_base += item_total
+
+                    title = f"Holiday Package: {pkg.title}"
+                    booking_items_to_create.append(
+                        BookingItem(
+                            item_type=item_type,
+                            item_reference_id=str(pkg.id),
+                            title=title,
+                            quantity=item_req.quantity,
+                            unit_price=unit_base,
+                            total_price=item_total,
+                            meta_data={"title": pkg.title, "destination": pkg.destination},
+                        )
+                    )
+                    details_snapshot["items_summary"].append({"title": title, "total": item_total})
+
+                elif item_type == "TRAIN":
+                    train = await self.travel_repo.get_train_by_id(ref_uuid)
+                    if not train or not train.is_active:
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Train schedule not found",
+                        )
+                    # SEC-06: Atomic conditional decrement for train seats
+                    train_stmt = (
+                        update(Train)
+                        .where(
+                            Train.id == train.id,
+                            Train.is_active.is_(True),
+                            Train.available_seats >= item_req.quantity,
+                        )
+                        .values(available_seats=Train.available_seats - item_req.quantity)
+                    )
+                    t_res = await self.db.execute(train_stmt)
+                    if t_res.rowcount == 0:
+                        raise HTTPException(
+                            status_code=status.HTTP_409_CONFLICT,
+                            detail="Requested number of train seats is unavailable",
+                        )
+
+                    unit_base = float(train.base_fare)
+                    item_total = unit_base * item_req.quantity
+                    calculated_base += item_total
+
+                    title = f"{train.train_name} ({train.train_number}) - {train.from_station_name} ➔ {train.to_station_name}"
+                    booking_items_to_create.append(
+                        BookingItem(
+                            item_type=item_type,
+                            item_reference_id=str(train.id),
+                            title=title,
+                            quantity=item_req.quantity,
+                            unit_price=unit_base,
+                            total_price=item_total,
+                            meta_data={
+                                "train_number": train.train_number,
+                                "train_name": train.train_name,
+                                "train_class": train.train_class,
+                                "departure_time": train.departure_time,
+                            },
+                        )
+                    )
+                    details_snapshot["items_summary"].append({"title": title, "total": item_total})
+
+                elif item_type == "CAB":
+                    cab = await self.travel_repo.get_cab_by_id(ref_uuid)
+                    if not cab or not cab.is_active:
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Cab option not found",
+                        )
+                    unit_base = float(cab.base_fare)
+                    item_total = unit_base * item_req.quantity
+                    calculated_base += item_total
+
+                    title = f"{cab.cab_type} ({cab.vehicle_model}) - {cab.pickup_area} ➔ {cab.drop_area}"
+                    booking_items_to_create.append(
+                        BookingItem(
+                            item_type=item_type,
+                            item_reference_id=str(cab.id),
+                            title=title,
+                            quantity=item_req.quantity,
+                            unit_price=unit_base,
+                            total_price=item_total,
+                            meta_data={
+                                "cab_type": cab.cab_type,
+                                "vehicle_model": cab.vehicle_model,
+                                "driver_name": cab.driver_name,
+                                "driver_rating": cab.driver_rating,
+                                "eta_minutes": cab.eta_minutes,
+                            },
+                        )
+                    )
+                    details_snapshot["items_summary"].append({"title": title, "total": item_total})
+                else:
                     raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail="Bus schedule not found",
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Unsupported item type: {item_req.item_type}",
                     )
-                if bus.available_seats < item_req.quantity:
-                    raise HTTPException(
-                        status_code=status.HTTP_409_CONFLICT,
-                        detail="Requested number of bus seats is unavailable",
-                    )
-                unit_base = float(bus.base_fare)
-                unit_tax = 0.0
-                item_total = unit_base * item_req.quantity
-                calculated_base += item_total
-                bus.available_seats -= item_req.quantity
 
-                title = f"{bus.operator_name} ({bus.from_city} ➔ {bus.to_city})"
-                booking_items_to_create.append(
-                    BookingItem(
-                        item_type=item_type,
-                        item_reference_id=str(bus.id),
-                        title=title,
-                        quantity=item_req.quantity,
-                        unit_price=unit_base,
-                        total_price=item_total,
-                        meta_data={"operator": bus.operator_name},
-                    )
+            # SEC-07: Atomic coupon redemption and discount enforcement
+            discount = 0.0
+            if req.promo_code:
+                clean_code = req.promo_code.upper().strip()
+                from datetime import datetime, timezone
+
+                coupon_res = await self.db.execute(
+                    select(Coupon).where(func.upper(Coupon.code) == clean_code)
                 )
-                details_snapshot["items_summary"].append({"title": title, "total": item_total})
+                coupon = coupon_res.scalar_one_or_none()
 
-            elif item_type == "PACKAGE":
-                pkg = await self.travel_repo.get_package_by_id(ref_uuid)
-                if not pkg or not pkg.is_active:
-                    raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail="Holiday package not found",
+                if not coupon:
+                    if clean_code in ["WANDERLUST", "WELCOME"]:
+                        discount = round(calculated_base * 0.10, 2)
+                        details_snapshot["coupon"] = {
+                            "code": clean_code,
+                            "discount_type": "PERCENTAGE",
+                            "discount_amount": discount,
+                        }
+                    else:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Coupon code '{clean_code}' is invalid",
+                        )
+                else:
+                    if not coupon.is_active:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Coupon code '{clean_code}' is currently inactive",
+                        )
+
+                    now_utc = datetime.now(timezone.utc)
+                    if coupon.valid_from and coupon.valid_from > now_utc:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Coupon code '{clean_code}' is not yet valid",
+                        )
+                    if coupon.valid_until and coupon.valid_until < now_utc:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Coupon code '{clean_code}' has expired",
+                        )
+
+                    service_matches = (
+                        coupon.service_type == "ALL"
+                        or coupon.service_type.upper() == req.service_type.upper()
                     )
-                unit_base = float(pkg.price_per_person)
-                item_total = unit_base * item_req.quantity
-                calculated_base += item_total
+                    if not service_matches:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Coupon '{clean_code}' is valid only for {coupon.service_type} bookings",
+                        )
 
-                title = f"Holiday Package: {pkg.title}"
-                booking_items_to_create.append(
-                    BookingItem(
-                        item_type=item_type,
-                        item_reference_id=str(pkg.id),
-                        title=title,
-                        quantity=item_req.quantity,
-                        unit_price=unit_base,
-                        total_price=item_total,
-                        meta_data={"title": pkg.title, "destination": pkg.destination},
-                    )
-                )
-                details_snapshot["items_summary"].append({"title": title, "total": item_total})
+                    min_order = float(coupon.min_order_amount)
+                    if calculated_base < min_order:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Minimum booking amount of ₹{min_order:,.0f} required for coupon '{clean_code}'",
+                        )
 
-            elif item_type == "TRAIN":
-                train = await self.travel_repo.get_train_by_id(ref_uuid)
-                if not train or not train.is_active:
-                    raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail="Train schedule not found",
-                    )
-                if train.available_seats < item_req.quantity:
-                    raise HTTPException(
-                        status_code=status.HTTP_409_CONFLICT,
-                        detail="Requested number of train seats is unavailable",
-                    )
-                unit_base = float(train.base_fare)
-                item_total = unit_base * item_req.quantity
-                calculated_base += item_total
-                train.available_seats -= item_req.quantity
+                    # SEC-07: Atomic usage limit check and increment
+                    if coupon.usage_limit is not None:
+                        coupon_stmt = (
+                            update(Coupon)
+                            .where(
+                                Coupon.id == coupon.id,
+                                Coupon.is_active.is_(True),
+                                Coupon.times_used < coupon.usage_limit,
+                            )
+                            .values(times_used=Coupon.times_used + 1)
+                        )
+                    else:
+                        coupon_stmt = (
+                            update(Coupon)
+                            .where(
+                                Coupon.id == coupon.id,
+                                Coupon.is_active.is_(True),
+                            )
+                            .values(times_used=Coupon.times_used + 1)
+                        )
 
-                title = f"{train.train_name} ({train.train_number}) - {train.from_station_name} ➔ {train.to_station_name}"
-                booking_items_to_create.append(
-                    BookingItem(
-                        item_type=item_type,
-                        item_reference_id=str(train.id),
-                        title=title,
-                        quantity=item_req.quantity,
-                        unit_price=unit_base,
-                        total_price=item_total,
-                        meta_data={
-                            "train_number": train.train_number,
-                            "train_name": train.train_name,
-                            "train_class": train.train_class,
-                            "departure_time": train.departure_time,
-                        },
-                    )
-                )
-                details_snapshot["items_summary"].append({"title": title, "total": item_total})
+                    c_res = await self.db.execute(coupon_stmt)
+                    if c_res.rowcount == 0:
+                        raise HTTPException(
+                            status_code=status.HTTP_409_CONFLICT,
+                            detail=f"Coupon '{clean_code}' has reached its maximum redemption limit",
+                        )
 
-            elif item_type == "CAB":
-                cab = await self.travel_repo.get_cab_by_id(ref_uuid)
-                if not cab or not cab.is_active:
-                    raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail="Cab option not found",
-                    )
-                unit_base = float(cab.base_fare)
-                item_total = unit_base * item_req.quantity
-                calculated_base += item_total
-
-                title = f"{cab.cab_type} ({cab.vehicle_model}) - {cab.pickup_area} ➔ {cab.drop_area}"
-                booking_items_to_create.append(
-                    BookingItem(
-                        item_type=item_type,
-                        item_reference_id=str(cab.id),
-                        title=title,
-                        quantity=item_req.quantity,
-                        unit_price=unit_base,
-                        total_price=item_total,
-                        meta_data={
-                            "cab_type": cab.cab_type,
-                            "vehicle_model": cab.vehicle_model,
-                            "driver_name": cab.driver_name,
-                            "driver_rating": cab.driver_rating,
-                            "eta_minutes": cab.eta_minutes,
-                        },
-                    )
-                )
-                details_snapshot["items_summary"].append({"title": title, "total": item_total})
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Unsupported item type: {item_req.item_type}",
-                )
-
-        # Promo discounts (verified against real database coupons table)
-        discount = 0.0
-        if req.promo_code:
-            clean_code = req.promo_code.upper().strip()
-            from backend.app.models.coupon import Coupon
-            from datetime import datetime, timezone
-
-            coupon_res = await self.db.execute(
-                select(Coupon).where(func.upper(Coupon.code) == clean_code)
-            )
-            coupon = coupon_res.scalar_one_or_none()
-            if coupon and coupon.is_active:
-                now_utc = datetime.now(timezone.utc)
-                is_valid_date = (not coupon.valid_from or coupon.valid_from <= now_utc) and (not coupon.valid_until or coupon.valid_until >= now_utc)
-                service_matches = (coupon.service_type == "ALL" or coupon.service_type.upper() == req.service_type.upper())
-                min_order_met = calculated_base >= float(coupon.min_order_amount)
-                usage_limit_ok = not coupon.usage_limit or coupon.times_used < coupon.usage_limit
-
-                if is_valid_date and service_matches and min_order_met and usage_limit_ok:
                     if coupon.discount_type.upper() == "PERCENTAGE":
                         raw_disc = calculated_base * (float(coupon.discount_value) / 100.0)
                         if coupon.max_discount_amount:
@@ -455,74 +581,70 @@ class BookingService:
                     else:  # FLAT
                         discount = min(calculated_base, round(float(coupon.discount_value), 2))
 
-                    coupon.times_used += 1
                     details_snapshot["coupon"] = {
                         "code": coupon.code,
                         "discount_type": coupon.discount_type,
                         "discount_amount": discount,
                     }
-            elif clean_code in ["WANDERLUST", "WELCOME"]:
-                discount = round(calculated_base * 0.10, 2)
-                details_snapshot["coupon"] = {
-                    "code": clean_code,
-                    "discount_type": "PERCENTAGE",
-                    "discount_amount": discount,
-                }
 
-        # Insurance fee
-        insurance_fee = 3999.0 if req.has_insurance else 0.0
-        if req.has_insurance:
-            calculated_taxes += insurance_fee
+            # Insurance fee
+            insurance_fee = 3999.0 if req.has_insurance else 0.0
+            if req.has_insurance:
+                calculated_taxes += insurance_fee
 
-        final_total = max(0.0, (calculated_base + calculated_taxes - discount))
+            final_total = max(0.0, (calculated_base + calculated_taxes - discount))
 
-        # Passengers
-        passengers_to_create = [
-            Passenger(
-                title=p.title,
-                first_name=p.first_name,
-                last_name=p.last_name,
-                passenger_type=p.passenger_type,
-                gender=p.gender,
-                date_of_birth=p.date_of_birth,
-                passport_number=p.passport_number,
-                seat_preference=p.seat_preference,
+            # Passengers
+            passengers_to_create = [
+                Passenger(
+                    title=p.title,
+                    first_name=p.first_name,
+                    last_name=p.last_name,
+                    passenger_type=p.passenger_type,
+                    gender=p.gender,
+                    date_of_birth=p.date_of_birth,
+                    passport_number=p.passport_number,
+                    seat_preference=p.seat_preference,
+                )
+                for p in req.passengers
+            ]
+
+            # Generate unique reference and secure cancellation token
+            booking_ref = generate_booking_reference()
+            cancellation_token = secrets.token_urlsafe(32)
+
+            # Build booking record
+            booking = Booking(
+                booking_reference=booking_ref,
+                user_id=current_user.id if current_user else None,
+                guest_name=req.guest_name,
+                service_type=req.service_type.upper(),
+                status=BookingStatus.PENDING.value,
+                provider="SIMULATED_SS_JOURNEY",
+                is_simulated=True,
+                contact_email=req.contact_email.lower().strip(),
+                contact_phone=req.contact_phone.strip(),
+                check_in_date=req.check_in_date,
+                check_out_date=req.check_out_date,
+                cancellation_token=cancellation_token,
+                base_amount=calculated_base,
+                taxes_amount=calculated_taxes,
+                discount_amount=discount,
+                total_amount=final_total,
+                currency="INR",
+                details_snapshot=details_snapshot,
             )
-            for p in req.passengers
-        ]
 
-        # Generate unique reference and secure cancellation token
-        booking_ref = generate_booking_reference()
-        cancellation_token = secrets.token_urlsafe(32)
-
-        # Build booking record
-        booking = Booking(
-            booking_reference=booking_ref,
-            user_id=current_user.id if current_user else None,
-            guest_name=req.guest_name,
-            service_type=req.service_type.upper(),
-            status=BookingStatus.PENDING.value,
-            provider="SIMULATED_SS_JOURNEY",
-            is_simulated=True,
-            contact_email=req.contact_email.lower().strip(),
-            contact_phone=req.contact_phone.strip(),
-            check_in_date=req.check_in_date,
-            check_out_date=req.check_out_date,
-            cancellation_token=cancellation_token,
-            base_amount=calculated_base,
-            taxes_amount=calculated_taxes,
-            discount_amount=discount,
-            total_amount=final_total,
-            currency="INR",
-            details_snapshot=details_snapshot,
-        )
-
-        saved = await self.booking_repo.create_booking(
-            booking=booking,
-            items=booking_items_to_create,
-            passengers=passengers_to_create,
-        )
-        return self._map_booking_response(saved)
+            saved = await self.booking_repo.create_booking(
+                booking=booking,
+                items=booking_items_to_create,
+                passengers=passengers_to_create,
+            )
+            return self._map_booking_response(saved)
+        except Exception:
+            # SEC-06 & SEC-07: Rollback any partially completed reservations or coupon usage on error
+            await self.db.rollback()
+            raise
 
     async def get_booking(
         self,
@@ -582,7 +704,7 @@ class BookingService:
         current_user: Optional[User] = None,
         guest_token: Optional[str] = None,
     ) -> BookingResponse:
-        """Cancels a booking if eligible and records the transition reason."""
+        """Cancels a booking if eligible, atomically restores reserved inventory, and records the transition reason."""
         booking = None
         try:
             b_uuid = uuid.UUID(booking_id_or_ref)
@@ -623,11 +745,112 @@ class BookingService:
                 detail="Booking is already cancelled",
             )
 
-        updated = await self.booking_repo.update_status(
-            booking=booking,
-            new_status=BookingStatus.CANCELLED.value,
-            reason=req.reason,
+        old_status = booking.status
+
+        # SEC-05: Atomic status transition preventing race conditions or double cancellations
+        cancel_stmt = (
+            update(Booking)
+            .where(
+                Booking.id == booking.id,
+                Booking.status.not_in([BookingStatus.CANCELLED.value, BookingStatus.REFUNDED.value]),
+            )
+            .values(
+                status=BookingStatus.CANCELLED.value,
+                cancellation_reason=req.reason,
+            )
+        )
+        c_res = await self.db.execute(cancel_stmt)
+        if c_res.rowcount == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Booking is already cancelled or cannot be cancelled",
+            )
+
+        booking.status = BookingStatus.CANCELLED.value
+        booking.cancellation_reason = req.reason
+
+        # SEC-05: Restore reserved inventory for each item
+        if booking.items:
+            for item in booking.items:
+                try:
+                    ref_uuid = uuid.UUID(item.item_reference_id)
+                except (ValueError, TypeError):
+                    continue
+
+                item_type = item.item_type.upper()
+                if item_type == "FLIGHT":
+                    await self.db.execute(
+                        update(Flight)
+                        .where(Flight.id == ref_uuid)
+                        .values(available_seats=Flight.available_seats + item.quantity)
+                    )
+                elif item_type == "BUS":
+                    await self.db.execute(
+                        update(Bus)
+                        .where(Bus.id == ref_uuid)
+                        .values(available_seats=Bus.available_seats + item.quantity)
+                    )
+                elif item_type == "TRAIN":
+                    await self.db.execute(
+                        update(Train)
+                        .where(Train.id == ref_uuid)
+                        .values(available_seats=Train.available_seats + item.quantity)
+                    )
+                elif item_type == "PACKAGE":
+                    await self.db.execute(
+                        update(HolidayPackage)
+                        .where(HolidayPackage.id == ref_uuid)
+                        .values(available_capacity=HolidayPackage.available_capacity + item.quantity)
+                    )
+                elif item_type in ["HOTEL_ROOM", "HOTEL"]:
+                    restored_daily = False
+                    if item.check_in_date and item.room_id:
+                        daily_res = await self.db.execute(
+                            select(RoomDailyInventory).where(
+                                RoomDailyInventory.room_id == item.room_id,
+                                RoomDailyInventory.date == item.check_in_date,
+                            )
+                        )
+                        daily_inv = daily_res.scalar_one_or_none()
+                        if daily_inv:
+                            await self.db.execute(
+                                update(RoomDailyInventory)
+                                .where(RoomDailyInventory.id == daily_inv.id)
+                                .values(available_rooms=RoomDailyInventory.available_rooms + item.quantity)
+                            )
+                            restored_daily = True
+                    if not restored_daily:
+                        target_room_id = item.room_id or ref_uuid
+                        await self.db.execute(
+                            update(HotelRoom)
+                            .where(HotelRoom.id == target_room_id)
+                            .values(available_rooms=HotelRoom.available_rooms + item.quantity)
+                        )
+
+        # SEC-07: Restore coupon usage count if a coupon was used
+        coupon_info = (booking.details_snapshot or {}).get("coupon", {})
+        coupon_code = coupon_info.get("code")
+        if coupon_code:
+            await self.db.execute(
+                update(Coupon)
+                .where(
+                    func.upper(Coupon.code) == coupon_code.upper().strip(),
+                    Coupon.times_used > 0,
+                )
+                .values(times_used=Coupon.times_used - 1)
+            )
+
+        # Record status transition history
+        history = BookingStatusHistory(
+            booking_id=booking.id,
+            from_status=old_status,
+            to_status=BookingStatus.CANCELLED.value,
+            reason=req.reason or "Booking cancelled",
             changed_by_user_id=current_user.id if current_user else None,
         )
-        return self._map_booking_response(updated)
+        self.db.add(history)
+        await self.db.flush()
+
+        refreshed = await self.booking_repo.get_by_id(booking.id)
+        return self._map_booking_response(refreshed)
 

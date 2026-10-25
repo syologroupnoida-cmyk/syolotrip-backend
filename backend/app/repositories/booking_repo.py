@@ -124,7 +124,12 @@ class BookingRepository:
         self.db.add(history)
 
         await self.db.flush()
-        return await self.get_by_id(booking.id)
+        found = await self.get_by_id(booking.id)
+        if found:
+            return found
+        booking.items = items
+        booking.passengers = passengers
+        return booking
 
     async def update_status(
         self,
