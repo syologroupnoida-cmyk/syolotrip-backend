@@ -1,6 +1,21 @@
-from typing import List, Union
-from pydantic import AnyHttpUrl, field_validator
+import base64
+import logging
+from typing import List, Optional, Union
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger("uvicorn.error")
+
+INSECURE_DEV_SECRET = "insecure-dev-secret-key-change-in-production-12345678"
+KNOWN_INSECURE_SECRETS = {
+    "",
+    INSECURE_DEV_SECRET,
+    "change-this-in-production-to-a-secure-random-32-byte-hex",
+    "secret",
+    "changethis",
+    "password",
+    "admin",
+}
 
 
 class Settings(BaseSettings):
@@ -8,17 +23,21 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
-        extra="ignore"
+        extra="ignore",
     )
 
     PROJECT_NAME: str = "SS Journey API"
     VERSION: str = "1.0.0"
     API_V1_PREFIX: str = "/api/v1"
     ENVIRONMENT: str = "development"
-    DEBUG: bool = True
-    SECRET_KEY: str = "insecure-dev-secret-key-change-in-production-12345678"
+    DEBUG: bool = False
+    SECRET_KEY: str = INSECURE_DEV_SECRET
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
+
+    # Optional development account provisioning credentials (used only for seed.py)
+    ADMIN_EMAIL: str = "admin@ssjourney.com"
+    ADMIN_PASSWORD: Optional[str] = None
 
     # CORS origins
     BACKEND_CORS_ORIGINS: List[str] = [
@@ -41,12 +60,76 @@ class Settings(BaseSettings):
             return [v.strip().rstrip("/")]
         raise ValueError(v)
 
-
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/traveler_db"
 
     # Provider simulation mode
     USE_MOCK_PROVIDERS: bool = True
+
+    @model_validator(mode="after")
+    def validate_security_configuration(self) -> "Settings":
+        env = (self.ENVIRONMENT or "development").lower().strip()
+        is_production_like = env in ("production", "staging", "prod")
+
+        secret = (self.SECRET_KEY or "").strip()
+
+        if is_production_like:
+            # 1. Enforce DEBUG=False in staging/production
+            if self.DEBUG:
+                raise ValueError(
+                    f"CRITICAL: DEBUG mode cannot be enabled in {env} environment. "
+                    "Set DEBUG=false in environment configuration."
+                )
+
+            # 2. Enforce non-default, non-empty SECRET_KEY
+            if not secret or secret.lower() in KNOWN_INSECURE_SECRETS:
+                raise ValueError(
+                    f"CRITICAL: Insecure or default SECRET_KEY detected in {env} environment. "
+                    "A cryptographically random secret of at least 32 bytes must be provided via SECRET_KEY."
+                )
+
+            # 3. Validate decoded key material length (minimum 32 bytes)
+            key_bytes: bytes = b""
+            # Check if key is hex-encoded (64+ hex characters)
+            if len(secret) >= 64:
+                try:
+                    key_bytes = bytes.fromhex(secret)
+                except ValueError:
+                    key_bytes = b""
+
+            # Check if key is standard base64-encoded (44+ characters)
+            if not key_bytes and len(secret) >= 44:
+                try:
+                    key_bytes = base64.b64decode(secret, validate=True)
+                except Exception:
+                    key_bytes = b""
+
+            # Fall back to raw UTF-8 bytes
+            if not key_bytes:
+                key_bytes = secret.encode("utf-8")
+
+            if len(key_bytes) < 32:
+                raise ValueError(
+                    f"CRITICAL: SECRET_KEY provides only {len(key_bytes)} bytes of key material in {env}. "
+                    "At least 32 cryptographically secure bytes are required."
+                )
+
+            # 4. Check for minimal entropy / trivial repeating character sequences
+            unique_chars = len(set(secret))
+            if unique_chars < 8:
+                raise ValueError(
+                    f"CRITICAL: SECRET_KEY exhibits low entropy (only {unique_chars} distinct characters). "
+                    "Use 'secrets.token_hex(32)' to generate a cryptographically random key."
+                )
+        else:
+            # Development/Testing audit notice
+            if secret == INSECURE_DEV_SECRET:
+                logger.warning(
+                    "[SECURITY WARNING] Using default development SECRET_KEY. "
+                    "Ensure a production-grade secret is set before deploying."
+                )
+
+        return self
 
 
 settings = Settings()

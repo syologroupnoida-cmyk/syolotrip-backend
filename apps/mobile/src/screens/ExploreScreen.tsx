@@ -22,6 +22,7 @@ import {
   fetchCabsApi,
   fetchPackagesApi,
 } from '../services/api';
+import { CalendarModal } from '../components/CalendarModal';
 
 const { width } = Dimensions.get('window');
 
@@ -49,6 +50,27 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
   const [travelClass, setTravelClass] = useState('Economy');
   const [specialFare, setSpecialFare] = useState('regular');
   const [offersTab, setOffersTab] = useState<'all' | 'flights' | 'hotels' | 'holidays' | 'trains'>('all');
+
+  const [calendarModalState, setCalendarModalState] = useState<{
+    visible: boolean;
+    type: 'departure' | 'return';
+    title: string;
+    initialDate: string;
+    minDate?: string;
+  } | null>(null);
+
+  const handleMobileDateSelected = (formattedDate: string, dayOfWeek: string, _isoDate: string) => {
+    if (!calendarModalState) return;
+    if (calendarModalState.type === 'departure') {
+      setDepartureDate(formattedDate);
+      setDepartureDay(dayOfWeek);
+    } else {
+      setReturnDate(formattedDate);
+      setReturnDay(dayOfWeek);
+      setTripType('roundtrip');
+    }
+    setCalendarModalState(null);
+  };
 
   const swapAnim = useState(new Animated.Value(0))[0];
 
@@ -264,11 +286,12 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
   });
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-    >
+    <View style={{ flex: 1, backgroundColor: '#fbf9f8' }}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
       {/* ── SEARCH TAP CAPSULE (Just below header) ── */}
       <View style={styles.topSearchTapWrapper}>
         <TouchableOpacity
@@ -450,15 +473,12 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
           {/* Departure tile */}
           <TouchableOpacity
             style={styles.dateTile}
-            onPress={() => {
-              if (departureDate === '15 Oct 2026') {
-                setDepartureDate('16 Oct 2026');
-                setDepartureDay('Thu');
-              } else {
-                setDepartureDate('15 Oct 2026');
-                setDepartureDay('Wed');
-              }
-            }}
+            onPress={() => setCalendarModalState({
+              visible: true,
+              type: 'departure',
+              title: 'Select Departure Date',
+              initialDate: departureDate,
+            })}
             activeOpacity={0.8}
           >
             <MaterialIcons name="calendar-today" size={22} color="#0066FF" style={styles.tileIcon} />
@@ -475,15 +495,14 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
             onPress={() => {
               if (tripType === 'oneway') {
                 setTripType('roundtrip');
-              } else {
-                if (returnDate === '22 Oct 2026') {
-                  setReturnDate('24 Oct 2026');
-                  setReturnDay('Fri');
-                } else {
-                  setReturnDate('22 Oct 2026');
-                  setReturnDay('Wed');
-                }
               }
+              setCalendarModalState({
+                visible: true,
+                type: 'return',
+                title: 'Select Return Date',
+                initialDate: returnDate,
+                minDate: departureDate,
+              });
             }}
             activeOpacity={0.8}
           >
@@ -1095,6 +1114,17 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
       </View>
 
     </ScrollView>
+
+    {/* ── INTERACTIVE MOBILE CALENDAR POPUP MODAL ── */}
+    <CalendarModal
+      visible={calendarModalState?.visible ?? false}
+      onClose={() => setCalendarModalState(null)}
+      title={calendarModalState?.title ?? 'Select Date'}
+      initialDate={calendarModalState?.initialDate ?? departureDate}
+      minDate={calendarModalState?.minDate}
+      onSelectDate={handleMobileDateSelected}
+    />
+  </View>
   );
 };
 

@@ -1,11 +1,13 @@
 import React from 'react';
-import { UserCheck, Bell, Sun, Moon } from 'lucide-react';
+import { UserCheck, Bell, Sun, Moon, LogOut } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getAdminHealth } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
+import { useAdminAuth } from '../context/AdminAuthContext';
 
 export const AdminHeader: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
+  const { user, logout } = useAdminAuth();
 
   const { data: health, isSuccess } = useQuery({
     queryKey: ['adminHealth'],
@@ -74,10 +76,22 @@ export const AdminHeader: React.FC = () => {
           <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-brand-400 font-bold text-xs">
             <UserCheck className="w-4 h-4" />
           </div>
-          <div>
-            <div className="text-xs font-semibold text-slate-200">System Administrator</div>
-            <div className="text-[10px] text-slate-500">Role: SUPER_ADMIN</div>
+          <div className="hidden sm:block">
+            <div className="text-xs font-semibold text-slate-200">
+              {user?.fullName || (user as any)?.full_name || 'System Administrator'}
+            </div>
+            <div className="text-[10px] text-slate-500 truncate max-w-[150px]">
+              {user?.email || 'Role: ADMIN'}
+            </div>
           </div>
+          <button
+            onClick={logout}
+            title="Sign out of Admin Console"
+            className="flex items-center gap-1.5 ml-2 px-2.5 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold transition cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Sign Out</span>
+          </button>
         </div>
       </div>
     </header>

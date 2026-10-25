@@ -47,12 +47,6 @@ class AuthService:
         valid_password = False
         if user:
             valid_password = verify_password(req.password, user.hashed_password)
-            # Support demo fallback credentials only in development / mock mode
-            if not valid_password and (settings.DEBUG or settings.USE_MOCK_PROVIDERS):
-                if user.email == "admin@ssjourney.com" and req.password in ("Admin@123", "Admin@123456"):
-                    valid_password = True
-                elif user.email == "customer@ssjourney.com" and req.password in ("Customer@123", "Customer@123456"):
-                    valid_password = True
 
         if not user or not valid_password:
             raise HTTPException(

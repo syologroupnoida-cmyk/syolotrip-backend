@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './context/ThemeContext';
+import { AdminAuthProvider, useAdminAuth } from './context/AdminAuthContext';
 import { AdminSidebar } from './components/AdminSidebar';
 import { AdminHeader } from './components/AdminHeader';
+import { AdminLoginPage } from './pages/AdminLoginPage';
 import { DashboardOverview } from './pages/DashboardOverview';
 import { BookingsManagement } from './pages/BookingsManagement';
 import { InventoryManagement } from './pages/InventoryManagement';
@@ -16,12 +18,24 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 1000 * 30,
       refetchOnWindowFocus: false,
+      retry: (failureCount, error: any) => {
+        // Do not retry 401/403 auth errors
+        if (error?.response?.status === 401 || error?.response?.status === 403) {
+          return false;
+        }
+        return failureCount < 2;
+      },
     },
   },
 });
 
-export const App: React.FC = () => {
+const AdminMainContent: React.FC = () => {
+  const { isAuthenticated } = useAdminAuth();
   const [currentTab, setCurrentTab] = useState('dashboard');
+
+  if (!isAuthenticated) {
+    return <AdminLoginPage />;
+  }
 
   const renderContent = () => {
     switch (currentTab) {
@@ -50,17 +64,25 @@ export const App: React.FC = () => {
   };
 
   return (
+    <div className="flex min-h-screen bg-slate-900 text-slate-100 font-sans transition-colors duration-200">
+      <AdminSidebar currentTab={currentTab} setCurrentTab={setCurrentTab} />
+      <div className="flex-1 flex flex-col min-w-0">
+        <AdminHeader />
+        <main className="flex-1 p-6 overflow-y-auto">
+          {renderContent()}
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export const App: React.FC = () => {
+  return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <div className="flex min-h-screen bg-slate-900 text-slate-100 font-sans transition-colors duration-200">
-          <AdminSidebar currentTab={currentTab} setCurrentTab={setCurrentTab} />
-          <div className="flex-1 flex flex-col min-w-0">
-            <AdminHeader />
-            <main className="flex-1 p-6 overflow-y-auto">
-              {renderContent()}
-            </main>
-          </div>
-        </div>
+        <AdminAuthProvider>
+          <AdminMainContent />
+        </AdminAuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

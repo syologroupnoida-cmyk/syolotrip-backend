@@ -15,6 +15,7 @@ import {
   VisaIsometricIcon,
   InsuranceIsometricIcon,
 } from '../components/TravelCategoryIcons';
+import { CalendarPickerModal } from '../components/CalendarPickerModal';
 
 export interface AirportOption {
   code: string;
@@ -117,6 +118,37 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
   const [passengerCount, setPassengerCount] = useState('1 Adult');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSwapping, setIsSwapping] = useState(false);
+
+  // Calendar modal state
+  const [calendarModalState, setCalendarModalState] = useState<{
+    isOpen: boolean;
+    type: 'depart' | 'return' | 'checkIn' | 'checkOut';
+    title: string;
+    date: string;
+    minDate?: string;
+  } | null>(null);
+
+  const handleDateSelected = (newDate: string) => {
+    if (!calendarModalState) return;
+    const { type } = calendarModalState;
+    if (type === 'depart') {
+      setDepartDate(newDate);
+      if (returnDate < newDate) {
+        setReturnDate(newDate);
+      }
+    } else if (type === 'return') {
+      setReturnDate(newDate);
+      setHasReturnDate(true);
+    } else if (type === 'checkIn') {
+      setHotelCheckIn(newDate);
+      if (hotelCheckOut < newDate) {
+        setHotelCheckOut(newDate);
+      }
+    } else if (type === 'checkOut') {
+      setHotelCheckOut(newDate);
+    }
+    setCalendarModalState(null);
+  };
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -642,7 +674,16 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
               </div>
 
               {/* DEPARTURE Block */}
-              <div className="md:col-span-2 p-4 cursor-pointer hover:bg-blue-50/40 transition border-t md:border-t-0 md:border-l border-gray-200 relative">
+              <div 
+                onClick={() => setCalendarModalState({
+                  isOpen: true,
+                  type: 'depart',
+                  title: 'Select Departure Date',
+                  date: departDate,
+                  minDate: undefined,
+                })}
+                className="md:col-span-2 p-4 cursor-pointer hover:bg-blue-50/40 transition border-t md:border-t-0 md:border-l border-gray-200 relative"
+              >
                 <div className="flex items-center space-x-1 text-gray-500">
                   <span className="text-[12px] font-normal">Departure</span>
                   <span className="material-symbols-outlined text-[14px] text-[#008cff]">calendar_today</span>
@@ -658,17 +699,22 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                 <span className="text-[11px] text-gray-500 block font-normal">
                   {new Date(departDate).toLocaleDateString('en-US', { weekday: 'long' })}
                 </span>
-                <input 
-                  type="date"
-                  value={departDate}
-                  onChange={(e) => setDepartDate(e.target.value)}
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                />
               </div>
 
               {/* RETURN Block */}
               <div 
-                onClick={() => setHasReturnDate(!hasReturnDate)}
+                onClick={() => {
+                  if (!hasReturnDate) {
+                    setHasReturnDate(true);
+                  }
+                  setCalendarModalState({
+                    isOpen: true,
+                    type: 'return',
+                    title: 'Select Return Date',
+                    date: returnDate,
+                    minDate: departDate,
+                  });
+                }}
                 className="md:col-span-2 p-4 cursor-pointer hover:bg-blue-50/40 transition border-t md:border-t-0 md:border-l border-gray-200 flex flex-col justify-start relative"
               >
                 <div className="flex items-center space-x-1 text-gray-500">
@@ -688,12 +734,6 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                     <span className="text-[11px] text-gray-500 block font-normal">
                       {new Date(returnDate).toLocaleDateString('en-US', { weekday: 'long' })}
                     </span>
-                    <input 
-                      type="date"
-                      value={returnDate}
-                      onChange={(e) => setReturnDate(e.target.value)}
-                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                    />
                   </>
                 ) : (
                   <span className="text-[11px] text-gray-400 mt-2 font-normal leading-tight">
@@ -824,25 +864,43 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                 <span className="text-3xl font-extrabold text-gray-900 block tracking-tight my-0.5">{hotelCity.city}</span>
                 <span className="text-[11px] text-gray-500 truncate block font-normal">{hotelCity.region}, {hotelCity.country}</span>
               </div>
-              <div className="md:col-span-3 p-4 cursor-pointer hover:bg-blue-50/40 transition border-t md:border-t-0 md:border-l border-gray-200 relative">
-                <span className="text-[12px] font-normal text-gray-500 block">Check-in</span>
+              <div 
+                onClick={() => setCalendarModalState({
+                  isOpen: true,
+                  type: 'checkIn',
+                  title: 'Select Check-in Date',
+                  date: hotelCheckIn,
+                  minDate: undefined,
+                })}
+                className="md:col-span-3 p-4 cursor-pointer hover:bg-blue-50/40 transition border-t md:border-t-0 md:border-l border-gray-200 relative"
+              >
+                <div className="flex items-center space-x-1 text-gray-500">
+                  <span className="text-[12px] font-normal">Check-in</span>
+                  <span className="material-symbols-outlined text-[14px] text-[#008cff]">calendar_today</span>
+                </div>
                 <span className="text-2xl font-extrabold text-gray-900 block tracking-tight my-0.5">{hotelCheckIn}</span>
-                <input 
-                  type="date"
-                  value={hotelCheckIn}
-                  onChange={(e) => setHotelCheckIn(e.target.value)}
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                />
+                <span className="text-[11px] text-gray-500 block font-normal">
+                  {new Date(hotelCheckIn).toLocaleDateString('en-US', { weekday: 'long' })}
+                </span>
               </div>
-              <div className="md:col-span-4 p-4 cursor-pointer hover:bg-blue-50/40 transition border-t md:border-t-0 md:border-l border-gray-200 rounded-r-xl relative">
-                <span className="text-[12px] font-normal text-gray-500 block">Check-out</span>
+              <div 
+                onClick={() => setCalendarModalState({
+                  isOpen: true,
+                  type: 'checkOut',
+                  title: 'Select Check-out Date',
+                  date: hotelCheckOut,
+                  minDate: hotelCheckIn,
+                })}
+                className="md:col-span-4 p-4 cursor-pointer hover:bg-blue-50/40 transition border-t md:border-t-0 md:border-l border-gray-200 rounded-r-xl relative"
+              >
+                <div className="flex items-center space-x-1 text-gray-500">
+                  <span className="text-[12px] font-normal">Check-out</span>
+                  <span className="material-symbols-outlined text-[14px] text-[#008cff]">event_repeat</span>
+                </div>
                 <span className="text-2xl font-extrabold text-gray-900 block tracking-tight my-0.5">{hotelCheckOut}</span>
-                <input 
-                  type="date"
-                  value={hotelCheckOut}
-                  onChange={(e) => setHotelCheckOut(e.target.value)}
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                />
+                <span className="text-[11px] text-gray-500 block font-normal">
+                  {new Date(hotelCheckOut).toLocaleDateString('en-US', { weekday: 'long' })}
+                </span>
               </div>
 
               {activeDropdown === 'hotel' && (
@@ -1829,6 +1887,16 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
             ))}
           </div>
         </section>
+
+        {/* ── 8. INTERACTIVE CALENDAR POPUP MODAL ── */}
+        <CalendarPickerModal
+          isOpen={calendarModalState?.isOpen ?? false}
+          onClose={() => setCalendarModalState(null)}
+          title={calendarModalState?.title ?? 'Select Date'}
+          selectedDate={calendarModalState?.date ?? departDate}
+          minDate={calendarModalState?.minDate}
+          onSelectDate={handleDateSelected}
+        />
       </main>
     </div>
   );

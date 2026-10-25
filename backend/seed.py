@@ -20,6 +20,7 @@ from sqlalchemy import select
 from backend.app.core.database import AsyncSessionLocal, engine
 from backend.app.models.base import Base
 from backend.app.core.security import hash_password
+from backend.app.core.config import settings
 from backend.app.models.user import User, UserRole
 from backend.app.models.travel import Flight, Hotel, HotelRoom, Bus, HolidayPackage, Train, Cab
 
@@ -33,7 +34,8 @@ async def seed_data():
         print("[SEED] Starting idempotent seed process for SS Journey...")
 
         # 1. Seed Users (Admin & Customer)
-        admin_email = "admin@ssjourney.com"
+        admin_email = getattr(settings, "ADMIN_EMAIL", "admin@ssjourney.com")
+        admin_seed_pwd = os.getenv("ADMIN_PASSWORD", "Admin@123456")
         res = await session.execute(select(User).where(User.email == admin_email))
         admin_user = res.scalar_one_or_none()
         if not admin_user:
@@ -41,13 +43,13 @@ async def seed_data():
                 email=admin_email,
                 full_name="Operations Admin",
                 phone="+91 98765 43210",
-                hashed_password=hash_password("Admin@123456"),
+                hashed_password=hash_password(admin_seed_pwd),
                 role=UserRole.ADMIN.value,
                 is_active=True,
                 is_verified=True,
             )
             session.add(admin_user)
-            print(f"  [+] Created default admin: {admin_email} (Password: Admin@123456)")
+            print(f"  [+] Created default admin: {admin_email}")
         else:
             print(f"  [*] Default admin already exists: {admin_email}")
 

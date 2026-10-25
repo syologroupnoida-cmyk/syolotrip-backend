@@ -20,26 +20,45 @@ adminApiClient.interceptors.request.use((config) => {
 adminApiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401 && !error.config?._retry) {
-      error.config._retry = true;
-      try {
-        const loginRes = await axios.post('/api/v1/auth/login', {
-          email: 'admin@ssjourney.com',
-          password: 'Admin@123456',
-        });
-        const token = loginRes.data?.data?.tokens?.accessToken || loginRes.data?.data?.tokens?.access_token;
-        if (token) {
-          localStorage.setItem('admin_token', token);
-          error.config.headers.Authorization = `Bearer ${token}`;
-          return adminApiClient(error.config);
-        }
-      } catch (loginErr) {
-        console.warn('Admin auto-auth recovery failed', loginErr);
+    // If request returns 401 Unauthorized
+    if (error.response?.status === 401) {
+      const isLoginRequest = error.config?.url?.includes('/auth/login');
+      // Do not clear tokens or emit unauthorized event for the actual login attempt
+      if (!isLoginRequest) {
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_user');
+        window.dispatchEvent(new CustomEvent('admin:unauthorized'));
       }
     }
     return Promise.reject(error);
   }
 );
+
+/**
+ * Interactive Admin Login: Authenticates an administrator with the backend.
+ * Never stores or embeds credentials in the source code or bundle.
+ */
+export const loginAdmin = async (payload: { email: string; password: string }): Promise<AuthResponse> => {
+  const response = await adminApiClient.post<ApiResponse<AuthResponse>>('/auth/login', payload);
+  const authData = response.data.data;
+  const token = authData.tokens?.accessToken || (authData.tokens as any)?.access_token;
+  if (token) {
+    localStorage.setItem('admin_token', token);
+    if (authData.user) {
+      localStorage.setItem('admin_user', JSON.stringify(authData.user));
+    }
+  }
+  return authData;
+};
+
+/**
+ * Admin Logout: Clears stored session tokens and notifies the application.
+ */
+export const logoutAdmin = (): void => {
+  localStorage.removeItem('admin_token');
+  localStorage.removeItem('admin_user');
+  window.dispatchEvent(new CustomEvent('admin:logout'));
+};
 
 export const getAdminHealth = async (): Promise<HealthCheckResponse> => {
   const response = await adminApiClient.get<ApiResponse<HealthCheckResponse>>('/health');
@@ -47,23 +66,6 @@ export const getAdminHealth = async (): Promise<HealthCheckResponse> => {
 };
 
 export const getAdminOverview = async (): Promise<DashboardStats> => {
-  // Ensure token exists or login with seeded default admin
-  let token = localStorage.getItem('admin_token');
-  if (!token) {
-    try {
-      const loginRes = await adminApiClient.post<ApiResponse<AuthResponse>>('/auth/login', {
-        email: 'admin@ssjourney.com',
-        password: 'Admin@123456',
-      });
-      token = loginRes.data.data.tokens?.accessToken || (loginRes.data.data.tokens as any)?.access_token;
-      if (token) {
-        localStorage.setItem('admin_token', token);
-      }
-    } catch (e) {
-      console.warn('Auto-login for admin overview failed', e);
-    }
-  }
-
   const response = await adminApiClient.get<ApiResponse<DashboardStats>>('/admin/overview');
   return response.data.data;
 };
