@@ -1,10 +1,12 @@
 from datetime import datetime, timezone
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from backend.app.core.database import get_db
+from backend.app.core.config import settings
+from backend.app.core.rate_limit import limiter
 from backend.app.models.coupon import Coupon
 from backend.app.schemas.common import ApiResponse
 from backend.app.schemas.coupon import (
@@ -17,7 +19,9 @@ router = APIRouter(prefix="/coupons", tags=["Coupons & Offers"])
 
 
 @router.post("/validate", response_model=ApiResponse[CouponValidateResponse])
+@limiter.limit(settings.RATE_LIMIT_COUPON_VALIDATE)
 async def validate_coupon(
+    request: Request,
     req: CouponValidateRequest,
     db: AsyncSession = Depends(get_db),
 ):

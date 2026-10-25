@@ -23,6 +23,7 @@ from backend.app.models.travel import (
     HolidayPackage,
     Train,
     Cab,
+    ListingPublicationStatus,
 )
 from backend.app.models.coupon import Coupon
 from backend.app.repositories.booking_repo import BookingRepository
@@ -49,7 +50,7 @@ class BookingService:
         self.booking_repo = BookingRepository(db)
         self.travel_repo = TravelRepository(db)
 
-    def _map_booking_response(self, b: Booking) -> BookingResponse:
+    def _map_booking_response(self, b: Booking, include_guest_token: bool = False) -> BookingResponse:
         passengers = []
         if b.passengers:
             for p in b.passengers:
@@ -111,7 +112,7 @@ class BookingService:
             contact_phone=b.contact_phone,
             check_in_date=b.check_in_date,
             check_out_date=b.check_out_date,
-            cancellation_token=b.cancellation_token,
+            cancellation_token=(b.cancellation_token if (include_guest_token and b.user_id is None) else None),
             base_amount=float(b.base_amount),
             taxes_amount=float(b.taxes_amount),
             discount_amount=float(b.discount_amount),
@@ -218,10 +219,20 @@ class BookingService:
 
                 elif item_type in ["HOTEL_ROOM", "HOTEL"]:
                     room = await self.travel_repo.get_hotel_room_by_id(ref_uuid)
-                    if not room:
+                    hotel = None
+                    if room:
+                        hotel = room.hotel or await self.travel_repo.get_hotel_by_id(room.hotel_id)
+                    else:
                         hotel = await self.travel_repo.get_hotel_by_id(ref_uuid)
                         if hotel and hotel.rooms:
                             room = next((r for r in hotel.rooms if r.is_available), hotel.rooms[0])
+
+                    # SEC-08: Validate hotel listing eligibility (must be active and approved for public booking)
+                    if not hotel or not hotel.is_active or hotel.publication_status != ListingPublicationStatus.APPROVED.value:
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Hotel room {item_req.item_reference_id} is no longer available",
+                        )
                     if not room or not room.is_available:
                         raise HTTPException(
                             status_code=status.HTTP_404_NOT_FOUND,
@@ -609,9 +620,10 @@ class BookingService:
                 for p in req.passengers
             ]
 
-            # Generate unique reference and secure cancellation token
+            # SEC-10: Generate cancellation token only for guest bookings; account bookings rely on user authentication
             booking_ref = generate_booking_reference()
-            cancellation_token = secrets.token_urlsafe(32)
+            is_guest = (current_user is None)
+            cancellation_token = secrets.token_urlsafe(32) if is_guest else None
 
             # Build booking record
             booking = Booking(
@@ -640,7 +652,7 @@ class BookingService:
                 items=booking_items_to_create,
                 passengers=passengers_to_create,
             )
-            return self._map_booking_response(saved)
+            return self._map_booking_response(saved, include_guest_token=is_guest)
         except Exception:
             # SEC-06 & SEC-07: Rollback any partially completed reservations or coupon usage on error
             await self.db.rollback()

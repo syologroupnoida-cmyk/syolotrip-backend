@@ -22,7 +22,7 @@ from backend.app.schemas.partner import (
     DailyInventoryResponse,
 )
 from backend.app.services.partner_service import PartnerService
-from backend.app.api.v1.deps import get_current_user, get_current_partner
+from backend.app.api.v1.deps import get_current_user, get_current_partner, get_verified_partner
 
 router = APIRouter(prefix="/partner", tags=["Partner Marketplace"])
 
@@ -69,7 +69,7 @@ async def update_partner_profile(
 @router.get("/properties", response_model=ApiResponse[List[PartnerPropertyResponse]])
 async def list_partner_properties(
     status: Optional[str] = Query(None, description="Filter by publication status (DRAFT, PENDING_APPROVAL, APPROVED, REJECTED)"),
-    partner: PartnerProfile = Depends(get_current_partner),
+    partner: PartnerProfile = Depends(get_verified_partner),
     db: AsyncSession = Depends(get_db),
 ):
     service = PartnerService(db)
@@ -80,7 +80,7 @@ async def list_partner_properties(
 @router.post("/properties", response_model=ApiResponse[PartnerPropertyResponse], status_code=status.HTTP_201_CREATED)
 async def create_property_draft(
     req: PartnerPropertyCreate,
-    partner: PartnerProfile = Depends(get_current_partner),
+    partner: PartnerProfile = Depends(get_verified_partner),
     db: AsyncSession = Depends(get_db),
 ):
     service = PartnerService(db)
@@ -96,7 +96,7 @@ async def create_property_draft(
 @router.get("/properties/{property_id}", response_model=ApiResponse[PartnerPropertyResponse])
 async def get_partner_property(
     property_id: uuid.UUID,
-    partner: PartnerProfile = Depends(get_current_partner),
+    partner: PartnerProfile = Depends(get_verified_partner),
     db: AsyncSession = Depends(get_db),
 ):
     service = PartnerService(db)
@@ -108,7 +108,7 @@ async def get_partner_property(
 async def update_partner_property(
     property_id: uuid.UUID,
     req: PartnerPropertyUpdate,
-    partner: PartnerProfile = Depends(get_current_partner),
+    partner: PartnerProfile = Depends(get_verified_partner),
     db: AsyncSession = Depends(get_db),
 ):
     service = PartnerService(db)
@@ -120,7 +120,7 @@ async def update_partner_property(
 @router.post("/properties/{property_id}/submit", response_model=ApiResponse[PartnerPropertyResponse])
 async def submit_property_for_approval(
     property_id: uuid.UUID,
-    partner: PartnerProfile = Depends(get_current_partner),
+    partner: PartnerProfile = Depends(get_verified_partner),
     db: AsyncSession = Depends(get_db),
 ):
     service = PartnerService(db)
@@ -138,7 +138,7 @@ async def submit_property_for_approval(
 async def add_property_room(
     property_id: uuid.UUID,
     req: PartnerRoomCreate,
-    partner: PartnerProfile = Depends(get_current_partner),
+    partner: PartnerProfile = Depends(get_verified_partner),
     db: AsyncSession = Depends(get_db),
 ):
     service = PartnerService(db)
@@ -152,7 +152,7 @@ async def update_property_room(
     property_id: uuid.UUID,
     room_id: uuid.UUID,
     req: PartnerRoomUpdate,
-    partner: PartnerProfile = Depends(get_current_partner),
+    partner: PartnerProfile = Depends(get_verified_partner),
     db: AsyncSession = Depends(get_db),
 ):
     service = PartnerService(db)
@@ -165,7 +165,7 @@ async def update_property_room(
 async def delete_property_room(
     property_id: uuid.UUID,
     room_id: uuid.UUID,
-    partner: PartnerProfile = Depends(get_current_partner),
+    partner: PartnerProfile = Depends(get_verified_partner),
     db: AsyncSession = Depends(get_db),
 ):
     service = PartnerService(db)
@@ -181,7 +181,7 @@ async def set_room_daily_availability(
     property_id: uuid.UUID,
     room_id: uuid.UUID,
     req: DailyInventorySetRequest,
-    partner: PartnerProfile = Depends(get_current_partner),
+    partner: PartnerProfile = Depends(get_verified_partner),
     db: AsyncSession = Depends(get_db),
 ):
     service = PartnerService(db)
@@ -195,7 +195,7 @@ async def set_room_daily_availability(
 async def get_room_daily_availability(
     property_id: uuid.UUID,
     room_id: uuid.UUID,
-    partner: PartnerProfile = Depends(get_current_partner),
+    partner: PartnerProfile = Depends(get_verified_partner),
     db: AsyncSession = Depends(get_db),
 ):
     service = PartnerService(db)
@@ -206,7 +206,7 @@ async def get_room_daily_availability(
 # ────────── Partner Bookings ──────────
 @router.get("/bookings", response_model=ApiResponse[List[BookingResponse]])
 async def list_partner_bookings(
-    partner: PartnerProfile = Depends(get_current_partner),
+    partner: PartnerProfile = Depends(get_verified_partner),
     db: AsyncSession = Depends(get_db),
 ):
     service = PartnerService(db)

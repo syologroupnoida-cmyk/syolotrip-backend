@@ -136,8 +136,11 @@ class TravelRepository:
         return (await self.db.execute(query)).scalar_one_or_none()
 
     async def get_hotel_room_by_id(self, room_id: uuid.UUID) -> Optional[HotelRoom]:
-
-        query = select(HotelRoom).where(HotelRoom.id == room_id)
+        query = (
+            select(HotelRoom)
+            .options(selectinload(HotelRoom.hotel))
+            .where(HotelRoom.id == room_id)
+        )
         return (await self.db.execute(query)).scalar_one_or_none()
 
     async def create_hotel(self, hotel: Hotel) -> Hotel:

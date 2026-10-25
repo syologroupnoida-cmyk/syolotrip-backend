@@ -1,5 +1,5 @@
 import uuid
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, Optional, Any
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -93,8 +93,10 @@ async def get_current_partner(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Enforces that the current authenticated user has the PARTNER role and returns their PartnerProfile."""
-    from backend.app.models.partner import PartnerProfile
+    """Enforces that the current authenticated user has the PARTNER role and returns their PartnerProfile.
+    SEC-09: Suspended partners are barred from all partner operations.
+    """
+    from backend.app.models.partner import PartnerProfile, PartnerStatus
 
     if current_user.role != UserRole.PARTNER.value:
         raise HTTPException(
@@ -112,5 +114,39 @@ async def get_current_partner(
             detail="Partner profile not found. Please register your partner profile.",
         )
 
+    # SEC-09: Prevent suspended partners from accessing partner operations
+    if profile.status == PartnerStatus.SUSPENDED.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Partner account has been suspended. Please contact platform administration.",
+        )
+
     return profile
+
+
+async def get_verified_partner(
+    partner: Any = Depends(get_current_partner),
+):
+    """SEC-09: Enforces that the partner profile is verified/approved before accessing
+    protected marketplace operations such as listing management and inventory.
+    """
+    from backend.app.models.partner import PartnerStatus
+
+    if partner.status == PartnerStatus.REJECTED.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Partner application was rejected: {partner.rejection_reason or 'Eligibility criteria not met'}",
+        )
+
+    is_verified = (
+        partner.status in [PartnerStatus.VERIFIED.value, "APPROVED"]
+        or getattr(partner, "is_verified", False)
+    )
+    if not is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Partner account verification required to perform this operation. Your profile is currently pending review.",
+        )
+
+    return partner
 

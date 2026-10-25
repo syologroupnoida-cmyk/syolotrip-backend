@@ -66,6 +66,25 @@ class Settings(BaseSettings):
     # Provider simulation mode
     USE_MOCK_PROVIDERS: bool = True
 
+    # Rate Limiting & Proxy Configuration (SEC-11)
+    TRUSTED_PROXIES: List[str] = ["127.0.0.1", "::1"]
+    RATE_LIMIT_LOGIN: str = "5/minute"
+    RATE_LIMIT_REGISTER: str = "5/minute"
+    RATE_LIMIT_COUPON_VALIDATE: str = "10/minute"
+    RATE_LIMIT_STORAGE_URL: Optional[str] = None
+    RATE_LIMIT_ENABLED: bool = True
+
+    @field_validator("TRUSTED_PROXIES", mode="before")
+    @classmethod
+    def assemble_trusted_proxies(cls, v: Union[str, List[str]]) -> List[str]:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",") if i.strip()]
+        elif isinstance(v, list):
+            return [str(i).strip() for i in v if str(i).strip()]
+        elif isinstance(v, str):
+            return [v.strip()]
+        return ["127.0.0.1", "::1"]
+
     @model_validator(mode="after")
     def validate_security_configuration(self) -> "Settings":
         env = (self.ENVIRONMENT or "development").lower().strip()

@@ -38,6 +38,15 @@ async def prepare_database():
         await conn.run_sync(Base.metadata.drop_all)
 
 
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    from backend.app.core.rate_limit import limiter
+    limiter.reset()
+    yield
+    limiter.reset()
+
+
+
 async def override_get_db():
     async with TestSessionLocal() as session:
         try:
