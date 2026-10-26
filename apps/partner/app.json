@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "SS Journey Partner",
+    "slug": "ss-journey-partner",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/ss-journey-logo.jpg",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#071a3d",
+        "foregroundImage": "./assets/ss-journey-logo.jpg",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.ssjourney.partner"
+    },
+    "web": {
+      "favicon": "./assets/ss-journey-logo.jpg"
+    },
+    "plugins": [
+      "expo-status-bar",
+      "expo-secure-store"
+    ]
+  }
+}
