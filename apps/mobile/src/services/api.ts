@@ -546,6 +546,161 @@ export async function submitMobileBookingApi(payload: {
   };
 }
 
+// ================= Razorpay Mobile Payment APIs =================
+export interface MobileRazorpayOrder {
+  key_id: string;
+  order_id: string;
+  amount: number;
+  currency: string;
+  booking_id: string;
+  booking_reference: string;
+  service_type: string;
+  customer_name?: string;
+  customer_email?: string;
+  customer_phone?: string;
+}
+
+export interface MobileRazorpayVerifyResult {
+  success: boolean;
+  payment_id: string;
+  order_id: string;
+  booking_id: string;
+  booking_reference: string;
+  status: string;
+  amount: number;
+  currency: string;
+  message: string;
+}
+
+/**
+ * Create a server-verified Razorpay order for mobile
+ */
+export async function createRazorpayOrderMobileApi(payload: {
+  booking_id: string;
+  guest_token?: string;
+}): Promise<MobileRazorpayOrder> {
+  const headers = await getAuthHeaders(true);
+  const res = await fetch(`${API_BASE_URL}/payments/razorpay/order`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Failed to create Razorpay order' }));
+    throw new Error(err.detail || `Order creation failed (${res.status})`);
+  }
+  const json: ApiResponse<MobileRazorpayOrder> = await res.json();
+  return json.data;
+}
+
+/**
+ * Mobile Test Mode Authorization helper (computes HMAC signature server-side in test mode)
+ */
+export async function testAuthorizeRazorpayMobileApi(payload: {
+  booking_id: string;
+  razorpay_order_id: string;
+  guest_token?: string;
+}): Promise<{
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}> {
+  const headers = await getAuthHeaders(true);
+  const res = await fetch(`${API_BASE_URL}/payments/razorpay/test-authorize`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Test authorization failed' }));
+    throw new Error(err.detail || `Test authorization failed (${res.status})`);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+/**
+ * Server-side payment verification using HMAC-SHA256 signature check
+ */
+export async function verifyRazorpayPaymentMobileApi(payload: {
+  booking_id: string;
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+  guest_token?: string;
+}): Promise<MobileRazorpayVerifyResult> {
+  const headers = await getAuthHeaders(true);
+  const res = await fetch(`${API_BASE_URL}/payments/razorpay/verify`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Payment verification failed' }));
+    throw new Error(err.detail || `Payment verification failed (${res.status})`);
+  }
+  const json: ApiResponse<MobileRazorpayVerifyResult> = await res.json();
+  return json.data;
+}
+
+/**
+ * Create raw booking in PostgreSQL in PENDING state
+ */
+export async function createPendingMobileBookingApi(payload: {
+  serviceType: 'FLIGHT' | 'HOTEL' | 'BUS' | 'PACKAGE' | 'TRAIN' | 'CAB' | 'VILLA' | 'TOUR' | 'VISA' | 'INSURANCE';
+  itemId: string;
+  totalAmount: number;
+  contactEmail: string;
+  contactPhone: string;
+  passengerName: string;
+  promoCode?: string;
+  hasInsurance?: boolean;
+}): Promise<any> {
+  const headers = await getAuthHeaders(true);
+  let itemType: string = payload.serviceType;
+  if (itemType === 'HOTEL') itemType = 'HOTEL_ROOM';
+
+  const nameParts = (payload.passengerName || 'Guest Traveler').trim().split(' ');
+  const firstName = nameParts[0] || 'Guest';
+  const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Traveler';
+
+  const bookingRes = await fetch(`${API_BASE_URL}/bookings`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      service_type: payload.serviceType,
+      contact_email: payload.contactEmail.trim().toLowerCase(),
+      contact_phone: payload.contactPhone.trim(),
+      has_insurance: Boolean(payload.hasInsurance),
+      promo_code: payload.promoCode || undefined,
+      items: [
+        {
+          item_type: itemType,
+          item_reference_id: payload.itemId,
+          quantity: 1,
+        },
+      ],
+      passengers: [
+        {
+          title: 'Mr',
+          first_name: firstName,
+          last_name: lastName,
+          passenger_type: 'ADULT',
+          gender: 'MALE',
+        },
+      ],
+    }),
+  });
+
+  if (!bookingRes.ok) {
+    const errData = await bookingRes.json().catch(() => ({ detail: 'Failed to create booking' }));
+    throw new Error(errData.detail || `Booking creation failed with status ${bookingRes.status}`);
+  }
+
+  const bookingJson: ApiResponse<any> = await bookingRes.json();
+  return bookingJson.data;
+}
+
 /**
  * Fetch authenticated customer bookings
  */

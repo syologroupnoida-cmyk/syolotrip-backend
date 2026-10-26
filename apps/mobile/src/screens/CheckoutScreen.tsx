@@ -25,7 +25,15 @@ import {
 } from '../types/travel';
 import { SeatSelectionModal } from '../components/SeatSelectionModal';
 import { BookingSuccessModal } from '../components/BookingSuccessModal';
-import { submitMobileBookingApi, getCurrentUserMobileApi } from '../services/api';
+import { RazorpayModal } from '../components/RazorpayModal';
+import {
+  submitMobileBookingApi,
+  getCurrentUserMobileApi,
+  createPendingMobileBookingApi,
+  createRazorpayOrderMobileApi,
+  MobileRazorpayOrder,
+  MobileRazorpayVerifyResult,
+} from '../services/api';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -67,7 +75,10 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   const [dob, setDob] = useState(bookingState?.dob || '');
   const [passport, setPassport] = useState(bookingState?.passportNumber || '');
   const [frequentFlyer, setFrequentFlyer] = useState(bookingState?.frequentFlyer || '');
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'applepay' | 'upi'>('card');
+  const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'card' | 'applepay'>('razorpay');
+  const [isRazorpayModalOpen, setIsRazorpayModalOpen] = useState(false);
+  const [activeRazorpayOrder, setActiveRazorpayOrder] = useState<MobileRazorpayOrder | null>(null);
+  const [pendingBookingRecord, setPendingBookingRecord] = useState<any | null>(null);
 
   // Load legitimate authenticated user profile if available
   useEffect(() => {
@@ -182,6 +193,32 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
 
     setIsSubmitting(true);
     try {
+      if (paymentMethod === 'razorpay') {
+        let bookingToPay = pendingBookingRecord;
+        if (!bookingToPay) {
+          bookingToPay = await createPendingMobileBookingApi({
+            serviceType: resolvedServiceType,
+            itemId: rawItemId,
+            totalAmount: currentTotal,
+            contactEmail: contactEmail.trim(),
+            contactPhone: contactPhone.trim(),
+            passengerName: legalName.trim(),
+            hasInsurance: hasInsurance,
+          });
+          setPendingBookingRecord(bookingToPay);
+        }
+
+        const rzpOrder = await createRazorpayOrderMobileApi({
+          booking_id: bookingToPay.id,
+          guest_token: bookingToPay.cancellation_token,
+        });
+
+        setActiveRazorpayOrder(rzpOrder);
+        setIsRazorpayModalOpen(true);
+        return;
+      }
+
+      // Fallback: Instant Demo Payment Simulator
       const res = await submitMobileBookingApi({
         serviceType: resolvedServiceType,
         itemId: rawItemId,
@@ -189,6 +226,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
         contactEmail: contactEmail.trim(),
         contactPhone: contactPhone.trim(),
         passengerName: legalName.trim(),
+        hasInsurance: hasInsurance,
       });
       if (res && (res.bookingId || res.bookingReference)) {
         setConfirmedBookingRef(res.bookingReference || res.bookingId);
@@ -493,9 +531,31 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
 
         {/* Payment Method Selector */}
         <View style={styles.paymentCard}>
-          <Text style={styles.formTitle}>Payment Method</Text>
+          <Text style={styles.formTitle}>Payment Gateway</Text>
 
           <View style={styles.paymentOptions}>
+            <TouchableOpacity
+              style={[
+                styles.paymentOptionTile,
+                paymentMethod === 'razorpay' && styles.paymentOptionActive,
+              ]}
+              onPress={() => setPaymentMethod('razorpay')}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons
+                name="verified-user"
+                size={20}
+                color={paymentMethod === 'razorpay' ? Colors.primary : Colors.onSurfaceVariant}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.paymentOptionLabel}>Razorpay Test Mode</Text>
+                <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant }}>Cards · UPI · Netbanking Sandbox</Text>
+              </View>
+              {paymentMethod === 'razorpay' && (
+                <MaterialIcons name="check-circle" size={16} color={Colors.primary} />
+              )}
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={[
                 styles.paymentOptionTile,
@@ -509,7 +569,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
                 size={20}
                 color={paymentMethod === 'card' ? Colors.primary : Colors.onSurfaceVariant}
               />
-              <Text style={styles.paymentOptionLabel}>Visa ending 4242</Text>
+              <Text style={styles.paymentOptionLabel}>Demo Simulator (Card 4242)</Text>
               {paymentMethod === 'card' && (
                 <MaterialIcons name="check-circle" size={16} color={Colors.primary} />
               )}
@@ -524,11 +584,11 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
               activeOpacity={0.8}
             >
               <MaterialIcons
-                name="payment"
+                name="account-balance-wallet"
                 size={20}
                 color={paymentMethod === 'applepay' ? Colors.primary : Colors.onSurfaceVariant}
               />
-              <Text style={styles.paymentOptionLabel}>Apple Pay / Google Pay</Text>
+              <Text style={styles.paymentOptionLabel}>Demo UPI / Wallet Sim</Text>
               {paymentMethod === 'applepay' && (
                 <MaterialIcons name="check-circle" size={16} color={Colors.primary} />
               )}
@@ -560,6 +620,24 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
         currentSeat={selectedSeat}
         onSelectSeat={setSelectedSeat}
         onClose={() => setIsSeatModalOpen(false)}
+      />
+
+      {/* Razorpay Test Mode Checkout Modal */}
+      <RazorpayModal
+        visible={isRazorpayModalOpen}
+        orderData={activeRazorpayOrder}
+        guestToken={pendingBookingRecord?.cancellation_token}
+        onSuccess={(result: MobileRazorpayVerifyResult) => {
+          setIsRazorpayModalOpen(false);
+          setConfirmedBookingRef(result.booking_reference);
+          setIsSuccessModalOpen(true);
+        }}
+        onFailure={(err: string) => {
+          Alert.alert('Payment Not Completed', err);
+        }}
+        onDismiss={() => {
+          setIsRazorpayModalOpen(false);
+        }}
       />
 
       {/* Booking Success Celebration Modal */}

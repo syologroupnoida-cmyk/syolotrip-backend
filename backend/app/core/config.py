@@ -66,6 +66,11 @@ class Settings(BaseSettings):
     # Provider simulation mode
     USE_MOCK_PROVIDERS: bool = True
 
+    # Razorpay Payment Gateway Configuration (Test Mode / Production)
+    RAZORPAY_KEY_ID: Optional[str] = None
+    RAZORPAY_KEY_SECRET: Optional[str] = None
+    RAZORPAY_WEBHOOK_SECRET: Optional[str] = None
+
     # Rate Limiting & Proxy Configuration (SEC-11)
     TRUSTED_PROXIES: List[str] = ["127.0.0.1", "::1"]
     RATE_LIMIT_LOGIN: str = "5/minute"

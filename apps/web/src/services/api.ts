@@ -293,6 +293,51 @@ export const payDemoBookingApi = async (payload: {
   return res.data.data;
 };
 
+// ================= Razorpay Payment APIs =================
+export interface RazorpayOrderData {
+  key_id: string;
+  order_id: string;
+  amount: number;
+  currency: string;
+  booking_id: string;
+  booking_reference: string;
+  service_type: string;
+  customer_name?: string;
+  customer_email?: string;
+  customer_phone?: string;
+}
+
+export interface RazorpayVerifyData {
+  success: boolean;
+  payment_id: string;
+  order_id: string;
+  booking_id: string;
+  booking_reference: string;
+  status: string;
+  amount: number;
+  currency: string;
+  message: string;
+}
+
+export const createRazorpayOrderApi = async (payload: {
+  booking_id: string;
+  guest_token?: string;
+}): Promise<RazorpayOrderData> => {
+  const res = await apiClient.post<ApiResponse<RazorpayOrderData>>('/payments/razorpay/order', payload);
+  return res.data.data;
+};
+
+export const verifyRazorpayPaymentApi = async (payload: {
+  booking_id: string;
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+  guest_token?: string;
+}): Promise<RazorpayVerifyData> => {
+  const res = await apiClient.post<ApiResponse<RazorpayVerifyData>>('/payments/razorpay/verify', payload);
+  return res.data.data;
+};
+
 export const getMyTripsApi = async (): Promise<any[]> => {
   const res = await apiClient.get<ApiResponse<any[]>>('/bookings/my-trips');
   return res.data.data;

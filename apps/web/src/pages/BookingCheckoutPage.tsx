@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   createBookingApi,
   payDemoBookingApi,
+  createRazorpayOrderApi,
+  verifyRazorpayPaymentApi,
   searchFlightsApi,
   searchHotelsApi,
   searchTrainsApi,
@@ -109,7 +111,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
   currentUser,
 }) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'paypal' | 'apple'>('card');
+  const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'card' | 'paypal' | 'apple'>('razorpay');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [hasInsurance, setHasInsurance] = useState(true);
   const [isConfirmed, setIsConfirmed] = useState(false);
@@ -118,6 +120,36 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
   const [simulateFailure, setSimulateFailure] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(currentUser || null);
   const [createdBooking, setCreatedBooking] = useState<any | null>(null);
+
+  // Helper to ensure Razorpay Checkout script is loaded
+  const ensureRazorpayLoaded = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (typeof window !== 'undefined' && (window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+      if (typeof document === 'undefined') {
+        resolve(false);
+        return;
+      }
+      const existing = document.querySelector('script[src*="checkout.razorpay.com"]');
+      if (existing) {
+        existing.addEventListener('load', () => resolve(true));
+        existing.addEventListener('error', () => resolve(false));
+        // If already loaded before listener
+        if ((window as any).Razorpay) {
+          resolve(true);
+        }
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
   // Coupon / Promo Code state
   const [couponCode, setCouponCode] = useState('');
@@ -141,6 +173,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
     email: string;
     total: number;
     serviceType: string;
+    paymentMethodUsed?: string;
   } | null>(null);
 
   // myBiz Corporate Booking state
@@ -277,14 +310,14 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
 
       let bookingToPay = createdBooking;
 
+      const uName = user?.fullName || (user as any)?.full_name || '';
+      const firstName = traveler.firstName.trim() || uName.split(' ')[0] || 'John';
+      const lastName = traveler.lastName.trim() || (uName.split(' ').slice(1).join(' ')) || 'Doe';
+      const contactEmail = traveler.email.trim() || user?.email || 'customer@ssjourney.com';
+      const contactPhone = traveler.phone.trim() || user?.phone || '+919876543210';
+
       // 1. Create booking in PostgreSQL if not already created in this checkout session
       if (!bookingToPay) {
-        const uName = user?.fullName || (user as any)?.full_name || '';
-        const firstName = traveler.firstName.trim() || uName.split(' ')[0] || 'John';
-        const lastName = traveler.lastName.trim() || (uName.split(' ').slice(1).join(' ')) || 'Doe';
-        const contactEmail = traveler.email.trim() || user?.email || 'customer@ssjourney.com';
-        const contactPhone = traveler.phone.trim() || user?.phone || '+919876543210';
-
         const booking = await createBookingApi({
           service_type: serviceType,
           guest_name: user ? undefined : `${firstName} ${lastName}`,
@@ -324,7 +357,101 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
         setCreatedBooking(booking);
       }
 
-      // 2. Process Demo Payment via Backend Simulation Endpoint
+      // 2. Razorpay Test Mode Gateway Integration
+      if (paymentMethod === 'razorpay') {
+        const isLoaded = await ensureRazorpayLoaded();
+        if (!isLoaded || !(window as any).Razorpay) {
+          throw new Error('Razorpay Checkout SDK could not be loaded. Please check your network connection and retry.');
+        }
+
+        // Server-side order creation: computes payable amount from trusted DB records
+        const orderData = await createRazorpayOrderApi({
+          booking_id: bookingToPay.id,
+          guest_token: bookingToPay.cancellation_token,
+        });
+
+        const rzpOptions = {
+          key: orderData.key_id,
+          amount: orderData.amount,
+          currency: orderData.currency || 'INR',
+          name: 'SS Journey',
+          description: `Booking #${orderData.booking_reference} (${orderData.service_type})`,
+          order_id: orderData.order_id,
+          prefill: {
+            name: orderData.customer_name || `${firstName} ${lastName}`.trim(),
+            email: orderData.customer_email || traveler.email,
+            contact: orderData.customer_phone || traveler.phone,
+          },
+          notes: {
+            booking_id: orderData.booking_id,
+            booking_reference: orderData.booking_reference,
+            service_type: orderData.service_type,
+          },
+          theme: {
+            color: '#00627d',
+          },
+          modal: {
+            ondismiss: () => {
+              setIsProcessing(false);
+              setErrorMessage('Razorpay checkout was dismissed before payment. Your booking remains pending and you can retry safely.');
+            },
+          },
+          handler: async (response: {
+            razorpay_payment_id: string;
+            razorpay_order_id: string;
+            razorpay_signature: string;
+          }) => {
+            try {
+              setIsProcessing(true);
+              setErrorMessage(null);
+
+              // Server-side payment verification using official HMAC-SHA256 signature verification
+              const verifyRes = await verifyRazorpayPaymentApi({
+                booking_id: bookingToPay.id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                guest_token: bookingToPay.cancellation_token,
+              });
+
+              if (verifyRes.status === 'SUCCESS' || verifyRes.success) {
+                setConfirmedBooking({
+                  reference: bookingToPay.booking_reference,
+                  email: bookingToPay.contact_email,
+                  total: Number(bookingToPay.total_amount),
+                  serviceType: bookingToPay.service_type,
+                  paymentMethodUsed: 'Razorpay Test Mode',
+                });
+                setIsConfirmed(true);
+                setErrorMessage(null);
+              } else {
+                setErrorMessage(verifyRes.message || 'Payment verification failed on the server. Please contact support.');
+              }
+            } catch (vErr: any) {
+              console.error('Razorpay verification error:', vErr);
+              const vDetail =
+                vErr.response?.data?.detail ||
+                vErr.message ||
+                'Payment verification failed. Your booking status could not be confirmed.';
+              setErrorMessage(vDetail);
+            } finally {
+              setIsProcessing(false);
+            }
+          },
+        };
+
+        const rzp = new (window as any).Razorpay(rzpOptions);
+        rzp.on('payment.failed', (resp: any) => {
+          setIsProcessing(false);
+          setErrorMessage(
+            `Payment declined: ${resp.error?.description || resp.error?.reason || 'Transaction failed in Razorpay Test Mode'}. You can retry.`
+          );
+        });
+        rzp.open();
+        return;
+      }
+
+      // 3. Fallback: Demo Payment via Backend Simulation Endpoint
       const payRes = await payDemoBookingApi({
         booking_id: bookingToPay.id,
         payment_method: paymentMethod === 'card' ? 'CREDIT_CARD' : paymentMethod === 'apple' ? 'APPLE_PAY' : 'UPI',
@@ -339,12 +466,13 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
         );
       }
 
-      // 3. Mark Confirmed only when API confirms outcome
+      // Mark Confirmed only when API confirms outcome
       setConfirmedBooking({
         reference: bookingToPay.booking_reference,
         email: bookingToPay.contact_email,
         total: Number(bookingToPay.total_amount),
         serviceType: bookingToPay.service_type,
+        paymentMethodUsed: 'Demo Simulator',
       });
       setIsConfirmed(true);
       setErrorMessage(null);
@@ -389,7 +517,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
               <span className="text-label-md font-mono font-bold text-primary">{confirmedBooking?.reference || 'SSJ-849201'}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-label-md text-on-surface-variant">Total Paid (Demo Payment)</span>
+              <span className="text-label-md text-on-surface-variant">Total Paid ({confirmedBooking?.paymentMethodUsed || 'Razorpay Test Mode'})</span>
               <span className="text-headline-sm font-bold text-primary tabular-nums">₹{(confirmedBooking?.total || grandTotal).toLocaleString('en-IN')}</span>
             </div>
           </div>
@@ -853,28 +981,67 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                 </div>
                 <div className="p-space-md flex flex-col gap-space-md">
                   {/* Payment Method Tabs */}
-                  <div className="flex items-center gap-space-sm">
+                  <div className="flex flex-wrap items-center gap-space-sm">
                     {([
-                      { id: 'card' as const, label: 'Credit / Debit Card', icon: 'credit_card' },
-                      { id: 'paypal' as const, label: 'PayPal', icon: 'account_balance_wallet' },
-                      { id: 'apple' as const, label: 'Apple Pay', icon: 'phone_iphone' },
+                      { id: 'razorpay' as const, label: 'Razorpay Test Mode', badge: 'Cards · UPI · Netbanking', icon: 'verified_user' },
+                      { id: 'card' as const, label: 'Demo Card Simulation', badge: 'Instant Sim', icon: 'credit_card' },
+                      { id: 'paypal' as const, label: 'Demo UPI / Wallet', badge: 'Instant Sim', icon: 'account_balance_wallet' },
                     ]).map(pm => (
                       <button
                         key={pm.id}
+                        type="button"
                         onClick={() => setPaymentMethod(pm.id)}
-                        className={`flex items-center gap-space-xs px-space-md py-space-sm rounded-lg text-label-lg transition-all border ${
+                        className={`flex items-center gap-space-xs px-space-md py-space-sm rounded-lg text-label-md transition-all border ${
                           paymentMethod === pm.id
-                            ? 'border-primary bg-primary/5 text-primary font-bold'
+                            ? 'border-primary bg-primary/10 text-primary font-bold shadow-sm'
                             : 'border-outline-variant/30 text-on-surface-variant hover:border-primary/50'
                         }`}
                       >
                         <span className="material-symbols-outlined text-[18px]">{pm.icon}</span>
-                        <span>{pm.label}</span>
+                        <div className="flex flex-col text-left">
+                          <span>{pm.label}</span>
+                          <span className="text-[11px] font-normal opacity-75">{pm.badge}</span>
+                        </div>
                       </button>
                     ))}
                   </div>
 
-                  {/* Card Form */}
+                  {/* Razorpay Test Mode Gateway Details */}
+                  {paymentMethod === 'razorpay' && (
+                    <div className="bg-primary/5 border border-primary/20 rounded-xl p-space-md flex flex-col gap-space-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-primary text-[20px]">lock</span>
+                          <span className="text-label-md font-bold text-primary">Razorpay Official Standard Checkout</span>
+                        </div>
+                        <span className="text-[11px] font-mono uppercase bg-primary/15 text-primary px-2 py-0.5 rounded-full font-bold">
+                          Test Mode Sandbox
+                        </span>
+                      </div>
+                      <p className="text-body-sm text-on-surface-variant">
+                        Clicking <strong>Confirm & Pay</strong> creates a verified server-side order and opens the official Razorpay Checkout modal with safe test mode. No actual money will be charged.
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 pt-2 border-t border-outline-variant/20 text-body-xs text-on-surface-variant">
+                        <div className="bg-surface-container-low p-2 rounded-lg">
+                          <strong className="text-on-surface block mb-0.5">Test Cards</strong>
+                          <span className="font-mono text-[11px]">4111 2222 3333 4444</span>
+                          <span className="block text-[10px] text-on-surface-variant/80">Any valid future date & OTP 123456</span>
+                        </div>
+                        <div className="bg-surface-container-low p-2 rounded-lg">
+                          <strong className="text-on-surface block mb-0.5">Test UPI ID</strong>
+                          <span className="font-mono text-[11px]">success@razorpay</span>
+                          <span className="block text-[10px] text-on-surface-variant/80">Instant test authorization</span>
+                        </div>
+                        <div className="bg-surface-container-low p-2 rounded-lg">
+                          <strong className="text-on-surface block mb-0.5">Netbanking</strong>
+                          <span className="font-mono text-[11px]">SBI, HDFC, ICICI</span>
+                          <span className="block text-[10px] text-on-surface-variant/80">Select test bank and confirm</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Card Form for Demo Simulator */}
                   {paymentMethod === 'card' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
                       <div className="md:col-span-2">
@@ -893,24 +1060,26 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                   )}
 
                   {/* Demo Payment Notice & Testing Simulation Toggle */}
-                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex flex-col gap-2 mt-2">
-                    <div className="flex items-center gap-2 text-label-md font-bold text-amber-800 dark:text-amber-400">
-                      <span className="material-symbols-outlined text-[18px]">info</span>
-                      <span>Demo Payment Simulator</span>
+                  {paymentMethod !== 'razorpay' && (
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex flex-col gap-2 mt-2">
+                      <div className="flex items-center gap-2 text-label-md font-bold text-amber-800 dark:text-amber-400">
+                        <span className="material-symbols-outlined text-[18px]">info</span>
+                        <span>Demo Payment Simulator</span>
+                      </div>
+                      <p className="text-body-sm text-on-surface-variant">
+                        This checkout executes simulated authorization via <code>POST /api/v1/payments/demo</code> without calling external payment gateways.
+                      </p>
+                      <label className="flex items-center gap-2 cursor-pointer pt-1 text-label-sm text-on-surface font-semibold">
+                        <input
+                          type="checkbox"
+                          checked={simulateFailure}
+                          onChange={(e) => setSimulateFailure(e.target.checked)}
+                          className="rounded accent-rose-600 w-4 h-4"
+                        />
+                        <span className="text-rose-600 dark:text-rose-400">Simulate Payment Failure (Test error handling & retry without duplicate booking)</span>
+                      </label>
                     </div>
-                    <p className="text-body-sm text-on-surface-variant">
-                      This checkout connects to the real PostgreSQL database and executes simulated authorization via <code>POST /api/v1/payments/demo</code>. No actual money is debited.
-                    </p>
-                    <label className="flex items-center gap-2 cursor-pointer pt-1 text-label-sm text-on-surface font-semibold">
-                      <input
-                        type="checkbox"
-                        checked={simulateFailure}
-                        onChange={(e) => setSimulateFailure(e.target.checked)}
-                        className="rounded accent-rose-600 w-4 h-4"
-                      />
-                      <span className="text-rose-600 dark:text-rose-400">Simulate Payment Failure (Test error handling & retry without duplicate booking)</span>
-                    </label>
-                  </div>
+                  )}
                 </div>
               </div>
             )}

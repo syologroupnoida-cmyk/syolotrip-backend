@@ -28,6 +28,7 @@ class PaymentMethod(str, enum.Enum):
     UPI = "UPI"
     APPLEPAY = "APPLEPAY"
     DEMO_SIMULATION = "DEMO_SIMULATION"
+    RAZORPAY = "RAZORPAY"
 
 
 class Payment(Base, PrimaryKeyMixin, TimestampMixin):
