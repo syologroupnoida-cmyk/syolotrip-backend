@@ -174,9 +174,9 @@ class LocationService:
                 pkg_map[dest] = LocationOption(
                     category="packages",
                     code=None,
-                    name=f"{dest} ({p.country})",
+                    name=f"{dest} Holiday Experience",
                     city=dest,
-                    country=p.country,
+                    country=getattr(p, "country", None) or "India",
                     role="destination",
                 )
 

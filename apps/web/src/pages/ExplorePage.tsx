@@ -16,7 +16,6 @@ import {
   InsuranceIsometricIcon,
 } from '../components/TravelCategoryIcons';
 import { CalendarPickerModal } from '../components/CalendarPickerModal';
-import { getLocationsApi, validateRouteApi } from '../services/api';
 
 export interface AirportOption {
   code: string;
