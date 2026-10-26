@@ -13,6 +13,7 @@ export const MyTripsPage: React.FC<MyTripsPageProps> = ({ onNavigate, onOpenAuth
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
 
   const fetchTrips = async () => {
     setIsLoading(true);
@@ -222,18 +223,18 @@ export const MyTripsPage: React.FC<MyTripsPageProps> = ({ onNavigate, onOpenAuth
                   {/* Actions */}
                   <div className="flex flex-col sm:flex-row md:flex-col gap-2 w-full md:w-48 flex-shrink-0">
                     <button
-                      onClick={() => alert(`E-Ticket for ${booking.booking_reference}\nSent to: ${booking.contact_email}\nStatus: ${booking.status}`)}
-                      className="w-full bg-surface-container hover:bg-surface-container-high text-primary font-bold py-2.5 px-4 rounded-xl text-label-lg transition-colors flex items-center justify-center gap-2"
+                      onClick={() => setSelectedTicket(booking)}
+                      className="w-full bg-surface-container hover:bg-surface-container-high text-primary font-bold py-2.5 px-4 rounded-xl text-label-lg transition-colors flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-[18px]">receipt_long</span>
-                      <span>View Receipt</span>
+                      <span>View E-Ticket</span>
                     </button>
 
-                    {booking.status !== 'CANCELLED' && (
+                    {booking.status !== 'CANCELLED' && booking.status !== 'REFUNDED' && (
                       <button
                         onClick={() => handleCancelBooking(booking.id)}
                         disabled={cancellingId === booking.id}
-                        className="w-full border border-rose-300 hover:bg-rose-500/10 text-rose-600 font-bold py-2.5 px-4 rounded-xl text-label-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="w-full border border-rose-300 hover:bg-rose-500/10 text-rose-600 font-bold py-2.5 px-4 rounded-xl text-label-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                       >
                         {cancellingId === booking.id ? (
                           <>
@@ -255,6 +256,157 @@ export const MyTripsPage: React.FC<MyTripsPageProps> = ({ onNavigate, onOpenAuth
           </div>
         )}
       </div>
+
+      {/* ── E-Ticket & Reservation Voucher Modal ── */}
+      {selectedTicket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs font-sans">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="p-6 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-900 text-white flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[24px]">confirmation_number</span>
+                  <h3 className="font-black text-lg tracking-tight">SS Journey E-Ticket Voucher</h3>
+                </div>
+                <p className="text-xs text-blue-200 mt-0.5">
+                  Booking Reference: <strong className="font-mono text-white text-sm">{selectedTicket.booking_reference}</strong>
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedTicket(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            {/* Simulated Supplier Disclaimer Banner */}
+            <div className="bg-amber-500/15 border-b border-amber-500/30 px-6 py-2.5 flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-300">
+              <span className="material-symbols-outlined text-[18px] text-amber-600 dark:text-amber-400 mt-0.5 shrink-0">info</span>
+              <p className="leading-relaxed">
+                <strong>Demonstration Voucher:</strong> Issued by SS Journey travel platform for reservation confirmation. This document reflects verified internal database records. Not a live carrier boarding pass.
+              </p>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="p-6 overflow-y-auto space-y-6 text-slate-800 dark:text-slate-200 text-xs">
+              {/* Status & Service Row */}
+              <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Service Vertical</span>
+                  <span className="text-sm font-black text-primary">{selectedTicket.service_type || 'TRAVEL'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Reservation Status</span>
+                  <div className="mt-0.5">{getStatusBadge(selectedTicket.status)}</div>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Booking Date</span>
+                  <span className="text-xs font-semibold">{new Date(selectedTicket.created_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+
+              {/* Items Details */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400">Itinerary Items</h4>
+                {selectedTicket.items?.map((item: any, idx: number) => (
+                  <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-extrabold text-sm text-slate-900 dark:text-white">{item.title}</div>
+                        {item.subtitle && <div className="text-slate-500 text-xs">{item.subtitle}</div>}
+                      </div>
+                      <span className="font-black text-sm text-primary">₹{Number(item.total_price).toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-[11px] text-slate-500 pt-1 border-t border-slate-200 dark:border-slate-800">
+                      <span>Type: <strong>{item.item_type}</strong></span>
+                      <span>Quantity: <strong>{item.quantity}</strong></span>
+                      {item.check_in_date && <span>Travel / Check-in: <strong>{item.check_in_date}</strong></span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Passengers */}
+              {selectedTicket.passengers && selectedTicket.passengers.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400">Passenger Manifest</h4>
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 divide-y divide-slate-200 dark:divide-slate-800">
+                    {selectedTicket.passengers.map((p: any, i: number) => (
+                      <div key={i} className="py-2 first:pt-0 last:pb-0 flex justify-between items-center">
+                        <div>
+                          <span className="font-bold text-slate-900 dark:text-white">{p.title || 'Mr'} {p.first_name} {p.last_name}</span>
+                          <span className="text-slate-400 ml-2 text-[11px]">({p.passenger_type || 'ADULT'})</span>
+                        </div>
+                        <span className="font-mono text-xs text-primary font-bold">Seat Assigned on Boarding</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Contact Information & Payment Summary */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
+                  <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400">Contact Information</h4>
+                  <div className="text-xs">Email: <strong className="text-slate-900 dark:text-white">{selectedTicket.contact_email}</strong></div>
+                  <div className="text-xs">Phone: <strong className="text-slate-900 dark:text-white">{selectedTicket.contact_phone}</strong></div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
+                  <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400">Payment Summary</h4>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-500">Base Amount:</span>
+                    <span>₹{Number(selectedTicket.base_amount || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-500">Taxes &amp; Fees:</span>
+                    <span>₹{Number(selectedTicket.taxes_amount || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                  {Number(selectedTicket.discount_amount || 0) > 0 && (
+                    <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <span>Discount (Coupon):</span>
+                      <span>-₹{Number(selectedTicket.discount_amount).toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm font-black pt-1.5 border-t border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
+                    <span>Total Paid:</span>
+                    <span className="text-primary font-mono">₹{Number(selectedTicket.total_amount).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Barcode & Verification */}
+              <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-center space-y-2">
+                <div className="font-mono text-base tracking-[0.35em] text-slate-400 select-all font-black">
+                  ||||| | |||| ||| ||||| ||||||| | |||
+                </div>
+                <div className="text-[10px] text-slate-400 font-mono">
+                  PNR VERIFICATION HASH: {selectedTicket.id.replace(/-/g, '').slice(0, 16).toUpperCase()}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/80">
+              <button
+                onClick={() => window.print()}
+                className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-container text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">print</span>
+                <span>Print / Save PDF</span>
+              </button>
+              <button
+                onClick={() => setSelectedTicket(null)}
+                className="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition cursor-pointer"
+              >
+                Close Voucher
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

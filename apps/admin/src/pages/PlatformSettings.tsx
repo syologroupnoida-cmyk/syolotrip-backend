@@ -208,6 +208,60 @@ export const PlatformSettings: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* Security & Identity Services Architecture Disclosure */}
+        <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-4 md:col-span-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Server className="w-5 h-5 text-indigo-400" />
+              <div>
+                <h3 className="font-bold text-sm text-white">Security &amp; Identity Infrastructure Status</h3>
+                <p className="text-xs text-slate-400">Honest disclosure of identity security providers and external delivery dependencies.</p>
+              </div>
+            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-slate-400">
+              AUDITED
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-white">Admin Multi-Factor (MFA)</span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  STANDBY
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Requires enterprise TOTP / SMS gateway integration. Fake MFA and client-side bypasses are prohibited by security policy.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-white">Email Password Reset</span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  NO SMTP
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                SMTP / SendGrid dispatch is not configured locally. Credentials can only be safely modified via authenticated operator sessions.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-white">API Rate Limiting</span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  ACTIVE
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                SlowAPI limits enforced on login, registration, and partner verification routes to prevent brute-force credential stuffing.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

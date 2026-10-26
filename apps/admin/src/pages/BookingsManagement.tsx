@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Receipt, Search, Filter, RefreshCw, CheckCircle, Clock, XCircle, AlertCircle, Check, X } from 'lucide-react';
+import { Receipt, Search, Filter, RefreshCw, CheckCircle, Clock, XCircle, AlertCircle, Check, X, RotateCcw } from 'lucide-react';
 import { getAdminBookings, updateAdminBookingStatus } from '../services/api';
 
 export const BookingsManagement: React.FC = () => {
@@ -59,6 +59,14 @@ export const BookingsManagement: React.FC = () => {
         </span>
       );
     }
+    if (s === 'REFUNDED') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+          <RotateCcw className="w-3 h-3" />
+          Refunded
+        </span>
+      );
+    }
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20">
         <AlertCircle className="w-3 h-3" />
@@ -114,6 +122,7 @@ export const BookingsManagement: React.FC = () => {
             { label: 'Confirmed', value: 'CONFIRMED' },
             { label: 'Pending', value: 'PENDING' },
             { label: 'Cancelled', value: 'CANCELLED' },
+            { label: 'Refunded', value: 'REFUNDED' },
           ].map((tab) => (
             <button
               key={tab.value}
@@ -196,7 +205,7 @@ export const BookingsManagement: React.FC = () => {
                       </td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {currentStatus !== 'CONFIRMED' && (
+                          {currentStatus !== 'CONFIRMED' && currentStatus !== 'REFUNDED' && (
                             <button
                               onClick={() => statusMutation.mutate({ id: b.id, status: 'CONFIRMED' })}
                               disabled={statusMutation.isPending}
@@ -207,7 +216,7 @@ export const BookingsManagement: React.FC = () => {
                               <span>Confirm</span>
                             </button>
                           )}
-                          {currentStatus !== 'CANCELLED' && (
+                          {currentStatus !== 'CANCELLED' && currentStatus !== 'REFUNDED' && (
                             <button
                               onClick={() => statusMutation.mutate({ id: b.id, status: 'CANCELLED' })}
                               disabled={statusMutation.isPending}
@@ -217,6 +226,22 @@ export const BookingsManagement: React.FC = () => {
                               <X className="w-3 h-3" />
                               <span>Cancel</span>
                             </button>
+                          )}
+                          {currentStatus === 'CANCELLED' && (
+                            <button
+                              onClick={() => statusMutation.mutate({ id: b.id, status: 'REFUNDED' })}
+                              disabled={statusMutation.isPending}
+                              title="Process & Record Refund"
+                              className="px-2.5 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>Refund</span>
+                            </button>
+                          )}
+                          {currentStatus === 'REFUNDED' && (
+                            <span className="text-[11px] font-semibold text-purple-400/90 font-mono">
+                              Settled ✓
+                            </span>
                           )}
                         </div>
                       </td>

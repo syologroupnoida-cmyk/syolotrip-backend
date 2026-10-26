@@ -11,9 +11,14 @@ class DashboardStatsResponse(BaseModel):
     cancelled_bookings: int
     total_flights: int
     total_hotels: int
+    total_trains: int = 0
     total_buses: int
+    total_cabs: int = 0
     total_packages: int
+    gmv_total: float = 0.0
+    refunded_total: float = 0.0
     adapter_mode: str = "MOCK_DETERMINISTIC"
+
 
 
 class AuditLogResponse(BaseModel):

@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Modal,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, Shadows, formatINR } from '../theme/theme';
@@ -25,6 +26,7 @@ export const MyTripsScreen: React.FC<MyTripsScreenProps> = ({ onNavigate, onOpen
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'CONFIRMED' | 'PENDING' | 'CANCELLED'>('ALL');
   const [user, setUser] = useState<any | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -283,21 +285,136 @@ export const MyTripsScreen: React.FC<MyTripsScreenProps> = ({ onNavigate, onOpen
                       <Text style={styles.totalPrice}>{formatINR(totalAmount)}</Text>
                     </View>
 
-                    {!isCancelled && (
+                    <View style={{ flexDirection: 'row', gap: Spacing.xs, alignItems: 'center' }}>
                       <TouchableOpacity
-                        style={styles.cancelBtn}
-                        onPress={() => handleCancelBooking(trip.id)}
+                        style={styles.ticketBtn}
+                        onPress={() => setSelectedTicket(trip)}
                         activeOpacity={0.8}
                       >
-                        <Text style={styles.cancelBtnText}>Cancel Trip</Text>
+                        <MaterialIcons name="confirmation-number" size={13} color="#0066FF" />
+                        <Text style={styles.ticketBtnText}>E-Ticket</Text>
                       </TouchableOpacity>
-                    )}
+
+                      {!isCancelled && (
+                        <TouchableOpacity
+                          style={styles.cancelBtn}
+                          onPress={() => handleCancelBooking(trip.id)}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={styles.cancelBtnText}>Cancel</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
                 </View>
               );
             })
           )}
         </ScrollView>
+      )}
+
+      {/* ── Mobile E-Ticket Modal ── */}
+      {selectedTicket && (
+        <Modal
+          visible={!!selectedTicket}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setSelectedTicket(null)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                <View>
+                  <Text style={styles.modalTitle}>SS Journey E-Ticket Voucher</Text>
+                  <Text style={styles.modalSub}>
+                    REF: <Text style={{ color: '#0066FF', fontFamily: 'monospace', fontWeight: 'bold' }}>{selectedTicket.booking_reference}</Text>
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setSelectedTicket(null)}
+                  style={styles.modalCloseBtn}
+                >
+                  <MaterialIcons name="close" size={20} color={Colors.onSurface} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Disclaimer Notice */}
+              <View style={styles.disclaimerBox}>
+                <MaterialIcons name="info" size={15} color="#f59e0b" style={{ marginTop: 1 }} />
+                <Text style={styles.disclaimerText}>
+                  Demonstration Voucher: Issued by SS Journey travel platform for reservation confirmation. Reflects internal verified database record. Not a live carrier boarding pass.
+                </Text>
+              </View>
+
+              {/* Scrollable details */}
+              <ScrollView style={{ padding: Spacing.md }} showsVerticalScrollIndicator={false}>
+                <View style={styles.detailSection}>
+                  <Text style={styles.detailSectionTitle}>RESERVATION DETAILS</Text>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Service</Text>
+                    <Text style={styles.detailVal}>{selectedTicket.service_type || 'TRAVEL'}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Status</Text>
+                    <Text style={styles.detailVal}>{selectedTicket.status}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Booking Date</Text>
+                    <Text style={styles.detailVal}>{new Date(selectedTicket.created_at).toLocaleDateString()}</Text>
+                  </View>
+                </View>
+
+                {selectedTicket.passengers && selectedTicket.passengers.length > 0 && (
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailSectionTitle}>PASSENGER MANIFEST</Text>
+                    {selectedTicket.passengers.map((p: any, idx: number) => (
+                      <View key={idx} style={styles.detailRow}>
+                        <Text style={styles.detailVal}>{p.title || 'Mr'} {p.first_name} {p.last_name}</Text>
+                        <Text style={styles.detailLabel}>Seat Assigned at Gate</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                <View style={styles.detailSection}>
+                  <Text style={styles.detailSectionTitle}>PAYMENT BREAKDOWN</Text>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Base Amount</Text>
+                    <Text style={styles.detailVal}>{formatINR(Number(selectedTicket.base_amount || 0))}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Taxes & Fees</Text>
+                    <Text style={styles.detailVal}>{formatINR(Number(selectedTicket.taxes_amount || 0))}</Text>
+                  </View>
+                  <View style={[styles.detailRow, { borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.08)', paddingTop: 6, marginTop: 4 }]}>
+                    <Text style={[styles.detailVal, { fontWeight: 'bold' }]}>Total Paid (Demo)</Text>
+                    <Text style={[styles.detailVal, { color: '#0066FF', fontWeight: 'bold', fontSize: 16 }]}>
+                      {formatINR(Number(selectedTicket.total_amount || 0))}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Simulated PNR Barcode */}
+                <View style={styles.barcodeBox}>
+                  <Text style={styles.barcodeText}>||||| | |||| ||| ||||| ||||||| | |||</Text>
+                  <Text style={styles.barcodeSub}>
+                    PNR: {selectedTicket.id ? selectedTicket.id.replace(/-/g, '').slice(0, 12).toUpperCase() : 'SSJ-DEMO'}
+                  </Text>
+                </View>
+              </ScrollView>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  style={styles.modalDoneBtn}
+                  onPress={() => setSelectedTicket(null)}
+                >
+                  <Text style={styles.modalDoneBtnText}>Close E-Ticket</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       )}
     </View>
   );
@@ -539,4 +656,135 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#ef4444',
   },
+  ticketBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 102, 255, 0.4)',
+    backgroundColor: 'rgba(0, 102, 255, 0.1)',
+  },
+  ticketBtnText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#0066FF',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    padding: Spacing.md,
+  },
+  modalCard: {
+    backgroundColor: Colors.surfaceContainer,
+    borderRadius: BorderRadius.xl,
+    maxHeight: '85%',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.onSurface,
+  },
+  modalSub: {
+    fontSize: 12,
+    color: Colors.onSurfaceVariant,
+    marginTop: 2,
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  disclaimerBox: {
+    flexDirection: 'row',
+    gap: Spacing.xs,
+    padding: Spacing.sm,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  disclaimerText: {
+    flex: 1,
+    fontSize: 10,
+    color: '#fbbf24',
+    lineHeight: 14,
+  },
+  detailSection: {
+    marginBottom: Spacing.md,
+    padding: Spacing.sm,
+    backgroundColor: Colors.surfaceContainerLow,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  detailSectionTitle: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 3,
+  },
+  detailLabel: {
+    fontSize: 11,
+    color: Colors.onSurfaceVariant,
+  },
+  detailVal: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.onSurface,
+  },
+  barcodeBox: {
+    alignItems: 'center',
+    padding: Spacing.md,
+    backgroundColor: '#000000',
+    borderRadius: BorderRadius.md,
+    marginVertical: Spacing.sm,
+  },
+  barcodeText: {
+    fontFamily: 'monospace',
+    fontSize: 16,
+    letterSpacing: 4,
+    color: '#ffffff',
+  },
+  barcodeSub: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontFamily: 'monospace',
+    marginTop: 4,
+  },
+  modalFooter: {
+    padding: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  modalDoneBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: BorderRadius.full,
+    paddingVertical: Spacing.sm,
+    alignItems: 'center',
+  },
+  modalDoneBtnText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
 });
+

@@ -607,3 +607,135 @@ export const getActiveCouponsApi = async (serviceType?: string): Promise<any[]> 
   return res.data.data;
 };
 
+// ================= Partner Marketplace API =================
+export interface PartnerRegisterPayload {
+  business_name: string;
+  business_type: string;
+  phone?: string;
+  city?: string;
+  address?: string;
+  tax_id?: string;
+}
+
+export interface PartnerProfileData {
+  id: string;
+  user_id: string;
+  business_name: string;
+  business_type: string;
+  phone?: string;
+  city?: string;
+  address?: string;
+  country: string;
+  tax_id?: string;
+  status: string;
+  is_verified: boolean;
+  commission_rate: number;
+  is_commission_active: boolean;
+  rejection_reason?: string;
+  verified_at?: string;
+  created_at: string;
+}
+
+export const registerPartnerApi = async (payload: PartnerRegisterPayload): Promise<PartnerProfileData> => {
+  const res = await apiClient.post<ApiResponse<PartnerProfileData>>('/partner/register', payload);
+  return res.data.data;
+};
+
+export const getPartnerProfileApi = async (): Promise<PartnerProfileData> => {
+  const res = await apiClient.get<ApiResponse<PartnerProfileData>>('/partner/profile');
+  return res.data.data;
+};
+
+// ================= Wishlist API =================
+export interface BackendWishlistItem {
+  id: string;
+  title: string;
+  category: string;
+  location: string;
+  price: number;
+  rating?: number;
+  image: string;
+  badge?: string;
+  added_at?: string;
+  addedAt?: string;
+}
+
+export const getWishlistApi = async (): Promise<BackendWishlistItem[]> => {
+  const res = await apiClient.get<ApiResponse<{ items: BackendWishlistItem[]; count: number }>>('/wishlist');
+  return res.data?.data?.items || [];
+};
+
+export const addToWishlistApi = async (item: {
+  id: string;
+  title: string;
+  category: string;
+  location: string;
+  price: number;
+  rating?: number;
+  image: string;
+  badge?: string;
+}): Promise<BackendWishlistItem> => {
+  const res = await apiClient.post<ApiResponse<BackendWishlistItem>>('/wishlist', item);
+  return res.data?.data;
+};
+
+export const removeFromWishlistApi = async (itemKey: string): Promise<boolean> => {
+  const res = await apiClient.delete<ApiResponse<{ removed: boolean }>>(`/wishlist/${itemKey}`);
+  return res.data?.data?.removed ?? true;
+};
+
+export const clearWishlistApi = async (): Promise<number> => {
+  const res = await apiClient.delete<ApiResponse<{ cleared_count: number }>>('/wishlist');
+  return res.data?.data?.cleared_count ?? 0;
+};
+
+export const syncWishlistApi = async (items: any[]): Promise<BackendWishlistItem[]> => {
+  const res = await apiClient.post<ApiResponse<{ items: BackendWishlistItem[]; count: number }>>('/wishlist/sync', { items });
+  return res.data?.data?.items || [];
+};
+
+// ================= Locations & Route Validation API =================
+export interface LocationOptionItem {
+  category: string;
+  code?: string;
+  name: string;
+  city: string;
+  country?: string;
+  role: string;
+}
+
+export interface LocationsResponseData {
+  airports: LocationOptionItem[];
+  hotel_cities: LocationOptionItem[];
+  train_stations: LocationOptionItem[];
+  bus_cities: LocationOptionItem[];
+  cab_cities: LocationOptionItem[];
+  package_destinations: LocationOptionItem[];
+}
+
+export const getLocationsApi = async (query?: string): Promise<LocationsResponseData> => {
+  const res = await apiClient.get<ApiResponse<LocationsResponseData>>('/locations', {
+    params: query ? { query } : {},
+  });
+  return res.data?.data;
+};
+
+export const validateRouteApi = async (
+  category: string,
+  origin: string,
+  destination: string
+): Promise<{
+  is_valid: boolean;
+  is_same_location: boolean;
+  message: string;
+  suggested_destinations?: LocationOptionItem[];
+}> => {
+  const res = await apiClient.post<ApiResponse<any>>('/locations/validate-route', {
+    category,
+    origin,
+    destination,
+  });
+  return res.data?.data;
+};
+
+

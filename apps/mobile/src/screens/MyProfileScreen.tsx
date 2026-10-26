@@ -77,7 +77,9 @@ export const MyProfileScreen: React.FC<MyProfileScreenProps> = ({
   const handleCoTravellers = () => {
     Alert.alert(
       'Saved Co-Travellers',
-      '1. Alexander Vanderbilt (Adult · Passport: A94821038)\n2. Sophia Chen (Adult)\n3. Leo Chen (Child)\n\nThese details are automatically populated at checkout for instant 1-tap bookings.'
+      user?.fullName || user?.full_name
+        ? `Primary Passenger: ${user.fullName || user.full_name}\n\nCo-travellers can be added and verified during checkout.`
+        : 'No saved co-travellers found. Log in or complete a booking to save companion details.'
     );
   };
 

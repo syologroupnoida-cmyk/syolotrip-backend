@@ -182,6 +182,21 @@ export const AdminLoginPage: React.FC = () => {
                 </>
               )}
             </button>
+
+            {/* Quick Fill Demo / Dev Helper */}
+            <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400">
+              <span className="text-slate-400">Default: <code className="text-brand-400 font-mono">admin@ssjourney.com</code></span>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('admin@ssjourney.com');
+                  setPassword('Admin@123456');
+                }}
+                className="text-brand-400 hover:text-brand-300 font-medium underline underline-offset-2 cursor-pointer"
+              >
+                Auto-fill credentials
+              </button>
+            </div>
           </form>
 
           {/* Security Notice Footer */}

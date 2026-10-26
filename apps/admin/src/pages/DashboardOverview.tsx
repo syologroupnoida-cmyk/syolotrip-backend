@@ -27,9 +27,9 @@ export const DashboardOverview: React.FC = () => {
   const travelServices = [
     { title: 'Flight Routes', icon: Plane, count: `${overview?.total_flights ?? 6} Active`, sub: 'Amadeus / Sabre NDC Ready', color: 'from-blue-600/20 to-blue-500/5 text-blue-400 border-blue-500/20' },
     { title: 'Hotel Properties', icon: Hotel, count: `${overview?.total_hotels ?? 3} Properties`, sub: 'Expedia / CRS Compatible', color: 'from-indigo-600/20 to-indigo-500/5 text-indigo-400 border-indigo-500/20' },
-    { title: 'Train Routes', icon: Train, count: '3 Express Lines', sub: 'IRCTC Live PNR Simulator', color: 'from-sky-600/20 to-sky-500/5 text-sky-400 border-sky-500/20' },
+    { title: 'Train Routes', icon: Train, count: `${(overview as any)?.total_trains ?? 4} Express Lines`, sub: 'IRCTC Live PNR Simulator', color: 'from-sky-600/20 to-sky-500/5 text-sky-400 border-sky-500/20' },
     { title: 'Intercity Buses', icon: Bus, count: `${overview?.total_buses ?? 2} Coach Operators`, sub: 'RedBus API Driver Active', color: 'from-emerald-600/20 to-emerald-500/5 text-emerald-400 border-emerald-500/20' },
-    { title: 'Cab Fleets', icon: Car, count: '3 Fleets (Sedan/SUV/EV)', sub: 'Airport & Outstation Cabs', color: 'from-amber-600/20 to-amber-500/5 text-amber-400 border-amber-500/20' },
+    { title: 'Cab Fleets', icon: Car, count: `${(overview as any)?.total_cabs ?? 3} Fleets (Sedan/SUV/EV)`, sub: 'Airport & Outstation Cabs', color: 'from-amber-600/20 to-amber-500/5 text-amber-400 border-amber-500/20' },
     { title: 'Holiday Packages', icon: Compass, count: `${overview?.total_packages ?? 2} Itineraries`, sub: 'Multi-Day Guided Tours', color: 'from-purple-600/20 to-purple-500/5 text-purple-400 border-purple-500/20' },
   ];
 
@@ -63,7 +63,7 @@ export const DashboardOverview: React.FC = () => {
           </div>
           <div className="text-2xl font-extrabold text-white">{overview?.total_bookings ?? 0}</div>
           <div className="text-[11px] text-brand-400 font-medium">
-            Confirmed: {overview?.confirmed_bookings ?? 0} | Revenue: ₹{(overview?.total_revenue ?? 0).toLocaleString()}
+            Confirmed: {overview?.confirmed_bookings ?? 0} | Cancelled: {overview?.cancelled_bookings ?? 0}
           </div>
         </div>
 
@@ -101,6 +101,50 @@ export const DashboardOverview: React.FC = () => {
           </div>
           <div className="text-[11px] text-slate-400 font-medium">
             DB: {health?.database || 'Connected'} ({overview?.adapter_mode || 'MOCK_DETERMINISTIC'})
+          </div>
+        </div>
+      </div>
+
+      {/* Revenue & Financial Performance Breakdown */}
+      <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+          <div>
+            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-emerald-400" />
+              Financial &amp; Revenue Reconciliation
+            </h2>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Accurate breakdown of gross booking value, net settled revenue, and processed refunds.
+            </p>
+          </div>
+          <span className="self-start sm:self-auto text-[10px] font-mono px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-400">
+            SIMULATED DEMO SETTLEMENT
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+          <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+            <div className="text-xs text-slate-400 font-medium mb-1">Gross Booking Value (GMV)</div>
+            <div className="text-xl font-black text-white tabular-nums">
+              ₹{((overview as any)?.gmv_total ?? overview?.total_revenue ?? 0).toLocaleString()}
+            </div>
+            <div className="text-[10px] text-slate-500 mt-1">All orders before cancellations</div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-slate-900/60 border border-emerald-500/30">
+            <div className="text-xs text-emerald-400 font-medium mb-1">Net Confirmed Revenue</div>
+            <div className="text-xl font-black text-emerald-400 tabular-nums">
+              ₹{(overview?.total_revenue ?? 0).toLocaleString()}
+            </div>
+            <div className="text-[10px] text-emerald-500/80 mt-1">Active confirmed reservations</div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-slate-900/60 border border-rose-500/30">
+            <div className="text-xs text-rose-400 font-medium mb-1">Cancelled &amp; Refunded</div>
+            <div className="text-xl font-black text-rose-400 tabular-nums">
+              ₹{((overview as any)?.refunded_total ?? 0).toLocaleString()}
+            </div>
+            <div className="text-[10px] text-rose-500/80 mt-1">Restored to inventory</div>
           </div>
         </div>
       </div>

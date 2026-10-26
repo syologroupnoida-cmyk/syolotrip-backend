@@ -16,6 +16,7 @@ import {
   InsuranceIsometricIcon,
 } from '../components/TravelCategoryIcons';
 import { CalendarPickerModal } from '../components/CalendarPickerModal';
+import { getLocationsApi, validateRouteApi } from '../services/api';
 
 export interface AirportOption {
   code: string;
@@ -118,6 +119,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
   const [passengerCount, setPassengerCount] = useState('1 Adult');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSwapping, setIsSwapping] = useState(false);
+  const [routeValidationError, setRouteValidationError] = useState<string | null>(null);
 
   // Calendar modal state
   const [calendarModalState, setCalendarModalState] = useState<{
@@ -164,6 +166,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
 
   const handleSwapAirports = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setRouteValidationError(null);
     setIsSwapping(true);
     setTimeout(() => {
       const temp = originAirport;
@@ -180,6 +183,11 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
   };
 
   const handleExecuteFlightSearch = () => {
+    if (originAirport.code === destinationAirport.code) {
+      setRouteValidationError('Departure and destination airports cannot be identical. Please select different airports.');
+      return;
+    }
+    setRouteValidationError(null);
     if (onSearchFlights) {
       onSearchFlights({
         fromCode: originAirport.code,
@@ -796,6 +804,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                       <div
                         key={apt.code}
                         onClick={() => {
+                          setRouteValidationError(null);
                           if (activeDropdown === 'origin') setOriginAirport(apt);
                           else setDestinationAirport(apt);
                           setActiveDropdown(null);
@@ -1411,6 +1420,23 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
               </div>
             </>
           )}
+
+          {routeValidationError && (
+            <div className="mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between text-xs text-rose-700 animate-fadeIn">
+              <div className="flex items-center space-x-2">
+                <span className="material-symbols-outlined text-rose-600 text-[18px]">error</span>
+                <span className="font-semibold">{routeValidationError}</span>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setRouteValidationError(null)}
+                className="text-rose-500 hover:text-rose-700 font-bold ml-3 cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
 
           {/* ── BIG FLOATING CENTERED GRADIENT SEARCH BUTTON ── */}
           <div className="absolute left-1/2 -bottom-6 -translate-x-1/2 z-30">

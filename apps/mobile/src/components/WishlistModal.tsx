@@ -118,10 +118,10 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
         travelersText: '2 Guests, Deluxe',
         seat: '12B',
         hasInsurance: true,
-        travelerName: 'Alexander Vanderbilt',
-        dob: '10/14/1988',
-        passportNumber: 'A94821038',
-        frequentFlyer: 'SSJ-ELITE',
+        travelerName: '',
+        dob: '',
+        passportNumber: '',
+        frequentFlyer: '',
       });
     } else if (onNavigate) {
       onNavigate('checkout');

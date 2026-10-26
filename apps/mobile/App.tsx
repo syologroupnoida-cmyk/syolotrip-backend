@@ -9,10 +9,23 @@ import { AuthModal } from './src/components/AuthModal';
 import { ExploreScreen } from './src/screens/ExploreScreen';
 import { FlightResultsScreen } from './src/screens/FlightResultsScreen';
 import { HotelListingsScreen } from './src/screens/HotelListingsScreen';
+import { TrainResultsScreen } from './src/screens/TrainResultsScreen';
+import { BusResultsScreen } from './src/screens/BusResultsScreen';
+import { CabResultsScreen } from './src/screens/CabResultsScreen';
+import { PackageResultsScreen } from './src/screens/PackageResultsScreen';
 import { CheckoutScreen } from './src/screens/CheckoutScreen';
 import { MyTripsScreen } from './src/screens/MyTripsScreen';
 import { MyProfileScreen } from './src/screens/MyProfileScreen';
-import { ScreenName, FlightOption, HotelOption, TripBookingState } from './src/types/travel';
+import {
+  ScreenName,
+  FlightOption,
+  HotelOption,
+  TrainOption,
+  BusOption,
+  CabOption,
+  PackageOption,
+  TripBookingState,
+} from './src/types/travel';
 import { getCurrentUserMobileApi } from './src/services/api';
 import { Colors } from './src/theme/theme';
 import { WishlistProvider, useWishlist } from './src/context/WishlistContext';
@@ -20,8 +33,13 @@ import { WishlistModal } from './src/components/WishlistModal';
 
 function MainApp() {
   const [currentScreen, setCurrentScreen] = useState<ScreenName>('explore');
+  const [previousScreen, setPreviousScreen] = useState<ScreenName>('explore');
   const [selectedFlight, setSelectedFlight] = useState<FlightOption | undefined>();
   const [selectedHotel, setSelectedHotel] = useState<HotelOption | undefined>();
+  const [selectedTrain, setSelectedTrain] = useState<TrainOption | undefined>();
+  const [selectedBus, setSelectedBus] = useState<BusOption | undefined>();
+  const [selectedCab, setSelectedCab] = useState<CabOption | undefined>();
+  const [selectedPackage, setSelectedPackage] = useState<PackageOption | undefined>();
   const [bookingState, setBookingState] = useState<TripBookingState | undefined>();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -37,14 +55,13 @@ function MainApp() {
   }, []);
 
   const handleNavigate = (screen: ScreenName) => {
+    setPreviousScreen(currentScreen);
     setCurrentScreen(screen);
   };
 
   const handleGoBack = () => {
     if (currentScreen === 'checkout') {
-      setCurrentScreen('flights');
-    } else if (currentScreen === 'flights' || currentScreen === 'hotels' || currentScreen === 'trips' || currentScreen === 'profile') {
-      setCurrentScreen('explore');
+      setCurrentScreen(previousScreen || 'explore');
     } else {
       setCurrentScreen('explore');
     }
@@ -52,6 +69,7 @@ function MainApp() {
 
   const handleInitiateBooking = (state: TripBookingState) => {
     setBookingState(state);
+    setPreviousScreen(currentScreen);
     setCurrentScreen('checkout');
   };
 
@@ -83,14 +101,148 @@ function MainApp() {
           {currentScreen === 'flights' && (
             <FlightResultsScreen
               onNavigate={handleNavigate}
-              onSelectFlight={(flight) => setSelectedFlight(flight)}
+              onSelectFlight={(flight) => {
+                setSelectedFlight(flight);
+                setSelectedHotel(undefined);
+                setSelectedTrain(undefined);
+                setSelectedBus(undefined);
+                setSelectedCab(undefined);
+                setSelectedPackage(undefined);
+              }}
             />
           )}
 
           {currentScreen === 'hotels' && (
             <HotelListingsScreen
               onNavigate={handleNavigate}
-              onSelectHotel={(hotel) => setSelectedHotel(hotel)}
+              onSelectHotel={(hotel) => {
+                setSelectedHotel(hotel);
+                setSelectedFlight(undefined);
+                setSelectedTrain(undefined);
+                setSelectedBus(undefined);
+                setSelectedCab(undefined);
+                setSelectedPackage(undefined);
+              }}
+            />
+          )}
+
+          {currentScreen === 'trains' && (
+            <TrainResultsScreen
+              onNavigate={handleNavigate}
+              onSelectTrain={(train) => {
+                setSelectedTrain(train);
+                setSelectedFlight(undefined);
+                setSelectedHotel(undefined);
+                setSelectedBus(undefined);
+                setSelectedCab(undefined);
+                setSelectedPackage(undefined);
+                setBookingState({
+                  serviceType: 'TRAIN',
+                  originCode: train.fromStationCode,
+                  originCity: train.fromStationName,
+                  destCode: train.toStationCode,
+                  destCity: train.toStationName,
+                  datesText: 'Flexible Journey Date',
+                  travelersText: `1 Passenger, Class ${train.trainClass}`,
+                  seat: 'Confirmed Berth',
+                  hasInsurance: true,
+                  travelerName: '',
+                  dob: '',
+                  passportNumber: '',
+                  frequentFlyer: '',
+                  selectedTrain: train,
+                });
+              }}
+            />
+          )}
+
+          {currentScreen === 'buses' && (
+            <BusResultsScreen
+              onNavigate={handleNavigate}
+              onSelectBus={(bus) => {
+                setSelectedBus(bus);
+                setSelectedFlight(undefined);
+                setSelectedHotel(undefined);
+                setSelectedTrain(undefined);
+                setSelectedCab(undefined);
+                setSelectedPackage(undefined);
+                setBookingState({
+                  serviceType: 'BUS',
+                  originCode: 'BUS-DEP',
+                  originCity: bus.fromCity,
+                  destCode: 'BUS-ARR',
+                  destCity: bus.toCity,
+                  datesText: 'Today / Tomorrow',
+                  travelersText: `1 Passenger, ${bus.busType}`,
+                  seat: 'Reserved Seat',
+                  hasInsurance: true,
+                  travelerName: '',
+                  dob: '',
+                  passportNumber: '',
+                  frequentFlyer: '',
+                  selectedBus: bus,
+                });
+              }}
+            />
+          )}
+
+          {currentScreen === 'cabs' && (
+            <CabResultsScreen
+              onNavigate={handleNavigate}
+              onSelectCab={(cab) => {
+                setSelectedCab(cab);
+                setSelectedFlight(undefined);
+                setSelectedHotel(undefined);
+                setSelectedTrain(undefined);
+                setSelectedBus(undefined);
+                setSelectedPackage(undefined);
+                setBookingState({
+                  serviceType: 'CAB',
+                  originCode: 'CAB-PICK',
+                  originCity: cab.pickupArea,
+                  destCode: 'CAB-DROP',
+                  destCity: cab.dropArea,
+                  datesText: 'Immediate Pickup',
+                  travelersText: `${cab.capacity} Passengers Max`,
+                  seat: 'Standard',
+                  hasInsurance: false,
+                  travelerName: '',
+                  dob: '',
+                  passportNumber: '',
+                  frequentFlyer: '',
+                  selectedCab: cab,
+                });
+              }}
+            />
+          )}
+
+          {currentScreen === 'packages' && (
+            <PackageResultsScreen
+              onNavigate={handleNavigate}
+              onSelectPackage={(pkg) => {
+                setSelectedPackage(pkg);
+                setSelectedFlight(undefined);
+                setSelectedHotel(undefined);
+                setSelectedTrain(undefined);
+                setSelectedBus(undefined);
+                setSelectedCab(undefined);
+                setBookingState({
+                  serviceType: 'PACKAGE',
+                  originCode: 'PKG-ORG',
+                  originCity: 'New Delhi',
+                  destCode: 'PKG-DEST',
+                  destCity: pkg.destination,
+                  datesText: `${pkg.durationDays}D / ${pkg.durationNights}N`,
+                  travelersText: '1 Traveler, All-Inclusive',
+                  seat: 'Standard',
+                  hasInsurance: true,
+                  travelerName: '',
+                  dob: '',
+                  passportNumber: '',
+                  frequentFlyer: '',
+                  selectedPackage: pkg,
+                });
+              }}
             />
           )}
 
@@ -99,6 +251,10 @@ function MainApp() {
               onNavigate={handleNavigate}
               selectedFlight={selectedFlight}
               selectedHotel={selectedHotel}
+              selectedTrain={selectedTrain}
+              selectedBus={selectedBus}
+              selectedCab={selectedCab}
+              selectedPackage={selectedPackage}
               bookingState={bookingState}
             />
           )}

@@ -97,6 +97,10 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
   };
 
   const handleSearchPress = async () => {
+    if (activeCategory === 'flights' && originCode === destCode) {
+      Alert.alert('Invalid Route', 'Departure and destination cannot be identical. Please select different cities.');
+      return;
+    }
     if (activeCategory === 'hotels') {
       onNavigate('hotels');
       return;
@@ -105,133 +109,25 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
       onNavigate('flights');
       return;
     }
-
-    try {
-      if (activeCategory === 'trains') {
-        const trains = await fetchTrainsApi();
-        if (trains && trains.length > 0) {
-          const t = trains[0];
-          if (onInitiateBooking) {
-            onInitiateBooking({
-              serviceType: 'TRAIN',
-              originCode: t.fromStationCode,
-              originCity: t.fromStationName,
-              destCode: t.toStationCode,
-              destCity: t.toStationName,
-              datesText: 'Oct 24 - Oct 31, 2026',
-              travelersText: '1 Traveler, Executive Class',
-              seat: 'B4-21',
-              hasInsurance: true,
-              travelerName: 'Alexander Vanderbilt',
-              dob: '10/14/1988',
-              passportNumber: 'A94821038',
-              frequentFlyer: 'IRCTC-PREMIUM',
-              selectedTrain: t,
-            });
-          }
-          onNavigate('checkout');
-          return;
-        } else {
-          Alert.alert('No Trains Available', 'No live train inventory found at this time.');
-          return;
-        }
-      }
-
-      if (activeCategory === 'buses') {
-        const buses = await fetchBusesApi();
-        if (buses && buses.length > 0) {
-          const b = buses[0];
-          if (onInitiateBooking) {
-            onInitiateBooking({
-              serviceType: 'BUS',
-              originCode: 'DEL',
-              originCity: b.fromCity,
-              destCode: 'BOM',
-              destCity: b.toCity,
-              datesText: 'Oct 24 - Oct 31, 2026',
-              travelersText: '1 Traveler, Sleeper',
-              seat: 'L4',
-              hasInsurance: true,
-              travelerName: 'Alexander Vanderbilt',
-              dob: '10/14/1988',
-              passportNumber: 'A94821038',
-              frequentFlyer: 'SSJ-BUS',
-              selectedBus: b,
-            });
-          }
-          onNavigate('checkout');
-          return;
-        } else {
-          Alert.alert('No Buses Available', 'No live bus inventory found at this time.');
-          return;
-        }
-      }
-
-      if (activeCategory === 'cabs') {
-        const cabs = await fetchCabsApi();
-        if (cabs && cabs.length > 0) {
-          const c = cabs[0];
-          if (onInitiateBooking) {
-            onInitiateBooking({
-              serviceType: 'CAB',
-              originCode: 'DEL',
-              originCity: c.pickupArea,
-              destCode: 'BOM',
-              destCity: c.dropArea,
-              datesText: 'Immediate Pickup',
-              travelersText: `${c.capacity} Passengers Max`,
-              seat: 'Standard',
-              hasInsurance: false,
-              travelerName: 'Alexander Vanderbilt',
-              dob: '10/14/1988',
-              passportNumber: 'A94821038',
-              frequentFlyer: 'CAB-PRIME',
-              selectedCab: c,
-            });
-          }
-          onNavigate('checkout');
-          return;
-        } else {
-          Alert.alert('No Cabs Available', 'No live cabs found in this service area.');
-          return;
-        }
-      }
-
-      if (activeCategory === 'packages') {
-        const pkgs = await fetchPackagesApi();
-        if (pkgs && pkgs.length > 0) {
-          const p = pkgs[0];
-          if (onInitiateBooking) {
-            onInitiateBooking({
-              serviceType: 'PACKAGE',
-              originCode: 'DEL',
-              originCity: 'New Delhi',
-              destCode: 'GOA',
-              destCity: p.destination,
-              datesText: `${p.durationDays} Days / ${p.durationNights} Nights`,
-              travelersText: '2 Travelers, All-Inclusive',
-              seat: 'Standard',
-              hasInsurance: true,
-              travelerName: 'Alexander Vanderbilt',
-              dob: '10/14/1988',
-              passportNumber: 'A94821038',
-              frequentFlyer: 'SSJ-HOLIDAY',
-              selectedPackage: p,
-            });
-          }
-          onNavigate('checkout');
-          return;
-        } else {
-          Alert.alert('No Packages Available', 'No live holiday packages found matching this request.');
-          return;
-        }
-      }
-
-      // Default or other services: navigate to flights
-      onNavigate('flights');
-    } catch (err: any) {
-      Alert.alert('Search Failed', err.message || 'Unable to connect to live inventory.');
+    if (activeCategory === 'trains') {
+      onNavigate('trains');
+      return;
     }
+    if (activeCategory === 'buses') {
+      onNavigate('buses');
+      return;
+    }
+    if (activeCategory === 'cabs') {
+      onNavigate('cabs');
+      return;
+    }
+    if (activeCategory === 'packages') {
+      onNavigate('packages');
+      return;
+    }
+
+    // Default to flights
+    onNavigate('flights');
   };
 
   const handleBookItem = (
@@ -249,10 +145,10 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
       travelersText: `${travellersText}, ${travelClass}`,
       seat: '12B',
       hasInsurance: true,
-      travelerName: 'Alexander Vanderbilt',
-      dob: '10/14/1988',
-      passportNumber: 'A94821038',
-      frequentFlyer: 'SSJ-ELITE',
+      travelerName: '',
+      dob: '',
+      passportNumber: '',
+      frequentFlyer: '',
       selectedFlight: serviceType === 'FLIGHT' ? {
         id: 'flight-del-bom',
         airline: 'IndiGo Airlines',

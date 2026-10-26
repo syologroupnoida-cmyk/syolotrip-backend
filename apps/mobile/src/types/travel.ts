@@ -1,4 +1,4 @@
-export type ScreenName = 'explore' | 'flights' | 'hotels' | 'checkout' | 'trips' | 'profile';
+export type ScreenName = 'explore' | 'flights' | 'hotels' | 'trains' | 'buses' | 'cabs' | 'packages' | 'checkout' | 'trips' | 'profile';
 
 export type CategoryMode = 
   | 'flights' 

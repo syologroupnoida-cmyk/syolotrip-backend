@@ -591,3 +591,69 @@ export async function cancelBookingMobileApi(bookingId: string, reason: string):
   const json: ApiResponse<any> = await res.json();
   return json.data;
 }
+
+// ================= Mobile Wishlist API =================
+export async function getWishlistMobileApi(): Promise<any[]> {
+  const headers = await getAuthHeaders(false);
+  const res = await fetch(`${API_BASE_URL}/wishlist`, { headers });
+  if (!res.ok) {
+    if (res.status === 401) return [];
+    return [];
+  }
+  const json = await res.json();
+  return json.data?.items || [];
+}
+
+export async function addToWishlistMobileApi(item: any): Promise<any> {
+  const headers = await getAuthHeaders(true);
+  const res = await fetch(`${API_BASE_URL}/wishlist`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(item),
+  });
+  if (!res.ok) return null;
+  const json = await res.json();
+  return json.data;
+}
+
+export async function removeFromWishlistMobileApi(itemKey: string): Promise<boolean> {
+  const headers = await getAuthHeaders(false);
+  const res = await fetch(`${API_BASE_URL}/wishlist/${itemKey}`, {
+    method: 'DELETE',
+    headers,
+  });
+  return res.ok;
+}
+
+export async function syncWishlistMobileApi(items: any[]): Promise<any[]> {
+  const headers = await getAuthHeaders(true);
+  const res = await fetch(`${API_BASE_URL}/wishlist/sync`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ items }),
+  });
+  if (!res.ok) return [];
+  const json = await res.json();
+  return json.data?.items || [];
+}
+
+// ================= Mobile Locations API =================
+export async function getLocationsMobileApi(query?: string): Promise<any> {
+  const q = query ? `?query=${encodeURIComponent(query)}` : '';
+  const res = await fetch(`${API_BASE_URL}/locations${q}`);
+  if (!res.ok) return null;
+  const json = await res.json();
+  return json.data;
+}
+
+export async function validateRouteMobileApi(category: string, origin: string, destination: string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/locations/validate-route`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category, origin, destination }),
+  });
+  if (!res.ok) return { is_valid: true, is_same_location: false, message: 'OK' };
+  const json = await res.json();
+  return json.data;
+}
+

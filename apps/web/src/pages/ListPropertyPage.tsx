@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScreenType } from '../components/Header';
 import { 
   CheckCircle2, 
@@ -14,11 +14,23 @@ import {
   Users, 
   Globe2, 
   Star, 
-  Check, 
   Calendar, 
   Smartphone, 
-  PhoneCall 
+  PhoneCall,
+  AlertCircle,
+  Clock,
+  Lock,
 } from 'lucide-react';
+import {
+  registerPartnerApi,
+  getPartnerProfileApi,
+  getCurrentUserApi,
+  registerApi,
+  loginApi,
+  PartnerProfileData,
+  PartnerRegisterPayload,
+} from '../services/api';
+import type { UserProfile } from '@traveler/contracts';
 
 interface ListPropertyPageProps {
   onNavigate: (screen: ScreenType) => void;
@@ -26,17 +38,32 @@ interface ListPropertyPageProps {
 
 type PropertyType = 'Hotel' | 'Homestay / Villa' | 'Guest House' | 'Resort' | 'Apartment';
 
-export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate: _onNavigate }) => {
+export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate }) => {
+  // Authentication & Partner Profile State
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [_partnerProfile, setPartnerProfile] = useState<PartnerProfileData | null>(null);
+
   // Form State
   const [formMode, setFormMode] = useState<'register' | 'login'>('register');
   const [propertyType, setPropertyType] = useState<PropertyType>('Hotel');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [city, setCity] = useState('');
+  const [address, setAddress] = useState('');
+  const [taxId, setTaxId] = useState('');
   const [roomsCount, setRoomsCount] = useState('1 - 5');
+
+  // Login Form State
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+
+  // Status & Messaging State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successData, setSuccessData] = useState<PartnerProfileData | null>(null);
 
   // FAQ Accordion State
   const [openFaq, setOpenFaq] = useState<number | null>(0);
@@ -45,17 +72,139 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate: 
     setOpenFaq(openFaq === index ? null : index);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Check authenticated session and existing partner status on mount
+  useEffect(() => {
+    getCurrentUserApi().then((user) => {
+      if (user) {
+        setCurrentUser(user);
+        setFullName(user.fullName || (user as any).full_name || '');
+        setEmail(user.email || '');
+        if (user.phone) setPhone(user.phone.replace(/\D/g, ''));
+
+        // Check if user already has a partner profile
+        getPartnerProfileApi()
+          .then((profile) => {
+            if (profile) {
+              setPartnerProfile(profile);
+              setSuccessData(profile);
+              setRegistrationSuccess(true);
+            }
+          })
+          .catch(() => {
+            // No partner profile registered yet
+          });
+      }
+    });
+  }, []);
+
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone || phone.length < 10) {
-      alert('Please enter a valid 10-digit mobile number');
+    setErrorMessage(null);
+
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length < 10) {
+      setErrorMessage('Please enter a valid 10-digit mobile number.');
       return;
     }
+
+    if (!currentUser && (!password || password.length < 6)) {
+      setErrorMessage('Please create an account password (minimum 6 characters) to manage your Partner Extranet.');
+      return;
+    }
+
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      // 1. Authenticate user if not already logged in
+      if (!currentUser) {
+        try {
+          const authRes = await registerApi({
+            email: email.trim(),
+            full_name: fullName.trim(),
+            password,
+            phone: cleanPhone,
+          });
+          if (authRes.user) {
+            setCurrentUser(authRes.user);
+          }
+        } catch (authErr: any) {
+          const detail = authErr.response?.data?.detail;
+          if (typeof detail === 'string' && (detail.toLowerCase().includes('already') || detail.toLowerCase().includes('exists'))) {
+            // Attempt auto-login with existing credentials
+            try {
+              const loginRes = await loginApi(email.trim(), password);
+              if (loginRes.user) {
+                setCurrentUser(loginRes.user);
+              }
+            } catch {
+              throw new Error('An account already exists with this email address. Please enter your existing account password or switch to Partner Login.');
+            }
+          } else {
+            throw new Error(detail || 'Unable to create partner user account. Please check your details.');
+          }
+        }
+      }
+
+      // 2. Submit Partner Registration payload to live backend
+      const businessType = (propertyType === 'Homestay / Villa' || propertyType === 'Apartment')
+        ? 'HOMESTAY_HOST'
+        : 'HOTELIER';
+
+      const payload: PartnerRegisterPayload = {
+        business_name: fullName.trim(),
+        business_type: businessType,
+        phone: cleanPhone,
+        city: city.trim(),
+        address: address.trim() || `${city.trim()} (${roomsCount} units)`,
+        tax_id: taxId.trim() || undefined,
+      };
+
+      const result = await registerPartnerApi(payload);
+      setSuccessData(result);
+      setPartnerProfile(result);
       setRegistrationSuccess(true);
-    }, 1000);
+    } catch (err: any) {
+      const detail = err.response?.data?.detail;
+      let msg = err.message || 'Partner registration failed. Please review your inputs.';
+      if (typeof detail === 'string') {
+        msg = detail;
+      } else if (Array.isArray(detail)) {
+        msg = detail.map((d: any) => d.msg || d).join(', ');
+      }
+      setErrorMessage(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setIsSubmitting(true);
+
+    try {
+      const res = await loginApi(loginEmail.trim(), loginPassword);
+      if (res.user) {
+        setCurrentUser(res.user);
+        try {
+          const profile = await getPartnerProfileApi();
+          setSuccessData(profile);
+          setPartnerProfile(profile);
+          setRegistrationSuccess(true);
+        } catch {
+          // Logged in user without partner profile
+          setFormMode('register');
+          setFullName(res.user.fullName || (res.user as any).full_name || '');
+          setEmail(res.user.email || '');
+          if (res.user.phone) setPhone(res.user.phone.replace(/\D/g, ''));
+          setErrorMessage('Login successful! Please complete your property registration details below.');
+        }
+      }
+    } catch (err: any) {
+      const detail = err.response?.data?.detail;
+      setErrorMessage(typeof detail === 'string' ? detail : 'Invalid partner credentials. Please check your email and password.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -168,39 +317,94 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate: 
               <div className="bg-white text-slate-900 rounded-2xl shadow-2xl border border-white/20 p-6 sm:p-7 backdrop-blur-lg relative">
                 
                 {registrationSuccess ? (
-                  <div className="text-center py-8 space-y-5 animate-fade-in">
-                    <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center">
-                      <CheckCircle2 className="w-10 h-10" />
+                  <div className="text-center py-6 space-y-4 animate-fade-in">
+                    <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center">
+                      <CheckCircle2 className="w-8 h-8" />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-black text-slate-900">Registration Initiated!</h3>
-                      <p className="text-xs text-slate-500 mt-1">Application Reference: <strong className="text-slate-800">SSJ-PARTNER-{Math.floor(100000 + Math.random() * 900000)}</strong></p>
-                    </div>
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-left text-xs text-emerald-900 space-y-2">
-                      <p className="font-bold flex items-center gap-1.5 text-emerald-800">
-                        <Check className="w-4 h-4 text-emerald-600" />
-                        Next steps for {fullName || 'Partner'}:
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300 mb-2">
+                        <Clock className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Status: {successData?.status || 'PENDING'}</span>
+                      </div>
+                      <h3 className="text-xl sm:text-2xl font-black text-slate-900">
+                        Registration Successfully Submitted!
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Application Reference: <strong className="text-slate-800 font-mono">{successData?.id || 'SSJ-PARTNER-PENDING'}</strong>
                       </p>
-                      <ul className="list-disc list-inside space-y-1 text-slate-700">
-                        <li>Our partner onboarding specialist will call you on <strong>+91 {phone}</strong> within 30 minutes.</li>
-                        <li>An activation link has been sent to <strong>{email || 'your email'}</strong>.</li>
-                        <li>Prepare property photos &amp; address proof for instant approval.</li>
+                    </div>
+
+                    {/* Application Details Summary */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-left text-xs text-slate-700 space-y-1.5">
+                      <div className="flex justify-between border-b border-slate-200/60 pb-1">
+                        <span className="text-slate-500 font-medium">Business / Property:</span>
+                        <strong className="text-slate-900">{successData?.business_name || fullName}</strong>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-200/60 pb-1">
+                        <span className="text-slate-500 font-medium">Category:</span>
+                        <span className="font-semibold text-slate-800">
+                          {successData?.business_type === 'HOMESTAY_HOST' ? 'Homestay / Villa Host' : 'Hotelier / Resort'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-200/60 pb-1">
+                        <span className="text-slate-500 font-medium">Location:</span>
+                        <span className="font-semibold text-slate-800">{successData?.city || city || 'India'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500 font-medium">Compliance Verification:</span>
+                        <span className="font-bold text-amber-700">
+                          {successData?.is_verified ? 'Verified & Active' : 'Under Administrative Review'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Clarification on Review & Publication Workflow */}
+                    <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3.5 text-left text-xs text-amber-950 space-y-2">
+                      <p className="font-bold flex items-center gap-1.5 text-amber-900">
+                        <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                        Important: Verification &amp; Property Listing Workflow
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 text-slate-700 leading-relaxed text-[11px]">
+                        <li>
+                          Your registration has been stored in the platform database with status <strong>PENDING</strong>.
+                        </li>
+                        <li>
+                          Per SS Journey compliance rules, new partners must be verified by platform administration before rooms and properties can be published live for public booking.
+                        </li>
+                        <li>
+                          Once verified, you can access the Partner Extranet to add room tiers, set live rates, and submit properties for final admin publication.
+                        </li>
                       </ul>
                     </div>
-                    <button
-                      onClick={() => setRegistrationSuccess(false)}
-                      className="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm transition"
-                    >
-                      Submit Another Property
-                    </button>
+
+                    <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                      <button
+                        onClick={() => {
+                          setRegistrationSuccess(false);
+                          setSuccessData(null);
+                        }}
+                        className="flex-1 py-2.5 px-4 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-800 font-bold text-xs transition"
+                      >
+                        Register Another Property
+                      </button>
+                      <button
+                        onClick={() => onNavigate('explore')}
+                        className="flex-1 py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition"
+                      >
+                        Back to Travel Site
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <>
                     {/* Form Mode Toggle */}
-                    <div className="flex bg-slate-100 p-1 rounded-xl mb-5">
+                    <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
                       <button
                         type="button"
-                        onClick={() => setFormMode('register')}
+                        onClick={() => {
+                          setFormMode('register');
+                          setErrorMessage(null);
+                        }}
                         className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                           formMode === 'register' 
                             ? 'bg-white text-slate-900 shadow-xs' 
@@ -211,7 +415,10 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate: 
                       </button>
                       <button
                         type="button"
-                        onClick={() => setFormMode('login')}
+                        onClick={() => {
+                          setFormMode('login');
+                          setErrorMessage(null);
+                        }}
                         className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                           formMode === 'login' 
                             ? 'bg-white text-slate-900 shadow-xs' 
@@ -222,22 +429,44 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate: 
                       </button>
                     </div>
 
-                    <div className="mb-4">
-                      <h3 className="text-xl font-black text-slate-900">
+                    {/* Authenticated User Status Strip */}
+                    {currentUser && (
+                      <div className="mb-3.5 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between text-[11px] text-blue-900">
+                        <span className="truncate">
+                          Signed in as: <strong>{currentUser.email}</strong>
+                        </span>
+                        <span className="text-[10px] uppercase font-bold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded ml-2 shrink-0">
+                          {currentUser.role}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Backend Error Banner */}
+                    {errorMessage && (
+                      <div className="mb-3.5 p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2 text-xs text-red-800">
+                        <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-semibold">{errorMessage}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mb-3">
+                      <h3 className="text-lg font-black text-slate-900">
                         {formMode === 'register' ? 'Sign up & List Your Property' : 'Welcome Back, Partner'}
                       </h3>
                       <p className="text-xs text-slate-500">
                         {formMode === 'register' 
-                          ? 'Takes only 2 minutes to get listed and receive bookings.' 
-                          : 'Access your Extranet rate manager and guest reservations.'}
+                          ? 'Register directly on the official SS Journey Partner Network.' 
+                          : 'Access your Partner Extranet and management dashboard.'}
                       </p>
                     </div>
 
                     {formMode === 'register' ? (
-                      <form onSubmit={handleSubmit} className="space-y-3.5">
+                      <form onSubmit={handleRegisterSubmit} className="space-y-3">
                         {/* Property Type Selection */}
                         <div>
-                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
                             Property Category
                           </label>
                           <div className="grid grid-cols-3 gap-1.5">
@@ -261,12 +490,12 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate: 
                         {/* Host / Owner Name */}
                         <div>
                           <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                            Owner / Manager Full Name
+                            Owner / Property Business Name *
                           </label>
                           <input 
                             type="text" 
                             required
-                            placeholder="e.g. Vikramaditya Rathore"
+                            placeholder="e.g. Vikramaditya Rathore / Royal Retreats"
                             value={fullName}
                             onChange={(e) => setFullName(e.target.value)}
                             className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 focus:border-[#008cff] focus:ring-2 focus:ring-blue-100 outline-none transition"
@@ -276,7 +505,7 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate: 
                         {/* Mobile Number */}
                         <div>
                           <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                            Mobile Number (OTP Verification)
+                            Mobile Number (10 Digits) *
                           </label>
                           <div className="flex rounded-xl border border-slate-300 focus-within:border-[#008cff] focus-within:ring-2 focus-within:ring-blue-100 transition overflow-hidden">
                             <span className="bg-slate-100 px-3 py-2.5 text-xs font-bold text-slate-600 border-r border-slate-200 flex items-center gap-1.5">
@@ -295,10 +524,10 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate: 
                         </div>
 
                         {/* Email & City Grid */}
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-2.5">
                           <div>
                             <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                              Email Address
+                              Email Address *
                             </label>
                             <input 
                               type="email" 
@@ -311,7 +540,7 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate: 
                           </div>
                           <div>
                             <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                              Property City / Location
+                              City / Location *
                             </label>
                             <input 
                               type="text" 
@@ -320,6 +549,56 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate: 
                               value={city}
                               onChange={(e) => setCity(e.target.value)}
                               className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 focus:border-[#008cff] focus:ring-2 focus:ring-blue-100 outline-none transition"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Password field if unauthenticated */}
+                        {!currentUser && (
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                              <span>Create Extranet Password *</span>
+                              <span className="text-[10px] text-slate-400 font-normal">Min 6 characters</span>
+                            </label>
+                            <div className="relative">
+                              <input 
+                                type="password" 
+                                required
+                                minLength={6}
+                                placeholder="Choose a secure password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 focus:border-[#008cff] focus:ring-2 focus:ring-blue-100 outline-none transition"
+                              />
+                              <Lock className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-3" />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Address & Tax ID Grid */}
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                              Address / Locality
+                            </label>
+                            <input 
+                              type="text" 
+                              placeholder="Beach Road, Calangute"
+                              value={address}
+                              onChange={(e) => setAddress(e.target.value)}
+                              className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 focus:border-[#008cff] focus:ring-2 focus:ring-blue-100 outline-none transition"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                              GSTIN / Tax ID (Optional)
+                            </label>
+                            <input 
+                              type="text" 
+                              placeholder="e.g. 29AAAAA0000A1Z5"
+                              value={taxId}
+                              onChange={(e) => setTaxId(e.target.value.toUpperCase())}
+                              className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 focus:border-[#008cff] focus:ring-2 focus:ring-blue-100 outline-none transition uppercase"
                             />
                           </div>
                         </div>
@@ -345,13 +624,16 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate: 
                         <button
                           type="submit"
                           disabled={isSubmitting}
-                          className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-black text-sm uppercase tracking-wide shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all flex items-center justify-center space-x-2 mt-4 cursor-pointer"
+                          className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 disabled:opacity-60 text-white font-black text-sm uppercase tracking-wide shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all flex items-center justify-center space-x-2 mt-3 cursor-pointer"
                         >
                           {isSubmitting ? (
-                            <span>Initiating Registration...</span>
+                            <span className="flex items-center gap-2">
+                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <span>Submitting to Partner Registry...</span>
+                            </span>
                           ) : (
                             <>
-                              <span>Start Registration (Free)</span>
+                              <span>Submit Partner Application</span>
                               <ArrowRight className="w-4 h-4" />
                             </>
                           )}
@@ -359,50 +641,55 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate: 
                       </form>
                     ) : (
                       /* Partner Login Form */
-                      <form onSubmit={(e) => { e.preventDefault(); alert('Redirecting to Extranet Dashboard...'); }} className="space-y-4">
+                      <form onSubmit={handleLoginSubmit} className="space-y-3.5">
                         <div>
                           <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                            Partner Email or Property ID
+                            Partner Registered Email *
                           </label>
                           <input 
-                            type="text" 
+                            type="email" 
                             required
-                            placeholder="e.g. info@grandhotel.com or SSJ-9042"
+                            value={loginEmail}
+                            onChange={(e) => setLoginEmail(e.target.value)}
+                            placeholder="partner@hotel.com"
                             className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 focus:border-[#008cff] focus:ring-2 focus:ring-blue-100 outline-none transition"
                           />
                         </div>
                         <div>
                           <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                            Password
+                            Password *
                           </label>
                           <input 
                             type="password" 
                             required
+                            value={loginPassword}
+                            onChange={(e) => setLoginPassword(e.target.value)}
                             placeholder="Enter your extranet password"
                             className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 focus:border-[#008cff] focus:ring-2 focus:ring-blue-100 outline-none transition"
                           />
                         </div>
-                        <div className="flex items-center justify-between text-xs text-slate-500">
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <input type="checkbox" className="rounded text-[#008cff]" defaultChecked />
-                            <span>Remember me</span>
-                          </label>
-                          <a href="#forgot" onClick={(e) => { e.preventDefault(); alert('Password reset link sent to registered phone/email.'); }} className="text-[#008cff] hover:underline">
-                            Forgot password?
-                          </a>
-                        </div>
                         <button
                           type="submit"
-                          className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-sm uppercase tracking-wide shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center space-x-2 mt-2 cursor-pointer"
+                          disabled={isSubmitting}
+                          className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 text-white font-black text-sm uppercase tracking-wide shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center space-x-2 mt-2 cursor-pointer"
                         >
-                          <span>Login to Partner Extranet</span>
-                          <ArrowRight className="w-4 h-4" />
+                          {isSubmitting ? (
+                            <span className="flex items-center gap-2">
+                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <span>Authenticating Partner...</span>
+                            </span>
+                          ) : (
+                            <>
+                              <span>Login to Partner Extranet</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </>
+                          )}
                         </button>
                       </form>
                     )}
 
-                    <p className="text-[10px] text-slate-400 text-center mt-4">
-                      By proceeding, you agree to SS Journey's <span className="underline cursor-pointer">Partner Terms of Service</span> and <span className="underline cursor-pointer">Privacy Policy</span>.
+                    <p className="text-[10px] text-slate-400 text-center mt-3">
+                      By proceeding, you agree to SS Journey's <span className="underline cursor-pointer">Partner Terms of Service</span> and <span className="underline cursor-pointer">Compliance Verification Policy</span>.
                     </p>
                   </>
                 )}

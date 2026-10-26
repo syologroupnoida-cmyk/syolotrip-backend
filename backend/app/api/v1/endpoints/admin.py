@@ -2,23 +2,26 @@ import uuid
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 
 from backend.app.core.database import get_db
 from backend.app.models.user import User
-from backend.app.models.booking import Booking
+from backend.app.models.booking import Booking, BookingStatus
+from backend.app.models.payment import Payment, PaymentStatus
 from backend.app.models.audit import AuditLog
 from backend.app.models.coupon import Coupon
 from backend.app.models.travel import Flight, Hotel, HotelRoom, Bus, Train, Cab, HolidayPackage
 from backend.app.schemas.common import ApiResponse, PaginatedResponse, PaginationMeta
 from backend.app.schemas.admin import DashboardStatsResponse
-from backend.app.schemas.booking import BookingResponse
+from backend.app.schemas.booking import BookingResponse, BookingCancelRequest
 from backend.app.schemas.flight import FlightCreate, FlightResponse
 from backend.app.schemas.hotel import HotelCreate, HotelResponse
 from backend.app.schemas.coupon import CouponCreateRequest, CouponUpdateRequest, CouponResponse
 from backend.app.services.admin_service import AdminService
 from backend.app.services.travel_service import TravelService
+from backend.app.services.booking_service import BookingService
 from backend.app.api.v1.deps import get_current_admin
+
 
 router = APIRouter(prefix="/admin", tags=["Admin Operations"])
 
@@ -72,19 +75,48 @@ async def update_booking_status(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    new_status = status_update.get("status")
+    new_status = (status_update.get("status") or "").upper().strip()
+    reason = status_update.get("reason", "Admin manual status update")
     if new_status:
         old_status = booking.status
-        booking.status = new_status
+        booking_service = BookingService(db)
+
+        if new_status == BookingStatus.CANCELLED.value:
+            if old_status not in [BookingStatus.CANCELLED.value, BookingStatus.REFUNDED.value]:
+                await booking_service.cancel_booking(
+                    str(booking.id),
+                    BookingCancelRequest(reason=reason),
+                    current_user=current_admin,
+                )
+            else:
+                booking.status = new_status
+        elif new_status == BookingStatus.REFUNDED.value:
+            if old_status not in [BookingStatus.CANCELLED.value, BookingStatus.REFUNDED.value]:
+                await booking_service.cancel_booking(
+                    str(booking.id),
+                    BookingCancelRequest(reason=f"Refund initiated: {reason}"),
+                    current_user=current_admin,
+                )
+            booking.status = BookingStatus.REFUNDED.value
+            # Mark associated payments as REFUNDED
+            await db.execute(
+                update(Payment)
+                .where(Payment.booking_id == booking.id)
+                .values(status=PaymentStatus.REFUNDED.value)
+            )
+        else:
+            booking.status = new_status
+
         await service.record_audit(
             action=f"UPDATE_BOOKING_STATUS_{new_status}",
             entity_type="BOOKING",
             entity_id=str(booking.id),
             user_id=current_admin.id,
-            details={"previous": old_status, "new": new_status},
+            details={"previous": old_status, "new": new_status, "reason": reason},
         )
         await db.commit()
     return ApiResponse(success=True, message=f"Booking status updated to {new_status}")
+
 
 
 @router.get("/users")

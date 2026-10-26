@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,10 +13,19 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, Shadows, formatINR } from '../theme/theme';
-import { ScreenName, FlightOption, HotelOption, TripBookingState } from '../types/travel';
+import {
+  ScreenName,
+  FlightOption,
+  HotelOption,
+  TrainOption,
+  BusOption,
+  CabOption,
+  PackageOption,
+  TripBookingState,
+} from '../types/travel';
 import { SeatSelectionModal } from '../components/SeatSelectionModal';
 import { BookingSuccessModal } from '../components/BookingSuccessModal';
-import { submitMobileBookingApi } from '../services/api';
+import { submitMobileBookingApi, getCurrentUserMobileApi } from '../services/api';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -26,6 +35,10 @@ interface CheckoutScreenProps {
   onNavigate: (screen: ScreenName) => void;
   selectedFlight?: FlightOption;
   selectedHotel?: HotelOption;
+  selectedTrain?: TrainOption;
+  selectedBus?: BusOption;
+  selectedCab?: CabOption;
+  selectedPackage?: PackageOption;
   bookingState?: TripBookingState;
 }
 
@@ -33,6 +46,10 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   onNavigate,
   selectedFlight,
   selectedHotel,
+  selectedTrain,
+  selectedBus,
+  selectedCab,
+  selectedPackage,
   bookingState,
 }) => {
   const [summaryExpanded, setSummaryExpanded] = useState(false);
@@ -43,21 +60,50 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   const [confirmedBookingRef, setConfirmedBookingRef] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form states
-  const [legalName, setLegalName] = useState(bookingState?.travelerName || 'Alexander Vanderbilt');
-  const [contactEmail, setContactEmail] = useState('traveler@ssjourney.com');
-  const [contactPhone, setContactPhone] = useState('+91 98765 43210');
-  const [dob, setDob] = useState(bookingState?.dob || '10 / 14 / 1988');
-  const [passport, setPassport] = useState(bookingState?.passportNumber || 'A94821038');
-  const [frequentFlyer, setFrequentFlyer] = useState(bookingState?.frequentFlyer || 'NH-Diamond Club #8892019');
+  // Form states initialized blank unless provided by active bookingState or authenticated user
+  const [legalName, setLegalName] = useState(bookingState?.travelerName || '');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [dob, setDob] = useState(bookingState?.dob || '');
+  const [passport, setPassport] = useState(bookingState?.passportNumber || '');
+  const [frequentFlyer, setFrequentFlyer] = useState(bookingState?.frequentFlyer || '');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'applepay' | 'upi'>('card');
 
-  const resolvedServiceType = bookingState?.serviceType || (selectedFlight ? 'FLIGHT' : selectedHotel ? 'HOTEL' : 'FLIGHT');
+  // Load legitimate authenticated user profile if available
+  useEffect(() => {
+    getCurrentUserMobileApi().then((u) => {
+      if (u) {
+        if (!legalName && (u.fullName || u.full_name)) {
+          setLegalName(u.fullName || u.full_name);
+        }
+        if (!contactEmail && u.email) {
+          setContactEmail(u.email);
+        }
+        if (!contactPhone && u.phone) {
+          setContactPhone(u.phone);
+        }
+      }
+    });
+  }, []);
 
-  const basePrice = bookingState?.serviceType === 'TRAIN' ? (bookingState?.selectedTrain?.price ?? 1750) :
-    bookingState?.serviceType === 'BUS' ? (bookingState?.selectedBus?.price ?? 950) :
-    bookingState?.serviceType === 'CAB' ? (bookingState?.selectedCab?.price ?? 650) :
-    bookingState?.serviceType === 'PACKAGE' ? (bookingState?.selectedPackage?.price ?? 18500) :
+  const activeTrain = selectedTrain || bookingState?.selectedTrain;
+  const activeBus = selectedBus || bookingState?.selectedBus;
+  const activeCab = selectedCab || bookingState?.selectedCab;
+  const activePkg = selectedPackage || bookingState?.selectedPackage;
+
+  const resolvedServiceType = bookingState?.serviceType || (
+    selectedFlight ? 'FLIGHT' :
+    selectedHotel ? 'HOTEL' :
+    activeTrain ? 'TRAIN' :
+    activeBus ? 'BUS' :
+    activeCab ? 'CAB' :
+    activePkg ? 'PACKAGE' : 'FLIGHT'
+  );
+
+  const basePrice = resolvedServiceType === 'TRAIN' ? (activeTrain?.price ?? 1750) :
+    resolvedServiceType === 'BUS' ? (activeBus?.price ?? 950) :
+    resolvedServiceType === 'CAB' ? (activeCab?.price ?? 650) :
+    resolvedServiceType === 'PACKAGE' ? (activePkg?.price ?? 18500) :
     selectedFlight ? selectedFlight.price : (selectedHotel ? selectedHotel.totalPrice : 168000);
 
   const taxes = Math.round(basePrice * 0.08);
@@ -70,37 +116,37 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   const rawItemId = selectedFlight?.id ||
     selectedHotel?.defaultRoomId ||
     selectedHotel?.id ||
-    bookingState?.selectedTrain?.id ||
-    bookingState?.selectedBus?.id ||
-    bookingState?.selectedCab?.id ||
-    bookingState?.selectedPackage?.id;
+    activeTrain?.id ||
+    activeBus?.id ||
+    activeCab?.id ||
+    activePkg?.id;
 
   const tripTitle = selectedFlight
     ? `${selectedFlight.airline} (${selectedFlight.flightCode})`
     : selectedHotel
     ? selectedHotel.name
-    : bookingState?.selectedTrain
-    ? `${bookingState.selectedTrain.trainName} (${bookingState.selectedTrain.trainNumber})`
-    : bookingState?.selectedBus
-    ? `${bookingState.selectedBus.operatorName} (${bookingState.selectedBus.busType})`
-    : bookingState?.selectedCab
-    ? `${bookingState.selectedCab.vehicleModel} (${bookingState.selectedCab.cabType})`
-    : bookingState?.selectedPackage
-    ? bookingState.selectedPackage.title
+    : activeTrain
+    ? `${activeTrain.trainName} (#${activeTrain.trainNumber})`
+    : activeBus
+    ? `${activeBus.operatorName} (${activeBus.busType})`
+    : activeCab
+    ? `${activeCab.vehicleModel} (${activeCab.cabType})`
+    : activePkg
+    ? activePkg.title
     : 'Traveler Booking';
 
   const tripRoute = selectedFlight
     ? `${selectedFlight.originCode} ➔ ${selectedFlight.destCode}`
     : selectedHotel
     ? `${selectedHotel.neighborhood} • ${selectedHotel.distance}`
-    : bookingState?.selectedTrain
-    ? `${bookingState.selectedTrain.fromStationCode} ➔ ${bookingState.selectedTrain.toStationCode}`
-    : bookingState?.selectedBus
-    ? `${bookingState.selectedBus.fromCity} ➔ ${bookingState.selectedBus.toCity}`
-    : bookingState?.selectedCab
-    ? `${bookingState.selectedCab.city}: ${bookingState.selectedCab.pickupArea} ➔ ${bookingState.selectedCab.dropArea}`
-    : bookingState?.selectedPackage
-    ? `${bookingState.selectedPackage.destination} (${bookingState.selectedPackage.durationDays}D/${bookingState.selectedPackage.durationNights}N)`
+    : activeTrain
+    ? `${activeTrain.fromStationCode} ➔ ${activeTrain.toStationCode}`
+    : activeBus
+    ? `${activeBus.fromCity} ➔ ${activeBus.toCity}`
+    : activeCab
+    ? `${activeCab.city}: ${activeCab.pickupArea} ➔ ${activeCab.dropArea}`
+    : activePkg
+    ? `${activePkg.destination} (${activePkg.durationDays}D/${activePkg.durationNights}N)`
     : 'Confirmed Itinerary';
 
   const toggleSummary = () => {
@@ -117,15 +163,32 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
       return;
     }
 
+    if (!legalName.trim()) {
+      Alert.alert('Required Information', 'Please enter the passenger full legal name.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!contactEmail.trim() || !emailRegex.test(contactEmail.trim())) {
+      Alert.alert('Required Information', 'Please enter a valid contact email address.');
+      return;
+    }
+
+    const digits = contactPhone.trim().replace(/\D/g, '');
+    if (!contactPhone.trim() || digits.length < 10) {
+      Alert.alert('Required Information', 'Please enter a valid 10-digit contact mobile number.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const res = await submitMobileBookingApi({
         serviceType: resolvedServiceType,
         itemId: rawItemId,
         totalAmount: currentTotal,
-        contactEmail: contactEmail.trim() || 'traveler@ssjourney.com',
-        contactPhone: contactPhone.trim() || '+91 98765 43210',
-        passengerName: legalName.trim() || 'Traveler Passenger',
+        contactEmail: contactEmail.trim(),
+        contactPhone: contactPhone.trim(),
+        passengerName: legalName.trim(),
       });
       if (res && (res.bookingId || res.bookingReference)) {
         setConfirmedBookingRef(res.bookingReference || res.bookingId);
@@ -292,18 +355,46 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
 
           <View style={styles.inputsStack}>
             <View>
-              <Text style={styles.inputLabel}>FULL LEGAL NAME</Text>
+              <Text style={styles.inputLabel}>FULL LEGAL NAME *</Text>
               <View style={styles.lockedInputWrapper}>
                 <TextInput
                   value={legalName}
                   onChangeText={setLegalName}
+                  placeholder="e.g. Rahul Sharma"
+                  placeholderTextColor={Colors.outlineVariant}
                   style={styles.textInput}
                 />
                 <MaterialIcons
-                  name="lock"
+                  name="badge"
                   size={16}
-                  color={Colors.onSurfaceVariant}
+                  color={Colors.primary}
                   style={styles.inputIconRight}
+                />
+              </View>
+            </View>
+
+            <View style={styles.twoColRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabel}>EMAIL ADDRESS *</Text>
+                <TextInput
+                  value={contactEmail}
+                  onChangeText={setContactEmail}
+                  placeholder="passenger@email.com"
+                  placeholderTextColor={Colors.outlineVariant}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  style={styles.textInput}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabel}>MOBILE NUMBER *</Text>
+                <TextInput
+                  value={contactPhone}
+                  onChangeText={setContactPhone}
+                  placeholder="9876543210"
+                  placeholderTextColor={Colors.outlineVariant}
+                  keyboardType="phone-pad"
+                  style={styles.textInput}
                 />
               </View>
             </View>

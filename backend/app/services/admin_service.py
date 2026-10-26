@@ -6,7 +6,7 @@ from sqlalchemy import select, func
 
 from backend.app.models.user import User
 from backend.app.models.booking import Booking, BookingStatus
-from backend.app.models.travel import Flight, Hotel, Bus, HolidayPackage
+from backend.app.models.travel import Flight, Hotel, Bus, HolidayPackage, Train, Cab
 from backend.app.models.audit import AuditLog
 from backend.app.repositories.booking_repo import BookingRepository
 from backend.app.schemas.admin import DashboardStatsResponse, AuditLogResponse
@@ -38,7 +38,9 @@ class AdminService:
 
         cancelled_bookings = (
             await self.db.execute(
-                select(func.count(Booking.id)).where(Booking.status == BookingStatus.CANCELLED.value)
+                select(func.count(Booking.id)).where(
+                    Booking.status.in_([BookingStatus.CANCELLED.value, BookingStatus.REFUNDED.value])
+                )
             )
         ).scalar_one()
 
@@ -49,9 +51,25 @@ class AdminService:
         ).scalar_one_or_none()
         total_revenue = float(revenue_val or 0.0)
 
+        gmv_val = (
+            await self.db.execute(select(func.sum(Booking.total_amount)))
+        ).scalar_one_or_none()
+        gmv_total = float(gmv_val or 0.0)
+
+        refunded_val = (
+            await self.db.execute(
+                select(func.sum(Booking.total_amount)).where(
+                    Booking.status.in_([BookingStatus.CANCELLED.value, BookingStatus.REFUNDED.value])
+                )
+            )
+        ).scalar_one_or_none()
+        refunded_total = float(refunded_val or 0.0)
+
         total_flights = (await self.db.execute(select(func.count(Flight.id)))).scalar_one()
         total_hotels = (await self.db.execute(select(func.count(Hotel.id)))).scalar_one()
+        total_trains = (await self.db.execute(select(func.count(Train.id)))).scalar_one()
         total_buses = (await self.db.execute(select(func.count(Bus.id)))).scalar_one()
+        total_cabs = (await self.db.execute(select(func.count(Cab.id)))).scalar_one()
         total_packages = (await self.db.execute(select(func.count(HolidayPackage.id)))).scalar_one()
 
         return DashboardStatsResponse(
@@ -63,10 +81,15 @@ class AdminService:
             cancelled_bookings=cancelled_bookings,
             total_flights=total_flights,
             total_hotels=total_hotels,
+            total_trains=total_trains,
             total_buses=total_buses,
+            total_cabs=total_cabs,
             total_packages=total_packages,
+            gmv_total=gmv_total,
+            refunded_total=refunded_total,
             adapter_mode="MOCK_DETERMINISTIC",
         )
+
 
     async def list_bookings(
         self,
