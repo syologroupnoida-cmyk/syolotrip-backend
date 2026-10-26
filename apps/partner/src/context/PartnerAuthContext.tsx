@@ -5,6 +5,7 @@ import {
   getPartnerProfileApi,
   loginPartnerApi,
   registerPartnerAccountApi,
+  registerPartnerFlowApi,
   createPartnerProfileApi,
   setStoredToken,
 } from '../services/api';
@@ -23,6 +24,18 @@ interface PartnerAuthContextType {
     password: string;
     phone?: string;
   }) => Promise<void>;
+  registerPartnerFlow: (payload: {
+    email: string;
+    full_name: string;
+    password: string;
+    phone?: string;
+    business_name: string;
+    business_type: string;
+    business_phone?: string;
+    city: string;
+    address?: string;
+    tax_id?: string;
+  }) => Promise<string>;
   registerProfile: (payload: {
     business_name: string;
     business_type: string;
@@ -44,6 +57,7 @@ const PartnerAuthContext = createContext<PartnerAuthContextType>({
   status: 'PENDING_VERIFICATION',
   login: async () => {},
   register: async () => {},
+  registerPartnerFlow: async () => '',
   registerProfile: async () => {},
   refreshProfile: async () => {},
   logout: async () => {},
@@ -57,15 +71,20 @@ export const PartnerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const refreshProfile = async () => {
     try {
       const u = await getCurrentUserApi();
-      setUser(u);
       if (u) {
+        setUser(u);
         const p = await getPartnerProfileApi();
         setPartnerProfile(p);
       } else {
+        await setStoredToken(null);
+        setUser(null);
         setPartnerProfile(null);
       }
     } catch (err) {
       console.warn('[PartnerAuth] Error refreshing profile:', err);
+      await setStoredToken(null);
+      setUser(null);
+      setPartnerProfile(null);
     } finally {
       setIsLoading(false);
     }
@@ -76,14 +95,16 @@ export const PartnerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, []);
 
   const login = async (email: string, password: string) => {
-    setIsLoading(true);
     try {
       const res = await loginPartnerApi(email, password);
       setUser(res.user);
       const p = await getPartnerProfileApi();
       setPartnerProfile(p);
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      await setStoredToken(null);
+      setUser(null);
+      setPartnerProfile(null);
+      throw err;
     }
   };
 
@@ -93,14 +114,34 @@ export const PartnerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
     password: string;
     phone?: string;
   }) => {
-    setIsLoading(true);
     try {
-      const res = await registerPartnerAccountApi(payload);
-      setUser(res.user);
-      const p = await getPartnerProfileApi();
-      setPartnerProfile(p);
+      await registerPartnerAccountApi(payload);
     } finally {
-      setIsLoading(false);
+      await setStoredToken(null);
+      setUser(null);
+      setPartnerProfile(null);
+    }
+  };
+
+  const registerPartnerFlow = async (payload: {
+    email: string;
+    full_name: string;
+    password: string;
+    phone?: string;
+    business_name: string;
+    business_type: string;
+    business_phone?: string;
+    city: string;
+    address?: string;
+    tax_id?: string;
+  }): Promise<string> => {
+    try {
+      const res = await registerPartnerFlowApi(payload);
+      return res.message;
+    } finally {
+      await setStoredToken(null);
+      setUser(null);
+      setPartnerProfile(null);
     }
   };
 
@@ -112,12 +153,11 @@ export const PartnerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
     address?: string;
     tax_id?: string;
   }) => {
-    setIsLoading(true);
     try {
       const p = await createPartnerProfileApi(payload);
       setPartnerProfile(p);
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      throw err;
     }
   };
 
@@ -145,6 +185,7 @@ export const PartnerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
         status,
         login,
         register,
+        registerPartnerFlow,
         registerProfile,
         refreshProfile,
         logout,

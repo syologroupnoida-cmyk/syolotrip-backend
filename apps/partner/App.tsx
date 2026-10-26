@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -62,7 +62,19 @@ function PartnerMainApp() {
     currentScreen === 'rooms' ||
     currentScreen === 'inventory_calendar';
 
-  if (!isAuthenticated && !isLoading) {
+  if (isLoading) {
+    return (
+      <SafeAreaProvider>
+        <SafeAreaView style={[styles.safeArea, styles.loadingContainer]} edges={['top', 'bottom', 'left', 'right']}>
+          <StatusBar style="light" />
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Initializing Partner Session...</Text>
+        </SafeAreaView>
+      </SafeAreaProvider>
+    );
+  }
+
+  if (!isAuthenticated) {
     return (
       <SafeAreaProvider>
         <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -363,5 +375,16 @@ const styles = StyleSheet.create({
   navLabelActive: {
     color: Colors.secondary,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.primaryDark,
+  },
+  loadingText: {
+    color: '#ffffff',
+    fontSize: 14,
+    marginTop: Spacing.md,
+    fontWeight: '500',
   },
 });

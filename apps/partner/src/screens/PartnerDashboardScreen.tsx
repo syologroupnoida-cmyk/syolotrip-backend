@@ -6,7 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, Shadows, formatINR } from '../theme/theme';
@@ -67,7 +67,7 @@ export const PartnerDashboardScreen: React.FC<PartnerDashboardScreenProps> = ({
     await loadDashboardData();
   };
 
-  // Compute metrics from actual database-returned arrays
+  // Compute metrics from real backend data
   const totalProperties = properties.length;
   const approvedProperties = properties.filter((p) => p.publication_status === 'APPROVED').length;
   const pendingProperties = properties.filter((p) => p.publication_status === 'PENDING_APPROVAL').length;
@@ -81,95 +81,141 @@ export const PartnerDashboardScreen: React.FC<PartnerDashboardScreenProps> = ({
   const totalBookings = bookings.length;
   const confirmedBookings = bookings.filter((b) => b.status === 'CONFIRMED').length;
 
+  // Real financial aggregates
   const grossRevenue = bookings
     .filter((b) => b.status === 'CONFIRMED' || b.payment_status === 'PAID')
     .reduce((acc, b) => acc + Number(b.total_amount || 0), 0);
 
-  const commissionRate = partnerProfile?.commission_rate || 0.1; // Default 10% platform commission
+  const commissionRate = partnerProfile?.commission_rate || 0.1; // Default platform commission
   const netEarnings = grossRevenue * (1 - commissionRate);
 
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
     >
-      {/* Verification Status Banner if pending / rejected */}
+      {/* Verification Status Banner if pending / rejected / suspended */}
       <VerificationBanner
         partnerProfile={partnerProfile}
         onRefresh={onRefresh}
         onEditProfile={() => onNavigate('profile')}
       />
 
-      {/* Business Info Header Card */}
-      <View style={styles.businessCard}>
-        <View style={styles.businessRow}>
-          <View>
-            <Text style={styles.businessName}>
+      {/* Business Hero Card */}
+      <View style={styles.businessHeroCard}>
+        <View style={styles.businessHeroTop}>
+          <View style={styles.businessAvatar}>
+            <MaterialIcons
+              name={partnerProfile?.business_type === 'HOMESTAY_HOST' ? 'villa' : 'hotel'}
+              size={26}
+              color={Colors.secondary}
+            />
+          </View>
+          <View style={styles.businessDetails}>
+            <Text style={styles.businessTitle} numberOfLines={1}>
               {partnerProfile?.business_name || 'Hospitality Partner'}
             </Text>
-            <Text style={styles.businessType}>
-              {partnerProfile?.business_type === 'HOMESTAY_HOST' ? 'Homestay & Villa Host' : 'Hotelier'} · {partnerProfile?.city || 'India'}
+            <Text style={styles.businessSubtitle}>
+              {partnerProfile?.business_type === 'HOMESTAY_HOST' ? 'Homestay & Villa Host' : 'Hotelier'}
+              {' · '}
+              {partnerProfile?.city || 'India'}
             </Text>
           </View>
           <StatusBadge status={partnerProfile?.status || 'PENDING'} />
         </View>
 
-        <View style={styles.commissionRow}>
-          <MaterialIcons name="monetization-on" size={14} color={Colors.secondary} />
-          <Text style={styles.commissionText}>
-            Platform Commission: {Math.round(commissionRate * 100)}% · Payout terms: Standard settlement
-          </Text>
+        <View style={styles.businessHeroMeta}>
+          <View style={styles.metaBadge}>
+            <MaterialIcons name="verified-user" size={13} color={isVerified ? '#059669' : '#d97706'} />
+            <Text style={[styles.metaBadgeText, { color: isVerified ? '#059669' : '#d97706' }]}>
+              {isVerified ? 'Verified Partner' : 'Verification Pending'}
+            </Text>
+          </View>
+          <View style={styles.metaBadge}>
+            <MaterialIcons name="monetization-on" size={13} color={Colors.primary} />
+            <Text style={styles.metaBadgeText}>
+              Fee: {Math.round(commissionRate * 100)}% Standard
+            </Text>
+          </View>
+          {partnerProfile?.tax_id ? (
+            <View style={styles.metaBadge}>
+              <MaterialIcons name="receipt" size={13} color={Colors.onSurfaceSubtle} />
+              <Text style={styles.metaBadgeText}>GSTIN: {partnerProfile.tax_id}</Text>
+            </View>
+          ) : null}
         </View>
       </View>
 
-      {/* Metrics Row 1: Financial & Bookings */}
-      <View style={styles.metricsGrid}>
-        <View style={styles.metricCard}>
-          <View style={styles.metricHeader}>
-            <Text style={styles.metricLabel}>Gross Bookings</Text>
-            <MaterialIcons name="payments" size={16} color={Colors.primary} />
-          </View>
-          <Text style={styles.metricValue}>{formatINR(grossRevenue)}</Text>
-          <Text style={styles.metricSub}>{confirmedBookings} Confirmed reservation(s)</Text>
-        </View>
+      {/* Financial & Performance Metrics */}
+      <Text style={styles.sectionHeader}>Performance &amp; Inventory</Text>
 
-        <View style={styles.metricCard}>
-          <View style={styles.metricHeader}>
-            <Text style={styles.metricLabel}>Est. Net Payout</Text>
-            <MaterialIcons name="account-balance-wallet" size={16} color={Colors.secondary} />
-          </View>
-          <Text style={[styles.metricValue, { color: Colors.secondaryDark }]}>
-            {formatINR(netEarnings)}
-          </Text>
-          <Text style={styles.metricSub}>After platform commission</Text>
+      {loading ? (
+        <View style={styles.skeletonGrid}>
+          <View style={[styles.metricCard, styles.skeletonCard]} />
+          <View style={[styles.metricCard, styles.skeletonCard]} />
         </View>
-      </View>
+      ) : (
+        <>
+          <View style={styles.metricsGrid}>
+            <View style={styles.metricCard}>
+              <View style={styles.metricHeader}>
+                <Text style={styles.metricLabel}>Gross Booking GMV</Text>
+                <View style={styles.metricIconWrap}>
+                  <MaterialIcons name="payments" size={15} color={Colors.primary} />
+                </View>
+              </View>
+              <Text style={styles.metricValue}>{formatINR(grossRevenue)}</Text>
+              <Text style={styles.metricSub}>
+                {confirmedBookings} confirmed booking{confirmedBookings === 1 ? '' : 's'}
+              </Text>
+            </View>
 
-      {/* Metrics Row 2: Property & Inventory */}
-      <View style={styles.metricsGrid}>
-        <View style={styles.metricCard}>
-          <View style={styles.metricHeader}>
-            <Text style={styles.metricLabel}>Properties</Text>
-            <MaterialIcons name="holiday-village" size={16} color={Colors.primary} />
+            <View style={styles.metricCard}>
+              <View style={styles.metricHeader}>
+                <Text style={styles.metricLabel}>Est. Net Payout</Text>
+                <View style={[styles.metricIconWrap, { backgroundColor: '#fff7ed' }]}>
+                  <MaterialIcons name="account-balance-wallet" size={15} color={Colors.secondary} />
+                </View>
+              </View>
+              <Text style={[styles.metricValue, { color: Colors.secondaryDark }]}>
+                {formatINR(netEarnings)}
+              </Text>
+              <Text style={styles.metricSub}>
+                After {Math.round(commissionRate * 100)}% platform commission
+              </Text>
+            </View>
           </View>
-          <Text style={styles.metricValue}>{totalProperties}</Text>
-          <Text style={styles.metricSub}>
-            {approvedProperties} Live · {pendingProperties} In Review · {draftProperties} Draft
-          </Text>
-        </View>
 
-        <View style={styles.metricCard}>
-          <View style={styles.metricHeader}>
-            <Text style={styles.metricLabel}>Room Capacity</Text>
-            <MaterialIcons name="meeting-room" size={16} color={Colors.primary} />
+          <View style={styles.metricsGrid}>
+            <View style={styles.metricCard}>
+              <View style={styles.metricHeader}>
+                <Text style={styles.metricLabel}>Property Portfolio</Text>
+                <View style={styles.metricIconWrap}>
+                  <MaterialIcons name="apartment" size={15} color={Colors.primary} />
+                </View>
+              </View>
+              <Text style={styles.metricValue}>{totalProperties}</Text>
+              <Text style={styles.metricSub}>
+                {approvedProperties} Live · {pendingProperties} In Review · {draftProperties} Draft
+              </Text>
+            </View>
+
+            <View style={styles.metricCard}>
+              <View style={styles.metricHeader}>
+                <Text style={styles.metricLabel}>Room Capacity</Text>
+                <View style={[styles.metricIconWrap, { backgroundColor: '#eff6ff' }]}>
+                  <MaterialIcons name="meeting-room" size={15} color="#2563eb" />
+                </View>
+              </View>
+              <Text style={styles.metricValue}>{totalRooms}</Text>
+              <Text style={styles.metricSub}>Total available room units</Text>
+            </View>
           </View>
-          <Text style={styles.metricValue}>{totalRooms}</Text>
-          <Text style={styles.metricSub}>Active rooms across listings</Text>
-        </View>
-      </View>
+        </>
+      )}
 
-      {/* Quick Action Navigation Grid */}
+      {/* Operational Quick Actions */}
       <Text style={styles.sectionHeader}>Operational Tools</Text>
       <View style={styles.actionsGrid}>
         <TouchableOpacity
@@ -177,7 +223,7 @@ export const PartnerDashboardScreen: React.FC<PartnerDashboardScreenProps> = ({
           onPress={() => onNavigate('properties')}
           activeOpacity={0.8}
         >
-          <View style={[styles.actionIconBox, { backgroundColor: 'rgba(12, 45, 107, 0.1)' }]}>
+          <View style={[styles.actionIconBox, { backgroundColor: '#e0e7ff' }]}>
             <MaterialIcons name="apartment" size={20} color={Colors.primary} />
           </View>
           <Text style={styles.actionTitle}>Listings</Text>
@@ -189,7 +235,7 @@ export const PartnerDashboardScreen: React.FC<PartnerDashboardScreenProps> = ({
           onPress={() => onNavigate('create_property')}
           activeOpacity={0.8}
         >
-          <View style={[styles.actionIconBox, { backgroundColor: 'rgba(242, 140, 28, 0.1)' }]}>
+          <View style={[styles.actionIconBox, { backgroundColor: '#ffedd5' }]}>
             <MaterialIcons name="add-business" size={20} color={Colors.secondary} />
           </View>
           <Text style={styles.actionTitle}>New Listing</Text>
@@ -201,7 +247,7 @@ export const PartnerDashboardScreen: React.FC<PartnerDashboardScreenProps> = ({
           onPress={() => onNavigate('bookings')}
           activeOpacity={0.8}
         >
-          <View style={[styles.actionIconBox, { backgroundColor: 'rgba(5, 150, 105, 0.1)' }]}>
+          <View style={[styles.actionIconBox, { backgroundColor: '#d1fae5' }]}>
             <MaterialIcons name="book-online" size={20} color={Colors.statusApproved} />
           </View>
           <Text style={styles.actionTitle}>Reservations</Text>
@@ -213,40 +259,118 @@ export const PartnerDashboardScreen: React.FC<PartnerDashboardScreenProps> = ({
           onPress={() => onNavigate('inventory_calendar')}
           activeOpacity={0.8}
         >
-          <View style={[styles.actionIconBox, { backgroundColor: 'rgba(2, 132, 199, 0.1)' }]}>
+          <View style={[styles.actionIconBox, { backgroundColor: '#e0f2fe' }]}>
             <MaterialIcons name="event-available" size={20} color={Colors.info} />
           </View>
           <Text style={styles.actionTitle}>Inventory</Text>
-          <Text style={styles.actionDesc}>Daily pricing</Text>
+          <Text style={styles.actionDesc}>Rates &amp; dates</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Recent Reservations Feed */}
+      {/* Property Showcase / Portfolio Overview */}
       <View style={styles.sectionRow}>
-        <Text style={styles.sectionHeader}>Recent Reservations</Text>
-        <TouchableOpacity onPress={() => onNavigate('bookings')}>
-          <Text style={styles.viewAllText}>View All ({totalBookings})</Text>
-        </TouchableOpacity>
+        <Text style={styles.sectionHeaderNoMargin}>Your Properties</Text>
+        {properties.length > 0 && (
+          <TouchableOpacity onPress={() => onNavigate('properties')}>
+            <Text style={styles.viewAllText}>View All ({totalProperties})</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {loading ? (
-        <ActivityIndicator style={{ marginVertical: Spacing.lg }} color={Colors.primary} />
+        <View style={styles.skeletonList}>
+          <View style={[styles.propertyCard, styles.skeletonCard]} />
+        </View>
       ) : fetchError ? (
         <View style={styles.errorContainer}>
-          <MaterialIcons name="warning" size={24} color={Colors.error} />
+          <MaterialIcons name="error-outline" size={26} color={Colors.error} />
           <Text style={styles.errorText}>{fetchError}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={onRefresh}>
             <Text style={styles.retryBtnText}>Retry</Text>
           </TouchableOpacity>
         </View>
-      ) : bookings.length === 0 ? (
+      ) : properties.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <MaterialIcons name="receipt-long" size={32} color={Colors.onSurfaceSubtle} />
-          <Text style={styles.emptyTitle}>No reservations yet</Text>
+          <MaterialIcons name="holiday-village" size={36} color={Colors.onSurfaceSubtle} />
+          <Text style={styles.emptyTitle}>No Properties Listed</Text>
           <Text style={styles.emptyDesc}>
             {isVerified
-              ? 'New reservations from SS Journey travelers will appear here in real-time.'
-              : 'Listing approval by platform administration is required before bookings can be accepted.'}
+              ? 'List your hotel, resort, or homestay to reach verified travelers across India.'
+              : 'Once your partner verification is approved, your listed properties will be published.'}
+          </Text>
+          <TouchableOpacity
+            style={styles.emptyCtaBtn}
+            onPress={() => onNavigate('create_property')}
+          >
+            <MaterialIcons name="add" size={16} color="#ffffff" />
+            <Text style={styles.emptyCtaText}>Add First Property</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.propertiesList}>
+          {properties.slice(0, 3).map((prop) => (
+            <TouchableOpacity
+              key={prop.id}
+              style={styles.propertyCard}
+              onPress={() => {
+                if (onSelectProperty) onSelectProperty(prop);
+              }}
+              activeOpacity={0.8}
+            >
+              <Image
+                source={{
+                  uri:
+                    prop.featured_image ||
+                    'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500',
+                }}
+                style={styles.propertyImage}
+              />
+              <View style={styles.propertyInfo}>
+                <View style={styles.propertyTopRow}>
+                  <Text style={styles.propertyName} numberOfLines={1}>
+                    {prop.name}
+                  </Text>
+                  <StatusBadge status={prop.publication_status} size="sm" />
+                </View>
+                <Text style={styles.propertyLocation}>
+                  {prop.property_type} · {prop.city}, {prop.country || 'India'}
+                </Text>
+                <View style={styles.propertyBottomRow}>
+                  <Text style={styles.propertyRoomsText}>
+                    {prop.rooms?.length || 0} room type{(prop.rooms?.length || 0) === 1 ? '' : 's'}
+                  </Text>
+                  <Text style={styles.propertyPrice}>
+                    From <Text style={styles.propertyPriceBold}>{formatINR(prop.starting_price)}</Text>/night
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* Recent Reservations Feed */}
+      <View style={[styles.sectionRow, { marginTop: Spacing.lg }]}>
+        <Text style={styles.sectionHeaderNoMargin}>Recent Reservations</Text>
+        {bookings.length > 0 && (
+          <TouchableOpacity onPress={() => onNavigate('bookings')}>
+            <Text style={styles.viewAllText}>View All ({totalBookings})</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {loading ? (
+        <View style={styles.skeletonList}>
+          <View style={[styles.bookingItemCard, styles.skeletonCard]} />
+        </View>
+      ) : bookings.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <MaterialIcons name="receipt-long" size={36} color={Colors.onSurfaceSubtle} />
+          <Text style={styles.emptyTitle}>No Reservations Yet</Text>
+          <Text style={styles.emptyDesc}>
+            {isVerified
+              ? 'Confirmed customer bookings from the SS Journey marketplace will appear here automatically.'
+              : 'Partner profile verification by platform compliance is required before bookings can be placed.'}
           </Text>
         </View>
       ) : (
@@ -264,7 +388,11 @@ export const PartnerDashboardScreen: React.FC<PartnerDashboardScreenProps> = ({
                 <View>
                   <Text style={styles.bookingRefText}>REF: {b.booking_reference}</Text>
                   <Text style={styles.bookingDateText}>
-                    Booked on {new Date(b.created_at).toLocaleDateString()}
+                    {new Date(b.created_at).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
                   </Text>
                 </View>
                 <StatusBadge status={b.status} size="sm" />
@@ -274,15 +402,17 @@ export const PartnerDashboardScreen: React.FC<PartnerDashboardScreenProps> = ({
                 <Text style={styles.bookingPassengerText}>
                   Guest: {b.passengers?.[0]?.first_name || 'Traveler'} {b.passengers?.[0]?.last_name || ''}
                 </Text>
-                <Text style={styles.bookingItemTitle}>
+                <Text style={styles.bookingItemTitle} numberOfLines={1}>
                   {b.items?.[0]?.title || 'Hotel Stay Reservation'}
                 </Text>
               </View>
 
               <View style={styles.bookingItemFooter}>
-                <Text style={styles.bookingPaymentText}>
-                  Payment: <Text style={{ fontWeight: 'bold' }}>{b.payment_status}</Text>
-                </Text>
+                <View style={styles.paymentBadge}>
+                  <Text style={styles.paymentBadgeText}>
+                    Payment: <Text style={{ fontWeight: 'bold' }}>{b.payment_status}</Text>
+                  </Text>
+                </View>
                 <Text style={styles.bookingAmountText}>{formatINR(Number(b.total_amount || 0))}</Text>
               </View>
             </TouchableOpacity>
@@ -301,7 +431,7 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: Spacing.xxl,
   },
-  businessCard: {
+  businessHeroCard: {
     backgroundColor: '#ffffff',
     borderRadius: BorderRadius.xl,
     padding: Spacing.md,
@@ -311,33 +441,84 @@ const styles = StyleSheet.create({
     borderColor: Colors.surfaceBorder,
     ...Shadows.sm,
   },
-  businessRow: {
+  businessHeroTop: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    gap: Spacing.sm,
   },
-  businessName: {
+  businessAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.primaryDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  businessDetails: {
+    flex: 1,
+  },
+  businessTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     color: Colors.onSurface,
   },
-  businessType: {
-    fontSize: 11,
+  businessSubtitle: {
+    fontSize: 12,
     color: Colors.onSurfaceVariant,
     marginTop: 2,
   },
-  commissionRow: {
+  businessHeroMeta: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    flexWrap: 'wrap',
+    gap: Spacing.xs,
     marginTop: Spacing.sm,
     paddingTop: Spacing.xs,
     borderTopWidth: 1,
     borderTopColor: Colors.surfaceLow,
   },
-  commissionText: {
-    fontSize: 10,
+  metaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surfaceLow,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.sm,
+    gap: 4,
+  },
+  metaBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
     color: Colors.onSurfaceVariant,
+  },
+  sectionHeader: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.xs,
+    marginHorizontal: Spacing.md,
+  },
+  sectionHeaderNoMargin: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  sectionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.xs,
+    marginHorizontal: Spacing.md,
+  },
+  viewAllText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.secondary,
   },
   metricsGrid: {
     flexDirection: 'row',
@@ -365,6 +546,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.onSurfaceVariant,
   },
+  metricIconWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(12, 45, 107, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   metricValue: {
     fontSize: 18,
     fontWeight: '900',
@@ -372,51 +561,31 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   metricSub: {
-    fontSize: 9.5,
+    fontSize: 10,
     color: Colors.onSurfaceSubtle,
-    lineHeight: 12,
-  },
-  sectionHeader: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: Colors.onSurface,
-    marginHorizontal: Spacing.md,
-    marginTop: Spacing.md + 4,
-    marginBottom: Spacing.xs,
-  },
-  sectionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginRight: Spacing.md,
-  },
-  viewAllText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: Colors.secondary,
-    marginTop: Spacing.md + 4,
+    lineHeight: 13,
   },
   actionsGrid: {
     flexDirection: 'row',
     gap: Spacing.sm,
     marginHorizontal: Spacing.md,
-    marginTop: Spacing.xs,
+    marginTop: Spacing.sm,
   },
   actionCard: {
     flex: 1,
     backgroundColor: '#ffffff',
-    padding: Spacing.sm + 2,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: 4,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
-    alignItems: 'center',
-    textAlign: 'center',
     ...Shadows.sm,
   },
   actionIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
@@ -429,13 +598,73 @@ const styles = StyleSheet.create({
   actionDesc: {
     fontSize: 9,
     color: Colors.onSurfaceSubtle,
-    marginTop: 1,
+    marginTop: 2,
     textAlign: 'center',
+  },
+  propertiesList: {
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  propertyCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.surfaceBorder,
+    flexDirection: 'row',
+    ...Shadows.sm,
+  },
+  propertyImage: {
+    width: 100,
+    height: 85,
+    backgroundColor: Colors.surfaceLow,
+  },
+  propertyInfo: {
+    flex: 1,
+    padding: Spacing.sm,
+    justifyContent: 'space-between',
+  },
+  propertyTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  propertyName: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: Colors.onSurface,
+    flex: 1,
+    marginRight: 6,
+  },
+  propertyLocation: {
+    fontSize: 11,
+    color: Colors.onSurfaceVariant,
+    marginTop: 2,
+  },
+  propertyBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  propertyRoomsText: {
+    fontSize: 10,
+    color: Colors.onSurfaceSubtle,
+  },
+  propertyPrice: {
+    fontSize: 10,
+    color: Colors.onSurfaceSubtle,
+  },
+  propertyPriceBold: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: Colors.primary,
   },
   bookingsList: {
     marginHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
     gap: Spacing.sm,
-    marginTop: Spacing.xs,
   },
   bookingItemCard: {
     backgroundColor: '#ffffff',
@@ -449,15 +678,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.surfaceLow,
-    paddingBottom: Spacing.xs,
+    marginBottom: Spacing.xs,
   },
   bookingRefText: {
     fontSize: 12,
     fontWeight: 'bold',
     color: Colors.primary,
-    fontFamily: 'monospace',
   },
   bookingDateText: {
     fontSize: 10,
@@ -465,82 +691,122 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   bookingItemBody: {
-    paddingVertical: Spacing.xs + 2,
+    marginVertical: Spacing.xs,
   },
   bookingPassengerText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.onSurface,
-  },
-  bookingItemTitle: {
     fontSize: 11,
     color: Colors.onSurfaceVariant,
-    marginTop: 1,
+  },
+  bookingItemTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.onSurface,
+    marginTop: 2,
   },
   bookingItemFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: Spacing.xs,
+    paddingTop: Spacing.xs,
     borderTopWidth: 1,
     borderTopColor: Colors.surfaceLow,
-    paddingTop: Spacing.xs,
   },
-  bookingPaymentText: {
+  paymentBadge: {
+    backgroundColor: Colors.surfaceLow,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+  },
+  paymentBadgeText: {
     fontSize: 10,
     color: Colors.onSurfaceVariant,
   },
   bookingAmountText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: Colors.onSurface,
+    color: Colors.primary,
   },
   emptyContainer: {
-    marginHorizontal: Spacing.md,
     backgroundColor: '#ffffff',
+    borderRadius: BorderRadius.lg,
     padding: Spacing.xl,
-    borderRadius: BorderRadius.xl,
     alignItems: 'center',
-    textAlign: 'center',
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
-    marginTop: Spacing.xs,
-    gap: Spacing.xs,
   },
   emptyTitle: {
     fontSize: 14,
     fontWeight: 'bold',
     color: Colors.onSurface,
-    marginTop: 4,
+    marginTop: Spacing.sm,
   },
   emptyDesc: {
     fontSize: 11,
-    color: Colors.onSurfaceVariant,
+    color: Colors.onSurfaceSubtle,
     textAlign: 'center',
+    marginTop: 4,
     lineHeight: 16,
+    maxWidth: 280,
+  },
+  emptyCtaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.secondary,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.full,
+    marginTop: Spacing.md,
+    gap: 4,
+  },
+  emptyCtaText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   errorContainer: {
-    marginHorizontal: Spacing.md,
-    padding: Spacing.lg,
     backgroundColor: '#fef2f2',
     borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
     alignItems: 'center',
-    gap: Spacing.xs,
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
+    borderWidth: 1,
+    borderColor: '#fecaca',
   },
   errorText: {
-    fontSize: 11,
+    fontSize: 12,
     color: Colors.error,
+    marginTop: 4,
     textAlign: 'center',
   },
   retryBtn: {
     backgroundColor: Colors.error,
     paddingHorizontal: Spacing.md,
-    paddingVertical: 5,
-    borderRadius: BorderRadius.full,
-    marginTop: 4,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.sm,
+    marginTop: Spacing.sm,
   },
   retryBtnText: {
     color: '#ffffff',
     fontSize: 11,
     fontWeight: 'bold',
+  },
+  skeletonGrid: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  skeletonList: {
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  skeletonCard: {
+    height: 85,
+    backgroundColor: Colors.surfaceLow,
+    opacity: 0.6,
   },
 });

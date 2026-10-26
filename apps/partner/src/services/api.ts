@@ -94,21 +94,29 @@ const getAuthHeaders = async (includeJson: boolean = true): Promise<Record<strin
 
 // ────────── Authentication ──────────
 export async function loginPartnerApi(email: string, password: string): Promise<{ token: string; user: UserProfile }> {
-  const res = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: 'Authentication failed' }));
-    throw new Error(err.detail || 'Incorrect email or password');
-  }
-  const json: ApiResponse<any> = await res.json();
-  const token = json.data?.tokens?.accessToken || json.data?.tokens?.access_token;
-  if (token) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+    });
+    if (!res.ok) {
+      await setStoredToken(null);
+      const err = await res.json().catch(() => ({ detail: 'Authentication failed' }));
+      throw new Error(err.detail || 'Incorrect email or password');
+    }
+    const json: ApiResponse<any> = await res.json();
+    const token = json.data?.tokens?.accessToken || json.data?.tokens?.access_token;
+    if (!token) {
+      await setStoredToken(null);
+      throw new Error('Authentication failed: missing access token');
+    }
     await setStoredToken(token);
+    return { token, user: json.data?.user };
+  } catch (err) {
+    await setStoredToken(null);
+    throw err;
   }
-  return { token, user: json.data?.user };
 }
 
 export async function registerPartnerAccountApi(payload: {
@@ -116,22 +124,91 @@ export async function registerPartnerAccountApi(payload: {
   full_name: string;
   password: string;
   phone?: string;
-}): Promise<{ token: string; user: UserProfile }> {
+}): Promise<{ user: UserProfile }> {
   const res = await fetch(`${API_BASE_URL}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      email: payload.email.trim().toLowerCase(),
+      full_name: payload.full_name.trim(),
+      password: payload.password,
+      phone: payload.phone?.trim() || undefined,
+    }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: 'Registration failed' }));
     throw new Error(err.detail || 'Email already registered');
   }
   const json: ApiResponse<any> = await res.json();
-  const token = json.data?.tokens?.accessToken || json.data?.tokens?.access_token;
-  if (token) {
-    await setStoredToken(token);
+  // SEC-CRITICAL: Never persist registration token or maintain session on registration.
+  await setStoredToken(null);
+  return { user: json.data?.user };
+}
+
+export async function registerPartnerFlowApi(payload: {
+  email: string;
+  full_name: string;
+  password: string;
+  phone?: string;
+  business_name: string;
+  business_type: string;
+  business_phone?: string;
+  city: string;
+  address?: string;
+  tax_id?: string;
+}): Promise<{ message: string }> {
+  // 1. Submit user registration
+  const regRes = await fetch(`${API_BASE_URL}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: payload.email.trim().toLowerCase(),
+      full_name: payload.full_name.trim(),
+      password: payload.password,
+      phone: payload.phone?.trim() || undefined,
+    }),
+  });
+
+  if (!regRes.ok) {
+    const err = await regRes.json().catch(() => ({ detail: 'Registration failed' }));
+    throw new Error(err.detail || 'Registration failed. Email may already be in use.');
   }
-  return { token, user: json.data?.user };
+
+  const regJson: ApiResponse<any> = await regRes.json();
+  const tempToken = regJson.data?.tokens?.accessToken || regJson.data?.tokens?.access_token;
+
+  // 2. If business name provided and tempToken received, register partner profile using the temp token
+  if (tempToken && payload.business_name?.trim()) {
+    try {
+      const profRes = await fetch(`${API_BASE_URL}/partner/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${tempToken}`,
+        },
+        body: JSON.stringify({
+          business_name: payload.business_name.trim(),
+          business_type: payload.business_type.toUpperCase(),
+          phone: payload.business_phone?.trim() || payload.phone?.trim() || undefined,
+          city: payload.city.trim(),
+          address: payload.address?.trim() || undefined,
+          tax_id: payload.tax_id?.trim() || undefined,
+        }),
+      });
+      if (!profRes.ok) {
+        console.warn('[PartnerAPI] Profile onboarding responded with non-2xx status:', profRes.status);
+      }
+    } catch (e) {
+      console.warn('[PartnerAPI] Error registering partner profile during signup:', e);
+    }
+  }
+
+  // 3. SEC-CRITICAL: Explicitly ensure all stored tokens and temporary state are cleared
+  await setStoredToken(null);
+
+  return {
+    message: 'Partner registration submitted successfully. Please sign in with your email and password.',
+  };
 }
 
 export async function getCurrentUserApi(): Promise<UserProfile | null> {
@@ -140,12 +217,15 @@ export async function getCurrentUserApi(): Promise<UserProfile | null> {
     if (!headers['Authorization']) return null;
     const res = await fetch(`${API_BASE_URL}/auth/me`, { headers });
     if (!res.ok) {
-      if (res.status === 401) await setStoredToken(null);
+      if (res.status === 401 || res.status === 403) {
+        await setStoredToken(null);
+      }
       return null;
     }
     const json: ApiResponse<UserProfile> = await res.json();
     return json.data;
   } catch (err) {
+    await setStoredToken(null);
     return null;
   }
 }

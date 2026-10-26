@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, Shadows } from '../theme/theme';
@@ -18,11 +17,12 @@ interface PartnerAuthScreenProps {
 }
 
 export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess }) => {
-  const { user, partnerProfile, login, register, registerProfile } = usePartnerAuth();
+  const { user, partnerProfile, login, registerPartnerFlow, registerProfile } = usePartnerAuth();
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Sign In / Sign Up fields
   const [email, setEmail] = useState('');
@@ -30,7 +30,7 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
 
-  // Business Profile Onboarding fields (if user is authenticated but lacks PartnerProfile)
+  // Business Profile fields
   const [businessName, setBusinessName] = useState('');
   const [businessType, setBusinessType] = useState<'HOTELIER' | 'HOMESTAY_HOST'>('HOTELIER');
   const [businessPhone, setBusinessPhone] = useState('');
@@ -38,7 +38,7 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
   const [address, setAddress] = useState('');
   const [taxId, setTaxId] = useState('');
 
-  const needsOnboarding = user && !partnerProfile;
+  const needsOnboarding = !!user && !partnerProfile;
 
   const handleSignIn = async () => {
     if (!email.trim() || !password) {
@@ -46,9 +46,10 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
       return;
     }
     setErrorMsg(null);
+    setSuccessMsg(null);
     setLoading(true);
     try {
-      await login(email, password);
+      await login(email.trim().toLowerCase(), password);
       onSuccess();
     } catch (err: any) {
       setErrorMsg(err.message || 'Login failed. Please check your credentials.');
@@ -57,27 +58,46 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
     }
   };
 
-  const handleSignUp = async () => {
+  const handleRegister = async () => {
     if (!email.trim() || !password || !fullName.trim()) {
-      setErrorMsg('Please fill in your name, email, and password.');
+      setErrorMsg('Please enter your full name, email, and password.');
       return;
     }
     if (password.length < 6) {
       setErrorMsg('Password must be at least 6 characters long.');
       return;
     }
+    if (!businessName.trim() || !city.trim()) {
+      setErrorMsg('Business name and operating city are required.');
+      return;
+    }
+
     setErrorMsg(null);
+    setSuccessMsg(null);
     setLoading(true);
     try {
-      await register({
+      const msg = await registerPartnerFlow({
         email: email.trim().toLowerCase(),
         full_name: fullName.trim(),
         password,
         phone: phone.trim() || undefined,
+        business_name: businessName.trim(),
+        business_type: businessType,
+        business_phone: businessPhone.trim() || phone.trim() || undefined,
+        city: city.trim(),
+        address: address.trim() || undefined,
+        tax_id: taxId.trim() || undefined,
       });
-      // User created, will prompt for business onboarding if needed
+
+      // SEC-04: Clear password, return to signin, require explicit login
+      setPassword('');
+      setMode('signin');
+      setSuccessMsg(
+        msg ||
+          'Registration submitted successfully! Your partner application is under review. Please sign in with your email and password.'
+      );
     } catch (err: any) {
-      setErrorMsg(err.message || 'Registration failed.');
+      setErrorMsg(err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -85,7 +105,7 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
 
   const handleCompleteOnboarding = async () => {
     if (!businessName.trim() || !city.trim()) {
-      setErrorMsg('Business name and city are required.');
+      setErrorMsg('Business name and operating city are required.');
       return;
     }
     setErrorMsg(null);
@@ -109,7 +129,7 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Brand Header */}
+      {/* Brand Hero */}
       <View style={styles.brandHero}>
         <View style={styles.heroLogoCircle}>
           <MaterialIcons name="business" size={32} color={Colors.secondary} />
@@ -129,8 +149,15 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
           </View>
         )}
 
+        {successMsg && (
+          <View style={styles.successBox}>
+            <MaterialIcons name="check-circle" size={18} color="#059669" />
+            <Text style={styles.successText}>{successMsg}</Text>
+          </View>
+        )}
+
         {needsOnboarding ? (
-          /* Step 2: Partner Profile Onboarding */
+          /* Step 2: Complete Profile if authenticated user lacks PartnerProfile */
           <View>
             <View style={styles.stepIndicator}>
               <Text style={styles.stepTitle}>Step 2: Business Onboarding</Text>
@@ -159,7 +186,7 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
               >
                 <MaterialIcons
                   name="hotel"
-                  size={18}
+                  size={16}
                   color={businessType === 'HOTELIER' ? '#ffffff' : Colors.primary}
                 />
                 <Text
@@ -168,7 +195,7 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
                     businessType === 'HOTELIER' && styles.typeOptionTextActive,
                   ]}
                 >
-                  Hotel / Resort
+                  Hotelier
                 </Text>
               </TouchableOpacity>
 
@@ -181,7 +208,7 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
               >
                 <MaterialIcons
                   name="villa"
-                  size={18}
+                  size={16}
                   color={businessType === 'HOMESTAY_HOST' ? '#ffffff' : Colors.primary}
                 />
                 <Text
@@ -195,7 +222,7 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.inputLabel}>City / Location *</Text>
+            <Text style={styles.inputLabel}>Operating City *</Text>
             <TextInput
               style={styles.input}
               placeholder="e.g. Manali, Goa, Jaipur"
@@ -245,7 +272,7 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
             </TouchableOpacity>
           </View>
         ) : (
-          /* Step 1: Sign In or Create User Account */
+          /* Step 1: Sign In or Register Flow */
           <View>
             <View style={styles.tabHeader}>
               <TouchableOpacity
@@ -267,6 +294,7 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
                 onPress={() => {
                   setMode('signup');
                   setErrorMsg(null);
+                  setSuccessMsg(null);
                 }}
               >
                 <Text
@@ -279,6 +307,8 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
 
             {mode === 'signup' && (
               <>
+                <Text style={styles.sectionHeader}>Personal Account Details</Text>
+
                 <Text style={styles.inputLabel}>Full Name *</Text>
                 <TextInput
                   style={styles.input}
@@ -313,7 +343,7 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
 
             {mode === 'signup' && (
               <>
-                <Text style={styles.inputLabel}>Phone Number</Text>
+                <Text style={styles.inputLabel}>Mobile Phone</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="+91 98765 43210"
@@ -322,52 +352,111 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
                   value={phone}
                   onChangeText={setPhone}
                 />
+
+                <Text style={[styles.sectionHeader, { marginTop: Spacing.md }]}>
+                  Hospitality Business Profile
+                </Text>
+
+                <Text style={styles.inputLabel}>Business / Brand Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Grand Heritage Palace"
+                  placeholderTextColor={Colors.onSurfaceSubtle}
+                  value={businessName}
+                  onChangeText={setBusinessName}
+                />
+
+                <Text style={styles.inputLabel}>Business Type *</Text>
+                <View style={styles.typeSelectorRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.typeOption,
+                      businessType === 'HOTELIER' && styles.typeOptionActive,
+                    ]}
+                    onPress={() => setBusinessType('HOTELIER')}
+                  >
+                    <MaterialIcons
+                      name="hotel"
+                      size={16}
+                      color={businessType === 'HOTELIER' ? '#ffffff' : Colors.primary}
+                    />
+                    <Text
+                      style={[
+                        styles.typeOptionText,
+                        businessType === 'HOTELIER' && styles.typeOptionTextActive,
+                      ]}
+                    >
+                      Hotelier
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.typeOption,
+                      businessType === 'HOMESTAY_HOST' && styles.typeOptionActive,
+                    ]}
+                    onPress={() => setBusinessType('HOMESTAY_HOST')}
+                  >
+                    <MaterialIcons
+                      name="villa"
+                      size={16}
+                      color={businessType === 'HOMESTAY_HOST' ? '#ffffff' : Colors.primary}
+                    />
+                    <Text
+                      style={[
+                        styles.typeOptionText,
+                        businessType === 'HOMESTAY_HOST' && styles.typeOptionTextActive,
+                      ]}
+                    >
+                      Homestay Host
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.inputLabel}>Operating City *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Manali, Jaipur, Goa"
+                  placeholderTextColor={Colors.onSurfaceSubtle}
+                  value={city}
+                  onChangeText={setCity}
+                />
+
+                <Text style={styles.inputLabel}>Registered Address</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Station Road, Civil Lines"
+                  placeholderTextColor={Colors.onSurfaceSubtle}
+                  value={address}
+                  onChangeText={setAddress}
+                />
+
+                <Text style={styles.inputLabel}>GSTIN / Tax ID (Optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. 07AAAAA0000A1Z5"
+                  placeholderTextColor={Colors.onSurfaceSubtle}
+                  value={taxId}
+                  onChangeText={setTaxId}
+                />
               </>
             )}
 
             <TouchableOpacity
               style={styles.submitBtn}
-              onPress={mode === 'signin' ? handleSignIn : handleSignUp}
+              onPress={mode === 'signin' ? handleSignIn : handleRegister}
               disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
                 <Text style={styles.submitBtnText}>
-                  {mode === 'signin' ? 'Sign In to Portal' : 'Continue to Business Setup'}
+                  {mode === 'signin'
+                    ? 'Sign In to Portal'
+                    : 'Submit Partner Application'}
                 </Text>
               )}
             </TouchableOpacity>
-
-            {/* Quick Demo Credentials Helper */}
-            {mode === 'signin' && (
-              <View style={styles.demoBox}>
-                <Text style={styles.demoTitle}>Quick Evaluation Accounts:</Text>
-                <TouchableOpacity
-                  style={styles.demoPill}
-                  onPress={() => {
-                    setEmail('partner_a@example.com');
-                    setPassword('Partner123!');
-                  }}
-                >
-                  <Text style={styles.demoPillText}>
-                    Verified Hotelier: partner_a@example.com
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.demoPill}
-                  onPress={() => {
-                    setEmail('partner_b@example.com');
-                    setPassword('Partner123!');
-                  }}
-                >
-                  <Text style={styles.demoPillText}>
-                    Verified Host: partner_b@example.com
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
           </View>
         )}
       </View>
@@ -399,34 +488,34 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
     borderWidth: 2,
     borderColor: Colors.secondary,
+    ...Shadows.md,
   },
   heroTitle: {
-    fontSize: 18,
-    fontWeight: '900',
+    fontSize: 20,
+    fontWeight: 'bold',
     color: Colors.primaryDark,
     letterSpacing: 1,
   },
   heroSub: {
     fontSize: 12,
-    color: Colors.onSurfaceVariant,
+    color: Colors.onSurfaceSubtle,
+    marginTop: 2,
     textAlign: 'center',
-    marginTop: 4,
-    maxWidth: 260,
   },
   card: {
     backgroundColor: '#ffffff',
-    borderRadius: BorderRadius.xl,
+    borderRadius: BorderRadius.lg,
     padding: Spacing.lg,
     borderWidth: 1,
-    borderColor: 'rgba(12, 45, 107, 0.08)',
+    borderColor: Colors.surfaceBorder,
     ...Shadows.md,
   },
   tabHeader: {
     flexDirection: 'row',
+    marginBottom: Spacing.lg,
     backgroundColor: Colors.surfaceLow,
     borderRadius: BorderRadius.md,
     padding: 3,
-    marginBottom: Spacing.lg,
   },
   tab: {
     flex: 1,
@@ -439,39 +528,32 @@ const styles = StyleSheet.create({
     ...Shadows.sm,
   },
   tabText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
-    color: Colors.onSurfaceVariant,
+    color: Colors.onSurfaceSubtle,
   },
   tabTextActive: {
-    color: Colors.primary,
+    color: Colors.primaryDark,
     fontWeight: 'bold',
   },
-  errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#fef2f2',
-    borderColor: '#fecaca',
-    borderWidth: 1,
-    padding: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
-  },
-  errorText: {
-    fontSize: 11,
-    color: Colors.error,
-    flex: 1,
+  sectionHeader: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.primary,
+    marginBottom: Spacing.xs,
+    paddingBottom: Spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceLow,
   },
   inputLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
     color: Colors.onSurface,
     marginBottom: 4,
     marginTop: Spacing.sm,
   },
   input: {
-    backgroundColor: '#ffffff',
+    backgroundColor: Colors.surfaceLow,
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
     borderRadius: BorderRadius.md,
@@ -480,22 +562,57 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.onSurface,
   },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.md,
+    gap: 6,
+  },
+  errorText: {
+    color: Colors.error,
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
+  },
+  successBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.md,
+    gap: 8,
+  },
+  successText: {
+    color: '#065f46',
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
+    lineHeight: 16,
+  },
   typeSelectorRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
-    marginBottom: Spacing.xs,
+    marginTop: 2,
   },
   typeOption: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
     paddingVertical: 10,
-    borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
+    borderRadius: BorderRadius.md,
     backgroundColor: Colors.surfaceLow,
+    gap: 6,
   },
   typeOptionActive: {
     backgroundColor: Colors.primary,
@@ -539,30 +656,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.onSurfaceVariant,
     marginTop: 2,
-  },
-  demoBox: {
-    marginTop: Spacing.lg,
-    paddingTop: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: Colors.surfaceLow,
-  },
-  demoTitle: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: Colors.onSurfaceSubtle,
-    textTransform: 'uppercase',
-    marginBottom: Spacing.xs,
-  },
-  demoPill: {
-    backgroundColor: Colors.surfaceLow,
-    paddingHorizontal: Spacing.sm + 2,
-    paddingVertical: 6,
-    borderRadius: BorderRadius.sm,
-    marginTop: 4,
-  },
-  demoPillText: {
-    fontSize: 11,
-    color: Colors.primary,
-    fontWeight: '600',
   },
 });
