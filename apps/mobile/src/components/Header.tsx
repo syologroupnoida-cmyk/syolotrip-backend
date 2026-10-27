@@ -13,6 +13,19 @@ interface HeaderProps {
   unreadCount?: number;
 }
 
+const SCREEN_TITLES: Record<ScreenName, { title: string; subtitle: string }> = {
+  explore: { title: 'SS JOURNEY', subtitle: 'Explore · Book · Travel' },
+  flights: { title: 'Flights Search', subtitle: 'Live Airline Rates' },
+  hotels: { title: 'Hotels & Stays', subtitle: 'Verified Luxury Stays' },
+  trains: { title: 'Trains (IRCTC)', subtitle: 'Authorized Train Tickets' },
+  buses: { title: 'Bus Booking', subtitle: 'Intercity AC Sleepers' },
+  cabs: { title: 'Cabs & Transfers', subtitle: 'Airport & City Travel' },
+  packages: { title: 'Holiday Packages', subtitle: 'Handcrafted Itineraries' },
+  checkout: { title: 'Secure Checkout', subtitle: 'Confirm & Pay' },
+  trips: { title: 'My Trips', subtitle: 'Bookings & Boarding Passes' },
+  profile: { title: 'My Account', subtitle: 'Profile & Settings' },
+};
+
 export const Header: React.FC<HeaderProps> = ({
   currentScreen,
   onNavigateBack,
@@ -24,7 +37,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        {/* Left: Back Button (if canGoBack) + Hamburger Icon + SS Journey Logo */}
+        {/* Left: Back Button (when canGoBack) OR Hamburger Menu Icon (on explore/root) */}
         <View style={styles.leftGroup}>
           {canGoBack && onNavigateBack ? (
             <TouchableOpacity
@@ -32,36 +45,50 @@ export const Header: React.FC<HeaderProps> = ({
               style={styles.backButton}
               activeOpacity={0.7}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel="Go back"
             >
-              <MaterialIcons name="arrow-back" size={22} color="#1b1c1c" />
+              <MaterialIcons name="arrow-back" size={22} color="#005cab" />
             </TouchableOpacity>
-          ) : null}
+          ) : (
+            <TouchableOpacity
+              onPress={onPressHamburger}
+              style={styles.hamburgerButton}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel="Open menu"
+            >
+              <MaterialIcons name="menu" size={26} color="#005cab" />
+            </TouchableOpacity>
+          )}
 
-          {/* Hamburger Menu Icon */}
-          <TouchableOpacity
-            onPress={onPressHamburger}
-            style={styles.hamburgerButton}
-            activeOpacity={0.7}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <MaterialIcons name="menu" size={26} color="#005cab" />
-          </TouchableOpacity>
-
-          {/* Original SS Journey Logo Branding */}
+          {/* Screen Title or Original SS Journey Branding */}
           <View style={styles.brandRow}>
-            <View style={styles.logoWrapper}>
-              <Image
-                source={require('../../assets/ss-journey-emblem.png')}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
-            </View>
-            <View style={styles.titleColumn}>
-              <Text style={styles.brandTitle}>SS JOURNEY</Text>
-              <Text style={styles.brandSubtitle} numberOfLines={1}>
-                Explore · Book · Travel
-              </Text>
-            </View>
+            {canGoBack ? (
+              <View style={styles.titleColumn}>
+                <Text style={styles.brandTitle} numberOfLines={1}>
+                  {SCREEN_TITLES[currentScreen]?.title || 'SS JOURNEY'}
+                </Text>
+                <Text style={styles.brandSubtitle} numberOfLines={1}>
+                  {SCREEN_TITLES[currentScreen]?.subtitle || 'Explore · Book · Travel'}
+                </Text>
+              </View>
+            ) : (
+              <>
+                <View style={styles.logoWrapper}>
+                  <Image
+                    source={require('../../assets/ss-journey-emblem.png')}
+                    style={styles.logoImage}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={styles.titleColumn}>
+                  <Text style={styles.brandTitle}>SS JOURNEY</Text>
+                  <Text style={styles.brandSubtitle} numberOfLines={1}>
+                    Explore · Book · Travel
+                  </Text>
+                </View>
+              </>
+            )}
           </View>
         </View>
 

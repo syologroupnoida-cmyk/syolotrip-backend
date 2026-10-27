@@ -85,10 +85,26 @@ export const Header: React.FC<HeaderProps> = ({
     >
       <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-[70px]">
+          {/* Mobile Back to Explore Button when on inner section */}
+          {activeScreen !== 'explore' && (
+            <button
+              type="button"
+              onClick={() => setActiveScreen('explore')}
+              aria-label="Back to Explore"
+              className={`md:hidden flex items-center justify-center w-8 h-8 rounded-full mr-1.5 transition cursor-pointer shrink-0 ${
+                isTransparent 
+                  ? 'bg-white/20 text-white hover:bg-white/30' 
+                  : 'bg-blue-50 text-[#008cff] hover:bg-blue-100'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+            </button>
+          )}
+
           {/* ── ORIGINAL SS JOURNEY BRAND LOGO ── */}
           <div 
             onClick={() => setActiveScreen('explore')}
-            className="flex items-center space-x-3 cursor-pointer group select-none shrink-0"
+            className="flex items-center space-x-2 sm:space-x-3 cursor-pointer group select-none shrink-0"
           >
             <div className="relative flex items-center">
               <img 
