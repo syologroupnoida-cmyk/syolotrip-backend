@@ -113,7 +113,7 @@ export const PlatformSettings: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
             <a
-              href="http://localhost:5173/"
+              href={import.meta.env.VITE_WEB_URL || "/"}
               target="_blank"
               rel="noopener noreferrer"
               className="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-brand-500 transition group"
@@ -123,7 +123,7 @@ export const PlatformSettings: React.FC = () => {
                 <ExternalLink className="w-3.5 h-3.5 text-slate-500 group-hover:text-brand-400" />
               </div>
               <p className="text-[11px] text-slate-400">SS Journey desktop booking experience.</p>
-              <span className="inline-block mt-2 font-mono text-[10px] text-brand-400">http://localhost:5173/</span>
+              <span className="inline-block mt-2 font-mono text-[10px] text-brand-400">Consumer Portal ↗</span>
             </a>
 
             <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">

@@ -60,15 +60,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleSidebar, isSid
       <div className="flex items-center gap-3 sm:gap-4">
         <div className="hidden md:flex items-center gap-2">
           <a
-            href="http://localhost:5173/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600/10 hover:bg-brand-600/20 text-brand-600 dark:text-brand-300 text-xs font-semibold border border-brand-500/30 transition"
-          >
-            <span>🌐 Open Web App</span>
-            <span className="text-[10px] text-brand-500">(:5173)</span>
-          </a>
-          <a
             href="http://localhost:8000/docs"
             target="_blank"
             rel="noopener noreferrer"

@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   LayoutDashboard, Plane, Hotel, Bus, Train, Car, Compass, 
-  Receipt, Users, Tag, FileText, Settings, ShieldAlert, Globe 
+  Receipt, Users, Tag, FileText, Settings, ShieldAlert 
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -126,25 +126,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
             );
           })}
         </nav>
-        {/* Quick link to consumer web app */}
-        <div className={`pt-2 border-t ${theme === 'dark' ? 'border-slate-800' : 'border-slate-200'}`}>
-          <a
-            href="http://localhost:5173/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
-              theme === 'dark'
-                ? 'text-slate-300 bg-slate-900 hover:bg-slate-800'
-                : 'text-slate-700 bg-slate-100 hover:bg-slate-200'
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <Globe className="w-4 h-4 text-brand-500" />
-              <span>Consumer Web App</span>
-            </span>
-            <span className="text-[10px] text-slate-500">5173 ↗</span>
-          </a>
-        </div>
       </div>
 
       {/* Safety Notice Card */}

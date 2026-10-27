@@ -258,16 +258,6 @@ export const AdminLoginPage: React.FC = () => {
             </p>
           </div>
         </div>
-
-        {/* Back Link to Customer Web App */}
-        <div className="text-center mt-6">
-          <a
-            href="http://localhost:5173/"
-            className="text-xs text-slate-400 hover:text-slate-200 transition underline underline-offset-4"
-          >
-            ← Return to SS Journey Customer Portal (:5173)
-          </a>
-        </div>
       </div>
     </div>
   );
