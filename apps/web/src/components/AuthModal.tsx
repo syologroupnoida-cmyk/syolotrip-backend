@@ -90,12 +90,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
           <div className="flex items-center gap-3">
             <img 
-              src="/assets/ss-journey-emblem.png" 
-              alt="SS Journey" 
-              className="h-10 w-auto object-contain drop-shadow-sm"
+              src="/assets/syolo-trips-logo.png" 
+              alt="Syolo Trips" 
+              className="h-10 w-auto object-contain drop-shadow-sm rounded-lg"
             />
             <div>
-              <h3 className="text-headline-sm font-bold text-white">SS Journey Account</h3>
+              <h3 className="text-headline-sm font-bold text-white">Syolo Trips Account</h3>
               <p className="text-body-sm text-blue-200">
                 {mode === 'login' ? 'Sign in to access your bookings' : 'Create your traveler profile'}
               </p>
@@ -241,7 +241,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 <span>Authenticating...</span>
               </>
             ) : (
-              <span>{mode === 'login' ? 'Sign In to SS Journey' : 'Create Free Account'}</span>
+              <span>{mode === 'login' ? 'Sign In to Syolo Trips' : 'Create Free Account'}</span>
             )}
           </button>
 

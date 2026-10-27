@@ -87,8 +87,8 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
                     resizeMode="contain"
                   />
                   <View style={{ marginLeft: 8 }}>
-                    <Text style={styles.brandTitle}>SS JOURNEY</Text>
-                    <Text style={styles.brandSubtitle}>Explore · Book · Travel</Text>
+                    <Text style={styles.brandTitle}>SYOLO TRIPS</Text>
+                    <Text style={styles.brandSubtitle}>Explore Beyond!</Text>
                   </View>
                 </View>
 

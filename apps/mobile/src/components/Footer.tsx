@@ -26,12 +26,12 @@ export const Footer: React.FC = () => {
         />
         <View style={styles.brandMeta}>
           <View style={styles.titleRow}>
-            <Text style={styles.brandTitle}>SS JOURNEY</Text>
+            <Text style={styles.brandTitle}>SYOLO TRIPS</Text>
             <View style={styles.globalBadge}>
               <Text style={styles.globalBadgeText}>GLOBAL</Text>
             </View>
           </View>
-          <Text style={styles.tagline}>Explore · Book · Travel · More</Text>
+          <Text style={styles.tagline}>Explore Beyond!</Text>
         </View>
       </View>
 
@@ -114,7 +114,7 @@ export const Footer: React.FC = () => {
       {/* ── 4. COPYRIGHT ── */}
       <View style={styles.bottomBar}>
         <Text style={styles.copyrightText}>
-          © {new Date().getFullYear()} SS Journey. All rights reserved.
+          © {new Date().getFullYear()} Syolo Trips. All rights reserved.
         </Text>
         <Text style={styles.verifiedText}>100% Verified Travel Platform</Text>
       </View>

@@ -82,9 +82,9 @@ export const Header: React.FC<HeaderProps> = ({
                   />
                 </View>
                 <View style={styles.titleColumn}>
-                  <Text style={styles.brandTitle}>SS JOURNEY</Text>
+                  <Text style={styles.brandTitle}>SYOLO TRIPS</Text>
                   <Text style={styles.brandSubtitle} numberOfLines={1}>
-                    Explore · Book · Travel
+                    Explore Beyond!
                   </Text>
                 </View>
               </>

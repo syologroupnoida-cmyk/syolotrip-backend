@@ -14,19 +14,18 @@ export const Footer: React.FC<FooterProps> = () => {
           {/* ── 1. LOGO & BRANDING ── */}
           <div className="flex items-center space-x-3.5">
             <img 
-              src="/assets/ss-journey-emblem.png" 
-              alt="SS Journey Logo" 
-              className="h-11 w-auto object-contain" 
+              src="/assets/syolo-trips-logo.png" 
+              alt="Syolo Trips Logo" 
+              className="h-11 w-auto object-contain rounded-lg" 
             />
             <div>
-              <div className="flex items-center space-x-2">
-                <h3 className="text-xl font-black text-white tracking-tight">SS JOURNEY</h3>
-                <span className="text-[9px] text-[#f28c1c] tracking-[0.2em] font-black uppercase bg-[#f28c1c]/15 px-1.5 py-0.2 rounded border border-[#f28c1c]/30">
-                  GLOBAL
-                </span>
+              <div className="flex items-center space-x-1.5">
+                <h3 className="text-xl font-black text-white tracking-tight">
+                  <span className="text-[#00aeef]">SYOLO</span> <span className="text-[#ff9900]">TRIPS</span>
+                </h3>
               </div>
               <p className="text-[11px] text-blue-200/80 font-medium tracking-wide">
-                Explore · Book · Travel · More
+                Explore Beyond!
               </p>
             </div>
           </div>
@@ -113,19 +112,14 @@ export const Footer: React.FC<FooterProps> = () => {
 
         {/* ── 4. COPYRIGHT ── */}
         <div className="mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-[11px] text-gray-500 gap-2 text-center sm:text-left">
-          <p>© {new Date().getFullYear()} SS Journey (SuccessSign Journey). All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Syolo Trips. All rights reserved.</p>
           <div className="flex items-center gap-3 text-gray-400">
             <span>100% Verified Travel Platform</span>
             <span>•</span>
-            <a
-              href="http://localhost:5174/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#008cff] hover:text-white font-semibold flex items-center gap-1.5 transition-colors"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-brand-400 text-amber-400" />
-              <span>Admin Portal (Port 5174)</span>
-            </a>
+            <span className="text-[#008cff] font-semibold flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+              <span>Secure Transactions</span>
+            </span>
           </div>
         </div>
       </div>

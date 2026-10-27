@@ -107,11 +107,11 @@ export const AdminLoginPage: React.FC = () => {
       <div className="w-full max-w-md relative z-10">
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-600 shadow-lg shadow-brand-500/20 mb-4 border border-brand-400/30">
-            <Compass className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-lg shadow-brand-500/20 mb-4 border border-brand-400/30 p-1.5">
+            <img src="/assets/syolo-trips-logo.png" alt="Syolo Trips" className="w-full h-full object-contain rounded-xl" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center justify-center gap-2">
-            <span>SS Journey</span>
+            <span><span className="text-[#00aeef]">SYOLO</span> <span className="text-[#ff9900]">TRIPS</span></span>
             <span className="text-xs uppercase font-extrabold px-2 py-0.5 rounded-md bg-brand-500/20 text-brand-400 border border-brand-500/30 tracking-wider">
               Admin
             </span>

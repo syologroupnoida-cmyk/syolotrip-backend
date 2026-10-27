@@ -101,30 +101,30 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* ── ORIGINAL SS JOURNEY BRAND LOGO ── */}
+          {/* ── SYOLO TRIPS BRAND LOGO ── */}
           <div 
             onClick={() => setActiveScreen('explore')}
             className="flex items-center space-x-2 sm:space-x-3 cursor-pointer group select-none shrink-0"
           >
             <div className="relative flex items-center">
               <img 
-                src="/assets/ss-journey-emblem.png" 
-                alt="SS Journey Logo" 
-                className="h-10 sm:h-11 w-auto object-contain group-hover:scale-105 transition-transform duration-300"
+                src="/assets/syolo-trips-logo.png" 
+                alt="Syolo Trips Logo" 
+                className="h-10 sm:h-11 w-auto object-contain group-hover:scale-105 transition-transform duration-300 rounded-lg"
               />
             </div>
             <div className="flex flex-col">
-              <div className="flex items-center space-x-1.5">
+              <div className="flex items-center space-x-1">
                 <span className={`text-[18px] sm:text-[21px] font-black tracking-tight leading-tight block transition-colors ${
                   isTransparent ? 'text-white' : 'text-[#071426]'
                 }`}>
-                  SS JOURNEY
+                  <span className="text-[#00aeef]">SYOLO</span> <span className="text-[#ff9900]">TRIPS</span>
                 </span>
               </div>
               <span className={`text-[8.5px] sm:text-[9.5px] uppercase tracking-[0.14em] font-bold -mt-0.5 transition-colors ${
-                isTransparent ? 'text-blue-100/90' : 'text-[#008cff]'
+                isTransparent ? 'text-blue-100/90' : 'text-[#00aeef]'
               }`}>
-                Explore · Book · Travel · More
+                Explore Beyond!
               </span>
             </div>
           </div>
@@ -456,16 +456,16 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-slate-50">
                 <div className="flex items-center space-x-2.5">
                   <img 
-                    src="/assets/ss-journey-emblem.png" 
-                    alt="SS Journey" 
-                    className="h-8 w-auto object-contain"
+                    src="/assets/syolo-trips-logo.png" 
+                    alt="Syolo Trips" 
+                    className="h-8 w-auto object-contain rounded"
                   />
                   <div>
                     <span className="font-black text-sm tracking-tight text-[#071426] block">
-                      SS JOURNEY
+                      <span className="text-[#00aeef]">SYOLO</span> <span className="text-[#ff9900]">TRIPS</span>
                     </span>
-                    <span className="text-[9px] uppercase tracking-wider font-bold text-[#008cff]">
-                      Travel Platform
+                    <span className="text-[9px] uppercase tracking-wider font-bold text-[#00aeef]">
+                      Explore Beyond!
                     </span>
                   </div>
                 </div>
