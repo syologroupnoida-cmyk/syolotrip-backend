@@ -23,6 +23,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY . /app/backend/
 COPY alembic.ini /app/alembic.ini
 
+# Ensure migrations directory is accessible at /app/migrations for alembic.ini
+RUN ln -s /app/backend/migrations /app/migrations
+
 # Expose port (default Render / standard web port 8000)
 EXPOSE 8000
 
@@ -31,4 +34,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/healthz || exit 1
 
 # Production run command: runs alembic migration then starts uvicorn
-CMD ["sh", "-c", "alembic upgrade head && python -m backend.seed && uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "alembic -c /app/backend/alembic.ini upgrade head && python -m backend.seed && uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+

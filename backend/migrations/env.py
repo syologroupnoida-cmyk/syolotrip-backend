@@ -3,10 +3,16 @@ import os
 import sys
 from logging.config import fileConfig
 
-# Ensure repository root is on sys.path so 'backend.app' is always importable
-repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-if repo_root not in sys.path:
-    sys.path.insert(0, repo_root)
+# Ensure repository root and /app are on sys.path so 'backend.app' is always importable
+candidates = [
+    os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..")),
+    "/app",
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..")),
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")),
+]
+for candidate in candidates:
+    if os.path.exists(candidate) and candidate not in sys.path:
+        sys.path.insert(0, candidate)
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
