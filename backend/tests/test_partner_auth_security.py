@@ -275,3 +275,102 @@ async def test_partner_data_isolation(
         json={"name": "Tampered Property Name"},
     )
     assert update_res.status_code == 404  # Scoped query returns 404 for unowned properties
+
+
+@pytest.mark.asyncio
+async def test_failed_second_onboarding_step_handled_safely_and_retriable(
+    async_client: AsyncClient,
+):
+    """Verifies that if account registration succeeds but the second business onboarding
+    step fails (e.g. invalid payload), the partial state is safe:
+    1. The account exists in the database.
+    2. The user cannot access protected partner operations yet.
+    3. The user can log in with their credentials.
+    4. The user can complete their profile onboarding upon login without duplicate account collision.
+    """
+    email = "partial_flow_tester@example.com"
+    pwd = "ValidPassword123!"
+
+    # Step 1: Account registration succeeds
+    reg_res = await async_client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": email,
+            "full_name": "Partial Flow Tester",
+            "password": pwd,
+        },
+    )
+    assert reg_res.status_code == 201
+    temp_token = reg_res.json()["data"]["tokens"]["accessToken"]
+
+    # Step 2: Second onboarding step fails due to invalid/empty business name
+    fail_onboard = await async_client.post(
+        "/api/v1/partner/register",
+        headers={"Authorization": f"Bearer {temp_token}"},
+        json={
+            "business_name": "",  # Invalid: min_length=2 required
+            "business_type": "HOTELIER",
+            "city": "Shimla",
+        },
+    )
+    assert fail_onboard.status_code == 422
+
+    # Step 3: Verify the user can log in normally with their credentials
+    login_res = await async_client.post(
+        "/api/v1/auth/login",
+        json={"email": email, "password": pwd},
+    )
+    assert login_res.status_code == 200
+    login_token = login_res.json()["data"]["tokens"]["accessToken"]
+
+    # Step 4: Profile does not exist yet (partial state detected cleanly)
+    profile_check = await async_client.get(
+        "/api/v1/partner/profile",
+        headers={"Authorization": f"Bearer {login_token}"},
+    )
+    # Since profile was never created, partner profile check fails
+    assert profile_check.status_code in [403, 404]
+
+    # Step 5: Safe recovery - user successfully completes onboarding with valid data
+    recover_res = await async_client.post(
+        "/api/v1/partner/register",
+        headers={"Authorization": f"Bearer {login_token}"},
+        json={
+            "business_name": "Shimla Pine Retreat",
+            "business_type": "HOTELIER",
+            "city": "Shimla",
+        },
+    )
+    assert recover_res.status_code == 201
+    assert recover_res.json()["data"]["business_name"] == "Shimla Pine Retreat"
+
+
+@pytest.mark.asyncio
+async def test_duplicate_registration_prevented(async_client: AsyncClient):
+    """Verifies that registering an existing email returns 400 and prevents duplicate accounts."""
+    email = "duplicate_guard_test@example.com"
+    pwd = "Password123!"
+
+    # First registration
+    first_res = await async_client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": email,
+            "full_name": "First Registrant",
+            "password": pwd,
+        },
+    )
+    assert first_res.status_code == 201
+
+    # Second registration with same email
+    second_res = await async_client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": email,
+            "full_name": "Second Registrant",
+            "password": pwd,
+        },
+    )
+    assert second_res.status_code == 400
+    assert "already registered" in second_res.json()["detail"].lower()
+

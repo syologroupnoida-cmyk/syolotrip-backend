@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider } from './context/ThemeContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { AdminAuthProvider, useAdminAuth } from './context/AdminAuthContext';
 import { AdminSidebar } from './components/AdminSidebar';
 import { AdminHeader } from './components/AdminHeader';
@@ -31,6 +31,7 @@ const queryClient = new QueryClient({
 
 const AdminMainContent: React.FC = () => {
   const { isAuthenticated } = useAdminAuth();
+  const { theme } = useTheme();
   const [currentTab, setCurrentTab] = useState('dashboard');
 
   if (!isAuthenticated) {
@@ -64,7 +65,11 @@ const AdminMainContent: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-900 text-slate-100 font-sans transition-colors duration-200">
+    <div
+      className={`flex min-h-screen font-sans transition-colors duration-200 ${
+        theme === 'dark' ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-900'
+      }`}
+    >
       <AdminSidebar currentTab={currentTab} setCurrentTab={setCurrentTab} />
       <div className="flex-1 flex flex-col min-w-0">
         <AdminHeader />

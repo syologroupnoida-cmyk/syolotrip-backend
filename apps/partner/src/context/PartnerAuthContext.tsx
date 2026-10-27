@@ -24,18 +24,29 @@ interface PartnerAuthContextType {
     password: string;
     phone?: string;
   }) => Promise<void>;
-  registerPartnerFlow: (payload: {
-    email: string;
-    full_name: string;
-    password: string;
-    phone?: string;
-    business_name: string;
-    business_type: string;
-    business_phone?: string;
-    city: string;
-    address?: string;
-    tax_id?: string;
-  }) => Promise<string>;
+  registerPartnerFlow: (
+    payload: {
+      email: string;
+      full_name: string;
+      password: string;
+      phone?: string;
+      business_name: string;
+      business_type: string;
+      business_phone?: string;
+      city: string;
+      address?: string;
+      tax_id?: string;
+    },
+    onStepProgress?: (step: 'ACCOUNT' | 'PROFILE') => void
+  ) => Promise<{
+    success: boolean;
+    message: string;
+    partialState?: {
+      accountCreated: boolean;
+      email: string;
+      error: string;
+    };
+  }>;
   registerProfile: (payload: {
     business_name: string;
     business_type: string;
@@ -57,7 +68,7 @@ const PartnerAuthContext = createContext<PartnerAuthContextType>({
   status: 'PENDING_VERIFICATION',
   login: async () => {},
   register: async () => {},
-  registerPartnerFlow: async () => '',
+  registerPartnerFlow: async () => ({ success: false, message: '' }),
   registerProfile: async () => {},
   refreshProfile: async () => {},
   logout: async () => {},
@@ -123,21 +134,23 @@ export const PartnerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   };
 
-  const registerPartnerFlow = async (payload: {
-    email: string;
-    full_name: string;
-    password: string;
-    phone?: string;
-    business_name: string;
-    business_type: string;
-    business_phone?: string;
-    city: string;
-    address?: string;
-    tax_id?: string;
-  }): Promise<string> => {
+  const registerPartnerFlow = async (
+    payload: {
+      email: string;
+      full_name: string;
+      password: string;
+      phone?: string;
+      business_name: string;
+      business_type: string;
+      business_phone?: string;
+      city: string;
+      address?: string;
+      tax_id?: string;
+    },
+    onStepProgress?: (step: 'ACCOUNT' | 'PROFILE') => void
+  ) => {
     try {
-      const res = await registerPartnerFlowApi(payload);
-      return res.message;
+      return await registerPartnerFlowApi(payload, onStepProgress);
     } finally {
       await setStoredToken(null);
       setUser(null);

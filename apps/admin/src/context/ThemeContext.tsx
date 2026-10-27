@@ -21,12 +21,19 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     const root = document.documentElement;
+    root.setAttribute('data-theme', theme);
+    document.body.setAttribute('data-theme', theme);
+
     if (theme === 'dark') {
       root.classList.add('dark');
       root.classList.remove('light');
+      document.body.classList.add('dark');
+      document.body.classList.remove('light');
     } else {
       root.classList.add('light');
       root.classList.remove('dark');
+      document.body.classList.add('light');
+      document.body.classList.remove('dark');
     }
     try {
       localStorage.setItem('admin_theme', theme);

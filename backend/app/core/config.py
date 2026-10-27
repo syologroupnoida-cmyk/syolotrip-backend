@@ -47,6 +47,12 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5174",
         "http://localhost:8081",  # Customer mobile Expo
         "http://127.0.0.1:8081",
+        "http://localhost:8082",  # Partner app Expo
+        "http://127.0.0.1:8082",
+        "http://localhost:8083",
+        "http://127.0.0.1:8083",
+        "http://localhost:19000",
+        "http://localhost:19006",
     ]
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
