@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getMyTripsApi, cancelBookingApi, getCurrentUserApi, UserProfile } from '../services/api';
+import { useCurrency } from '../context/CurrencyContext';
 
 interface MyTripsPageProps {
   onNavigate: (screen: 'explore' | 'flights' | 'hotels' | 'checkout' | 'trips') => void;
@@ -7,6 +8,7 @@ interface MyTripsPageProps {
 }
 
 export const MyTripsPage: React.FC<MyTripsPageProps> = ({ onNavigate, onOpenAuth }) => {
+  const { formatPrice } = useCurrency();
   const [trips, setTrips] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -181,7 +183,7 @@ export const MyTripsPage: React.FC<MyTripsPageProps> = ({ onNavigate, onOpenAuth
                   <div className="flex items-center gap-3">
                     {getStatusBadge(booking.status)}
                     <span className="text-headline-sm font-extrabold text-on-surface tabular-nums">
-                      ₹{Number(booking.total_amount ?? booking.total_price ?? 0).toLocaleString('en-IN')}
+                      {formatPrice(Number(booking.total_amount ?? booking.total_price ?? 0))}
                     </span>
                   </div>
                 </div>
@@ -202,7 +204,7 @@ export const MyTripsPage: React.FC<MyTripsPageProps> = ({ onNavigate, onOpenAuth
                             <p className="text-body-sm text-on-surface-variant">{item.subtitle}</p>
                           )}
                           <p className="text-label-sm text-on-surface-variant mt-1">
-                            Type: <strong className="text-on-surface">{item.item_type}</strong> · Quantity: {item.quantity} · Price: ₹{Number(item.total_price).toLocaleString('en-IN')}
+                            Type: <strong className="text-on-surface">{item.item_type}</strong> · Quantity: {item.quantity} · Price: {formatPrice(Number(item.total_price))}
                           </p>
                         </div>
                       </div>
@@ -316,7 +318,7 @@ export const MyTripsPage: React.FC<MyTripsPageProps> = ({ onNavigate, onOpenAuth
                         <div className="font-extrabold text-sm text-slate-900 dark:text-white">{item.title}</div>
                         {item.subtitle && <div className="text-slate-500 text-xs">{item.subtitle}</div>}
                       </div>
-                      <span className="font-black text-sm text-primary">₹{Number(item.total_price).toLocaleString('en-IN')}</span>
+                      <span className="font-black text-sm text-primary">{formatPrice(Number(item.total_price))}</span>
                     </div>
                     <div className="flex flex-wrap gap-4 text-[11px] text-slate-500 pt-1 border-t border-slate-200 dark:border-slate-800">
                       <span>Type: <strong>{item.item_type}</strong></span>
@@ -357,21 +359,21 @@ export const MyTripsPage: React.FC<MyTripsPageProps> = ({ onNavigate, onOpenAuth
                   <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400">Payment Summary</h4>
                   <div className="flex justify-between text-xs">
                     <span className="text-slate-500">Base Amount:</span>
-                    <span>₹{Number(selectedTicket.base_amount || 0).toLocaleString('en-IN')}</span>
+                    <span>{formatPrice(Number(selectedTicket.base_amount || 0))}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-slate-500">Taxes &amp; Fees:</span>
-                    <span>₹{Number(selectedTicket.taxes_amount || 0).toLocaleString('en-IN')}</span>
+                    <span>{formatPrice(Number(selectedTicket.taxes_amount || 0))}</span>
                   </div>
                   {Number(selectedTicket.discount_amount || 0) > 0 && (
                     <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
                       <span>Discount (Coupon):</span>
-                      <span>-₹{Number(selectedTicket.discount_amount).toLocaleString('en-IN')}</span>
+                      <span>-{formatPrice(Number(selectedTicket.discount_amount))}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm font-black pt-1.5 border-t border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
                     <span>Total Paid:</span>
-                    <span className="text-primary font-mono">₹{Number(selectedTicket.total_amount).toLocaleString('en-IN')}</span>
+                    <span className="text-primary font-mono">{formatPrice(Number(selectedTicket.total_amount))}</span>
                   </div>
                 </div>
               </div>

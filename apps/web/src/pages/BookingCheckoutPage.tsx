@@ -15,6 +15,7 @@ import {
   validateCouponApi,
   CouponValidateResult,
 } from '../services/api';
+import { useCurrency } from '../context/CurrencyContext';
 
 export interface WebCheckoutItem {
   serviceType: 'FLIGHT' | 'HOTEL' | 'TRAIN' | 'BUS' | 'CAB' | 'PACKAGE' | 'ACTIVITY' | 'VISA' | 'INSURANCE';
@@ -110,6 +111,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
   bookingItem,
   currentUser,
 }) => {
+  const { formatPrice, currency } = useCurrency();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'card' | 'paypal' | 'apple'>('razorpay');
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -518,7 +520,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-label-md text-on-surface-variant">Total Paid ({confirmedBooking?.paymentMethodUsed || 'Razorpay Test Mode'})</span>
-              <span className="text-headline-sm font-bold text-primary tabular-nums">₹{(confirmedBooking?.total || grandTotal).toLocaleString('en-IN')}</span>
+              <span className="text-headline-sm font-bold text-primary tabular-nums">{formatPrice(confirmedBooking?.total || grandTotal)}</span>
             </div>
           </div>
 
@@ -605,7 +607,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                         </div>
                         <div className="sm:text-right">
                           <span className="text-headline-md text-primary font-bold tabular-nums">
-                            ₹{bookingItem.pricing.baseAmount.toLocaleString('en-IN')}
+                            {formatPrice(bookingItem.pricing.baseAmount)}
                           </span>
                           <span className="text-body-sm text-on-surface-variant block">Base Fare</span>
                         </div>
@@ -1105,22 +1107,22 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                     </div>
                     <div className="flex justify-between text-body-sm text-on-surface-variant">
                       <span>Base Fare / Price</span>
-                      <span className="tabular-nums">₹{customBase.toLocaleString('en-IN')}</span>
+                      <span className="tabular-nums">{formatPrice(customBase)}</span>
                     </div>
                     <div className="flex justify-between text-body-sm text-on-surface-variant">
-                      <span>Taxes & GST (18%)</span>
-                      <span className="tabular-nums">₹{customTaxes.toLocaleString('en-IN')}</span>
+                      <span>Taxes &amp; GST (18%)</span>
+                      <span className="tabular-nums">{formatPrice(customTaxes)}</span>
                     </div>
                     {customDiscount > 0 && (
                       <div className="flex justify-between text-body-sm text-tertiary">
                         <span>Promotional Discount</span>
-                        <span className="tabular-nums">-₹{customDiscount.toLocaleString('en-IN')}</span>
+                        <span className="tabular-nums">-{formatPrice(customDiscount)}</span>
                       </div>
                     )}
                     {hasInsurance && (
                       <div className="flex justify-between text-body-sm text-on-surface-variant">
                         <span>Trip Protection</span>
-                        <span className="tabular-nums">₹{customInsurance.toLocaleString('en-IN')}</span>
+                        <span className="tabular-nums">{formatPrice(customInsurance)}</span>
                       </div>
                     )}
                   </div>
@@ -1134,11 +1136,11 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                       </div>
                       <div className="flex justify-between text-body-sm text-on-surface-variant">
                         <span>Base fare × 2</span>
-                        <span className="tabular-nums">₹{(defaultP.flightBase * 2).toLocaleString('en-IN')}</span>
+                        <span className="tabular-nums">{formatPrice(defaultP.flightBase * 2)}</span>
                       </div>
                       <div className="flex justify-between text-body-sm text-on-surface-variant">
-                        <span>Taxes & fees</span>
-                        <span className="tabular-nums">₹{(defaultP.flightTaxes * 2).toLocaleString('en-IN')}</span>
+                        <span>Taxes &amp; fees</span>
+                        <span className="tabular-nums">{formatPrice(defaultP.flightTaxes * 2)}</span>
                       </div>
                     </div>
 
@@ -1151,12 +1153,12 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                         <span>Hotel ({defaultP.hotelNights} nights)</span>
                       </div>
                       <div className="flex justify-between text-body-sm text-on-surface-variant">
-                        <span>₹{defaultP.hotelBase.toLocaleString('en-IN')}/night × {defaultP.hotelNights}</span>
-                        <span className="tabular-nums">₹{(defaultP.hotelBase * defaultP.hotelNights).toLocaleString('en-IN')}</span>
+                        <span>{formatPrice(defaultP.hotelBase)}/night × {defaultP.hotelNights}</span>
+                        <span className="tabular-nums">{formatPrice(defaultP.hotelBase * defaultP.hotelNights)}</span>
                       </div>
                       <div className="flex justify-between text-body-sm text-on-surface-variant">
-                        <span>Taxes & resort fee</span>
-                        <span className="tabular-nums">₹{defaultP.hotelTaxes.toLocaleString('en-IN')}</span>
+                        <span>Taxes &amp; resort fee</span>
+                        <span className="tabular-nums">{formatPrice(defaultP.hotelTaxes)}</span>
                       </div>
                     </div>
 
@@ -1168,7 +1170,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                         <span className="material-symbols-outlined text-[14px]">discount</span>
                         Bundle Discount
                       </span>
-                      <span className="text-tertiary font-bold tabular-nums">{defaultP.bundleDiscount < 0 ? '-' : ''}₹{Math.abs(defaultP.bundleDiscount).toLocaleString('en-IN')}</span>
+                      <span className="text-tertiary font-bold tabular-nums">{defaultP.bundleDiscount < 0 ? '-' : ''}{formatPrice(Math.abs(defaultP.bundleDiscount))}</span>
                     </div>
 
                     {/* Travel Insurance */}
@@ -1183,7 +1185,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                         <span className="material-symbols-outlined text-[14px]">health_and_safety</span>
                         Travel Insurance
                       </span>
-                      <span className="tabular-nums">₹{defaultP.insurance.toLocaleString('en-IN')}</span>
+                      <span className="tabular-nums">{formatPrice(defaultP.insurance)}</span>
                     </label>
                   </>
                 )}
@@ -1194,7 +1196,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                       <span className="material-symbols-outlined text-[14px]">local_offer</span>
                       Coupon ({appliedCoupon.code})
                     </span>
-                    <span className="tabular-nums">-₹{appliedCoupon.discount_amount.toLocaleString('en-IN')}</span>
+                    <span className="tabular-nums">-{formatPrice(appliedCoupon.discount_amount)}</span>
                   </div>
                 )}
 
@@ -1222,7 +1224,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                     <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs">
                       <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-bold">
                         <span className="material-symbols-outlined text-[16px]">verified</span>
-                        <span>Code <strong>{appliedCoupon.code}</strong> (-₹{appliedCoupon.discount_amount.toLocaleString('en-IN')})</span>
+                        <span>Code <strong>{appliedCoupon.code}</strong> (-{formatPrice(appliedCoupon.discount_amount)})</span>
                       </div>
                       <button
                         type="button"
@@ -1243,7 +1245,14 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                 {/* Grand Total */}
                 <div className="flex justify-between items-baseline">
                   <span className="text-headline-sm text-on-surface font-bold">Total</span>
-                  <span className="text-headline-lg text-on-surface font-bold tabular-nums">₹{grandTotal.toLocaleString('en-IN')}</span>
+                  <div className="text-right">
+                    <span className="text-headline-lg text-on-surface font-bold tabular-nums block">{formatPrice(grandTotal)}</span>
+                    {currency !== 'INR' && (
+                      <span className="text-[11px] text-on-surface-variant font-medium block">
+                        (approx. ₹{grandTotal.toLocaleString('en-IN')})
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="bg-tertiary/10 text-tertiary text-label-sm px-space-sm py-space-xs rounded-lg flex items-center gap-space-xs font-bold">
@@ -1251,7 +1260,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                   <span>
                     {isCustomItem
                       ? `Instant instant confirmation with 100% verified provider.`
-                      : `You save ₹${Math.abs(defaultP.bundleDiscount).toLocaleString('en-IN')} with this bundle!`}
+                      : `You save ${formatPrice(Math.abs(defaultP.bundleDiscount))} with this bundle!`}
                   </span>
                 </div>
 
@@ -1323,7 +1332,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                         <span>
                           {createdBooking
                             ? `Retry Demo Payment · Ref: ${createdBooking.booking_reference}`
-                            : `Confirm & Pay ₹${grandTotal.toLocaleString('en-IN')}`}
+                            : `Confirm & Pay ${formatPrice(grandTotal)}`}
                         </span>
                       </>
                     )}
@@ -1361,7 +1370,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface-container-lowest/95 backdrop-blur-md border-t border-outline-variant/30 px-4 py-3 shadow-2xl flex items-center justify-between gap-3">
         <div className="flex flex-col">
           <span className="text-[10px] uppercase font-bold text-on-surface-variant tracking-wider">Grand Total</span>
-          <span className="text-xl font-black text-primary tabular-nums">₹{grandTotal.toLocaleString('en-IN')}</span>
+          <span className="text-xl font-black text-primary tabular-nums">{formatPrice(grandTotal)}</span>
         </div>
         {step < 3 ? (
           <button
@@ -1392,7 +1401,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
             ) : (
               <>
                 <span className="material-symbols-outlined text-[18px]">lock</span>
-                <span>Pay ₹{grandTotal.toLocaleString('en-IN')}</span>
+                <span>Pay {formatPrice(grandTotal)}</span>
               </>
             )}
           </button>

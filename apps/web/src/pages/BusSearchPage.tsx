@@ -510,11 +510,11 @@ export const BusSearchPage: React.FC<BusSearchPageProps> = ({
                       {/* Price Section */}
                       <div className="text-right">
                         <div className="flex items-baseline space-x-1.5 justify-end">
-                          <span className="text-xs text-gray-400 line-through font-normal">₹{bus.originalPrice}</span>
-                          <span className="text-2xl font-black text-gray-900">₹{bus.price.toLocaleString('en-IN')}</span>
+                          <span className="text-xs text-gray-400 line-through font-normal">{formatPrice(bus.originalPrice)}</span>
+                          <span className="text-2xl font-black text-gray-900">{formatPrice(bus.price)}</span>
                         </div>
                         <span className="text-[10px] font-extrabold text-[#1A7F37] bg-emerald-50 px-1.5 py-0.2 rounded inline-block">
-                          Save ₹{bus.originalPrice - bus.price} with SSJBUS
+                          Save {formatPrice(bus.originalPrice - bus.price)} with SSJBUS
                         </span>
                       </div>
                     </div>
@@ -625,7 +625,7 @@ export const BusSearchPage: React.FC<BusSearchPageProps> = ({
                               <span className="material-symbols-outlined text-gray-400 group-hover:text-[#005cab] text-lg block mb-0.5">single_bed</span>
                               <span className="font-black text-xs text-gray-900 group-hover:text-[#005cab] block">{seat.no}</span>
                               <span className="text-[9px] text-gray-500 block">{seat.type}</span>
-                              <span className="text-[10px] font-extrabold text-[#1A7F37] block mt-1">₹{seat.price}</span>
+                              <span className="text-[10px] font-extrabold text-[#1A7F37] block mt-1">{formatPrice(seat.price)}</span>
                             </button>
                           ))}
                         </div>

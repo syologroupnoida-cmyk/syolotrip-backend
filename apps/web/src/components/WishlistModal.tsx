@@ -1,5 +1,6 @@
 import React from 'react';
 import { useWishlist, WishlistItem } from '../context/WishlistContext';
+import { useCurrency } from '../context/CurrencyContext';
 import { WebCheckoutItem } from '../pages/BookingCheckoutPage';
 
 interface WishlistModalProps {
@@ -16,6 +17,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
   onExplore,
 }) => {
   const { wishlist, removeFromWishlist, clearWishlist, wishlistCount } = useWishlist();
+  const { formatPrice } = useCurrency();
 
   if (!isOpen) return null;
 
@@ -159,7 +161,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
                       <div>
                         <span className="text-[10px] text-gray-400 font-medium">Starts from</span>
                         <p className="text-xs font-black text-[#071426]">
-                          ₹{item.price.toLocaleString('en-IN')}
+                          {formatPrice(item.price)}
                         </p>
                       </div>
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, MyBizContext } from '../services/api';
-import { useCurrency, CurrencyCode } from '../context/CurrencyContext';
+import { useCurrency } from '../context/CurrencyContext';
 
 export type ScreenType = 'explore' | 'flights' | 'hotels' | 'trains' | 'buses' | 'cabs' | 'packages' | 'checkout' | 'trips' | 'list-property' | 'mybiz' | 'mybiz-dashboard';
 

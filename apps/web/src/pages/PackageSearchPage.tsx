@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { searchPackagesApi, PackageApiResponse } from '../services/api';
 import { ScreenType } from '../components/Header';
+import { useCurrency } from '../context/CurrencyContext';
 import { WebCheckoutItem } from './BookingCheckoutPage';
 
 interface PackageSearchPageProps {
@@ -75,6 +76,7 @@ export const PackageSearchPage: React.FC<PackageSearchPageProps> = ({
   onInitiateCheckout,
   destinationCity = 'Tokyo, Japan',
 }) => {
+  const { formatPrice } = useCurrency();
   const [selectedTheme, setSelectedTheme] = useState<'ALL' | 'BEACH' | 'HILLS' | 'INTERNATIONAL' | 'HONEYMOON'>('ALL');
   const [flightsIncludedOnly, setFlightsIncludedOnly] = useState(false);
   const [maxPrice, setMaxPrice] = useState(250000);
@@ -279,7 +281,7 @@ export const PackageSearchPage: React.FC<PackageSearchPageProps> = ({
               <div className="mt-4 pt-3 border-t border-gray-100">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-xs font-bold text-gray-700">Max Budget / Person</span>
-                  <span className="text-xs font-extrabold text-[#005cab]">₹{maxPrice.toLocaleString('en-IN')}</span>
+                  <span className="text-xs font-extrabold text-[#005cab]">{formatPrice(maxPrice)}</span>
                 </div>
                 <input
                   type="range"
@@ -494,12 +496,12 @@ export const PackageSearchPage: React.FC<PackageSearchPageProps> = ({
                     <div className="pt-4 mt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <div className="flex items-baseline space-x-1.5">
-                          <span className="text-xs text-gray-400 line-through">₹{pkg.originalPrice.toLocaleString('en-IN')}</span>
-                          <span className="text-2xl font-black text-gray-900">₹{pkg.pricePerPerson.toLocaleString('en-IN')}</span>
+                          <span className="text-xs text-gray-400 line-through">{formatPrice(pkg.originalPrice)}</span>
+                          <span className="text-2xl font-black text-gray-900">{formatPrice(pkg.pricePerPerson)}</span>
                           <span className="text-[11px] text-gray-500 font-normal">/ person</span>
                         </div>
                         <span className="text-[10px] text-gray-500 block">
-                          No Cost EMI starts at <strong className="text-gray-800">₹{pkg.emiStartsAt}/mo</strong>
+                          No Cost EMI starts at <strong className="text-gray-800">{formatPrice(pkg.emiStartsAt)}/mo</strong>
                         </span>
                       </div>
 

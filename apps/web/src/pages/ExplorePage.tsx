@@ -3,6 +3,7 @@ import { WebCheckoutItem } from './BookingCheckoutPage';
 import { ScreenType } from '../components/Header';
 import { AppDownloadBanner } from '../components/AppDownloadBanner';
 import { useWishlist } from '../context/WishlistContext';
+import { useCurrency } from '../context/CurrencyContext';
 import { 
   FlightsIsometricIcon,
   HotelsIsometricIcon,
@@ -94,6 +95,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
   onInitiateCheckout,
 }) => {
   const { isWishlisted, toggleWishlist } = useWishlist();
+  const { formatPrice } = useCurrency();
   const [searchMode, setSearchMode] = useState<ServiceCategory>('flights');
   const [tripType, setTripType] = useState<'oneway' | 'roundtrip' | 'multicity'>('oneway');
   const [specialFare, setSpecialFare] = useState('regular');
@@ -968,7 +970,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                       <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded mt-1 inline-block">{train.seats}</span>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className="text-base font-extrabold text-gray-900">₹{train.price.toLocaleString('en-IN')}</span>
+                      <span className="text-base font-extrabold text-gray-900">{formatPrice(train.price)}</span>
                       <button 
                         type="button"
                         onClick={() => handleBookTrain({ name: train.name, from: 'New Delhi', to: 'Mumbai', price: train.price, class: train.class })}
@@ -1017,7 +1019,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                       <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded mt-1 inline-block">Free Cancellation</span>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className="text-base font-extrabold text-gray-900">₹{bus.price.toLocaleString('en-IN')}</span>
+                      <span className="text-base font-extrabold text-gray-900">{formatPrice(bus.price)}</span>
                       <button 
                         type="button"
                         onClick={() => handleBookBus({ name: bus.name, from: 'Bengaluru', to: 'Goa', price: bus.price })}
@@ -1066,7 +1068,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                       <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded mt-1 inline-block">{cab.badge}</span>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className="text-base font-extrabold text-gray-900">₹{cab.price.toLocaleString('en-IN')}</span>
+                      <span className="text-base font-extrabold text-gray-900">{formatPrice(cab.price)}</span>
                       <button 
                         type="button"
                         onClick={() => handleBookCab({ name: cab.name, pickup: 'Delhi Airport T3', drop: 'Connaught Place', price: cab.price })}
@@ -1115,7 +1117,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                       <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded mt-1 inline-block">100% Refundable</span>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className="text-base font-extrabold text-gray-900">₹{pkg.price.toLocaleString('en-IN')}</span>
+                      <span className="text-base font-extrabold text-gray-900">{formatPrice(pkg.price)}</span>
                       <button 
                         type="button"
                         onClick={() => handleBookPackage({ name: pkg.name, days: 5, nights: 4, price: pkg.price })}
@@ -1164,7 +1166,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                       <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded mt-1 inline-block">{villa.highlight}</span>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className="text-base font-extrabold text-gray-900">₹{villa.price.toLocaleString('en-IN')}<span className="text-[10px] text-gray-500 font-normal">/night</span></span>
+                      <span className="text-base font-extrabold text-gray-900">{formatPrice(villa.price)}<span className="text-[10px] text-gray-500 font-normal">/night</span></span>
                       <div className="flex items-center space-x-1.5 mt-1">
                         <button
                           type="button"
@@ -1240,7 +1242,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                       <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded mt-1 inline-block">{act.highlight}</span>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className="text-base font-extrabold text-gray-900">₹{act.price.toLocaleString('en-IN')}<span className="text-[10px] text-gray-500 font-normal">/person</span></span>
+                      <span className="text-base font-extrabold text-gray-900">{formatPrice(act.price)}<span className="text-[10px] text-gray-500 font-normal">/person</span></span>
                       <button 
                         type="button"
                         onClick={() => handleBookAttraction({ name: act.name, city: act.city, price: act.price })}
@@ -1289,7 +1291,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                       <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded mt-1 inline-block">{visaItem.highlight}</span>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className="text-base font-extrabold text-gray-900">₹{visaItem.price.toLocaleString('en-IN')}</span>
+                      <span className="text-base font-extrabold text-gray-900">{formatPrice(visaItem.price)}</span>
                       <button 
                         type="button"
                         onClick={() => handleApplyVisa({ country: visaItem.country, type: visaItem.type, price: visaItem.price })}
@@ -1338,7 +1340,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                       <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded mt-1 inline-block">{ins.highlight}</span>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className="text-base font-extrabold text-gray-900">₹{ins.price.toLocaleString('en-IN')}<span className="text-[10px] text-gray-500 font-normal">/trip</span></span>
+                      <span className="text-base font-extrabold text-gray-900">{formatPrice(ins.price)}<span className="text-[10px] text-gray-500 font-normal">/trip</span></span>
                       <button 
                         type="button"
                         onClick={() => handleBuyInsurance({ planName: ins.planName, cover: ins.cover, price: ins.price })}

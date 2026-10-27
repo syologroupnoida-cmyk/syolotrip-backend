@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { searchCabsApi, CabApiResponse } from '../services/api';
 import { ScreenType } from '../components/Header';
+import { useCurrency } from '../context/CurrencyContext';
 import { WebCheckoutItem } from './BookingCheckoutPage';
 
 interface CabSearchPageProps {
@@ -70,6 +71,7 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
   pickupLocation = 'Delhi Airport T3 (DEL)',
   dropLocation = 'Connaught Place, Central Delhi',
 }) => {
+  const { formatPrice } = useCurrency();
   const [tripType, setTripType] = useState<'AIRPORT' | 'OUTSTATION' | 'HOURLY'>('AIRPORT');
   const [selectedCategory, setSelectedCategory] = useState<'ALL' | 'SEDAN' | 'SUV' | 'EV'>('ALL');
   const [tollIncludedOnly, setTollIncludedOnly] = useState(true);
@@ -463,8 +465,8 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
                   {/* Right Column: Price & Book Button */}
                   <div className="md:col-span-3 flex flex-col items-end justify-center border-t md:border-t-0 md:border-l border-gray-100 pt-3 md:pt-0 md:pl-4">
                     <div className="flex items-baseline space-x-1.5 mb-0.5">
-                      <span className="text-xs text-gray-400 line-through">₹{cab.originalPrice}</span>
-                      <span className="text-2xl font-black text-gray-900">₹{cab.price.toLocaleString('en-IN')}</span>
+                      <span className="text-xs text-gray-400 line-through">{formatPrice(cab.originalPrice)}</span>
+                      <span className="text-2xl font-black text-gray-900">{formatPrice(cab.price)}</span>
                     </div>
                     <span className="text-[10px] font-bold text-[#1A7F37] bg-emerald-50 px-1.5 py-0.2 rounded mb-3">
                       Total Fare (No Hidden Charges)
