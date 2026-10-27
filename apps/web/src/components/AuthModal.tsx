@@ -245,27 +245,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             )}
           </button>
 
-          {/* Quick Demo Credentials */}
+          {/* Quick Fill Button */}
           <div className="mt-3 pt-3 border-t border-outline-variant/20">
-            <span className="text-label-sm text-on-surface-variant font-medium block mb-2 text-center">
-              Quick Demo Fill:
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => fillQuickDemo('customer@ssjourney.com', 'Customer@123456')}
-                className="text-label-sm bg-surface-container hover:bg-surface-container-high text-primary font-semibold py-1.5 px-2 rounded-lg border border-outline-variant/30 transition-colors text-center text-xs"
-              >
-                Customer Account
-              </button>
-              <button
-                type="button"
-                onClick={() => fillQuickDemo('admin@ssjourney.com', 'Admin@123456')}
-                className="text-label-sm bg-amber-50 hover:bg-amber-100 text-amber-900 font-semibold py-1.5 px-2 rounded-lg border border-amber-300 transition-colors text-center text-xs"
-              >
-                Admin Account
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => fillQuickDemo('customer@ssjourney.com', 'Customer@123456')}
+              className="w-full text-label-sm bg-surface-container hover:bg-surface-container-high text-primary font-semibold py-2 px-3 rounded-lg border border-outline-variant/30 transition-colors flex items-center justify-center gap-1.5 text-xs shadow-sm hover:border-primary/40"
+            >
+              <span className="material-symbols-outlined text-[16px]">bolt</span>
+              <span>Quick Fill</span>
+            </button>
           </div>
         </form>
       </div>
