@@ -28,8 +28,17 @@ from backend.app.models.travel import Flight, Hotel, HotelRoom, Bus, HolidayPack
 
 async def seed_data():
     # Ensure all tables exist in database (including newly added trains and cabs)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except OSError as e:
+        if "127.0.0.1" in str(e) or "::1" in str(e):
+            sys.stderr.write("\n" + "=" * 80 + "\n")
+            sys.stderr.write("🛑 CRITICAL DATABASE CONNECTION ERROR IN SEED:\n")
+            sys.stderr.write("Please configure the DATABASE_URL environment variable with your PostgreSQL database.\n")
+            sys.stderr.write("=" * 80 + "\n\n")
+        raise
+
 
     async with AsyncSessionLocal() as session:
         print("[SEED] Starting idempotent seed process for SS Journey...")

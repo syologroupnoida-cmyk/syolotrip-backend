@@ -79,10 +79,22 @@ async def run_async_migrations() -> None:
         poolclass=pool.NullPool,
     )
 
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
+    try:
+        async with connectable.connect() as connection:
+            await connection.run_sync(do_run_migrations)
+    except OSError as e:
+        if "127.0.0.1" in str(e) or "::1" in str(e) or "localhost" in url:
+            sys.stderr.write("\n" + "=" * 80 + "\n")
+            sys.stderr.write("🛑 CRITICAL DATABASE CONNECTION ERROR:\n")
+            sys.stderr.write("The backend is trying to connect to 'localhost:5432', but no local PostgreSQL server is running.\n")
+            sys.stderr.write("On Render or Cloud Hosting:\n")
+            sys.stderr.write("👉 You must set the DATABASE_URL environment variable in your Render dashboard.\n")
+            sys.stderr.write(f"👉 Current DATABASE_URL: {url}\n")
+            sys.stderr.write("=" * 80 + "\n\n")
+        raise
 
     await connectable.dispose()
+
 
 
 def run_migrations_online() -> None:
