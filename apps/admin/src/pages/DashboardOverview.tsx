@@ -177,7 +177,7 @@ export const DashboardOverview: React.FC = () => {
                     <Icon className="w-4 h-4" />
                     {svc.title}
                   </span>
-                  <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 shadow-xs ${
+                  <span className={`service-online-badge text-[10px] font-black px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 shadow-xs ${
                     theme === 'dark'
                       ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
                       : 'bg-emerald-100 text-emerald-800 border-emerald-300'

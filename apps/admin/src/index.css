@@ -187,19 +187,21 @@ html.light .text-white,
   color: #0f172a !important;
 }
 
-/* Protected Action Buttons & Accent Badges - KEEP WHITE TEXT */
-html.light button[class*="bg-brand-"],
-[data-theme="light"] button[class*="bg-brand-"],
-html.light button[class*="bg-emerald-"],
-[data-theme="light"] button[class*="bg-emerald-"],
-html.light button[class*="bg-rose-"],
-[data-theme="light"] button[class*="bg-rose-"],
-html.light button[class*="bg-red-"],
-[data-theme="light"] button[class*="bg-red-"],
-html.light button[class*="bg-indigo-"],
-[data-theme="light"] button[class*="bg-indigo-"],
-html.light a[class*="bg-brand-"],
-[data-theme="light"] a[class*="bg-brand-"],
+/* Protected Action Buttons & Accent Badges - KEEP WHITE TEXT ONLY FOR SOLID BACKGROUNDS */
+html.light button[class*="bg-brand-600"],
+[data-theme="light"] button[class*="bg-brand-600"],
+html.light button[class*="bg-brand-500"],
+[data-theme="light"] button[class*="bg-brand-500"],
+html.light button[class*="bg-emerald-600"],
+[data-theme="light"] button[class*="bg-emerald-600"],
+html.light button[class*="bg-rose-600"],
+[data-theme="light"] button[class*="bg-rose-600"],
+html.light button[class*="bg-red-600"],
+[data-theme="light"] button[class*="bg-red-600"],
+html.light button[class*="bg-indigo-600"],
+[data-theme="light"] button[class*="bg-indigo-600"],
+html.light a[class*="bg-brand-600"],
+[data-theme="light"] a[class*="bg-brand-600"],
 html.light [class*="bg-brand-600"],
 [data-theme="light"] [class*="bg-brand-600"],
 html.light [class*="bg-emerald-600"],
@@ -211,16 +213,18 @@ html.light [class*="bg-indigo-600"],
   color: #ffffff !important;
 }
 
-html.light button[class*="bg-brand-"] *,
-[data-theme="light"] button[class*="bg-brand-"] *,
-html.light button[class*="bg-emerald-"] *,
-[data-theme="light"] button[class*="bg-emerald-"] *,
-html.light button[class*="bg-rose-"] *,
-[data-theme="light"] button[class*="bg-rose-"] *,
-html.light button[class*="bg-red-"] *,
-[data-theme="light"] button[class*="bg-red-"] *,
-html.light button[class*="bg-indigo-"] *,
-[data-theme="light"] button[class*="bg-indigo-"] *,
+html.light button[class*="bg-brand-600"] *,
+[data-theme="light"] button[class*="bg-brand-600"] *,
+html.light button[class*="bg-brand-500"] *,
+[data-theme="light"] button[class*="bg-brand-500"] *,
+html.light button[class*="bg-emerald-600"] *,
+[data-theme="light"] button[class*="bg-emerald-600"] *,
+html.light button[class*="bg-rose-600"] *,
+[data-theme="light"] button[class*="bg-rose-600"] *,
+html.light button[class*="bg-red-600"] *,
+[data-theme="light"] button[class*="bg-red-600"] *,
+html.light button[class*="bg-indigo-600"] *,
+[data-theme="light"] button[class*="bg-indigo-600"] *,
 html.light [class*="bg-brand-600"] .text-white,
 [data-theme="light"] [class*="bg-brand-600"] .text-white,
 html.light [class*="bg-emerald-600"] .text-white,
@@ -230,6 +234,35 @@ html.light [class*="bg-rose-600"] .text-white,
 html.light [class*="bg-indigo-600"] .text-white,
 [data-theme="light"] [class*="bg-indigo-600"] .text-white {
   color: #ffffff !important;
+}
+
+/* Explicit High-Contrast Sign Out Button */
+[data-theme="light"] #admin-signout-btn,
+html.light #admin-signout-btn {
+  background-color: #ffe4e6 !important; /* rose-100 */
+  border-color: #fda4af !important;     /* rose-300 */
+  color: #9f1239 !important;            /* rose-800 - dark visible crimson */
+}
+[data-theme="light"] #admin-signout-btn *,
+html.light #admin-signout-btn * {
+  color: #9f1239 !important;
+  stroke: #9f1239 !important;
+}
+[data-theme="light"] #admin-signout-btn:hover,
+html.light #admin-signout-btn:hover {
+  background-color: #fecdd3 !important; /* rose-200 */
+}
+
+/* Explicit High-Contrast Service Card ONLINE Badge */
+[data-theme="light"] .service-online-badge,
+html.light .service-online-badge {
+  background-color: #d1fae5 !important; /* emerald-100 */
+  border-color: #86efac !important;     /* emerald-300 */
+  color: #065f46 !important;            /* emerald-800 */
+}
+[data-theme="light"] .service-online-badge *,
+html.light .service-online-badge * {
+  color: #065f46 !important;
 }
 
 /* Layout Shells */
