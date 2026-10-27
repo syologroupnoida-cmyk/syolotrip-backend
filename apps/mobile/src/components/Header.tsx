@@ -157,8 +157,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   logoWrapper: {
-    width: 36,
-    height: 30,
+    width: 30,
+    height: 34,
     justifyContent: 'center',
     alignItems: 'center',
   },

@@ -104,25 +104,24 @@ export const Header: React.FC<HeaderProps> = ({
           {/* ── SYOLO TRIPS BRAND LOGO ── */}
           <div 
             onClick={() => setActiveScreen('explore')}
-            className="flex items-center space-x-2 sm:space-x-3 cursor-pointer group select-none shrink-0"
+            className="flex items-center space-x-2.5 sm:space-x-3.5 cursor-pointer group select-none shrink-0"
           >
             <div className="relative flex items-center">
               <img 
-                src="/assets/syolo-trips-logo.png" 
-                alt="Syolo Trips Logo" 
-                className="h-10 sm:h-11 w-auto object-contain group-hover:scale-105 transition-transform duration-300 rounded-lg"
+                src="/assets/syolo-trips-emblem.png" 
+                alt="Syolo Trips Emblem" 
+                className="h-11 sm:h-12 w-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-300"
               />
             </div>
-            <div className="flex flex-col">
-              <div className="flex items-center space-x-1">
-                <span className={`text-[18px] sm:text-[21px] font-black tracking-tight leading-tight block transition-colors ${
-                  isTransparent ? 'text-white' : 'text-[#071426]'
-                }`}>
-                  <span className="text-[#00aeef]">SYOLO</span> <span className="text-[#ff9900]">TRIPS</span>
+            <div className="flex flex-col justify-center">
+              <div className="flex items-center space-x-1.5 leading-none">
+                <span className="text-[20px] sm:text-[23px] font-black tracking-tight leading-none">
+                  <span className="text-[#00aeef]">SYOLO</span>{' '}
+                  <span className="text-[#ff9900]">TRIPS</span>
                 </span>
               </div>
-              <span className={`text-[8.5px] sm:text-[9.5px] uppercase tracking-[0.14em] font-bold -mt-0.5 transition-colors ${
-                isTransparent ? 'text-blue-100/90' : 'text-[#00aeef]'
+              <span className={`text-[8.5px] sm:text-[9.5px] uppercase tracking-[0.16em] font-extrabold mt-0.5 transition-colors ${
+                isTransparent ? 'text-blue-100' : 'text-[#00aeef]'
               }`}>
                 Explore Beyond!
               </span>
@@ -456,9 +455,9 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-slate-50">
                 <div className="flex items-center space-x-2.5">
                   <img 
-                    src="/assets/syolo-trips-logo.png" 
+                    src="/assets/syolo-trips-emblem.png" 
                     alt="Syolo Trips" 
-                    className="h-8 w-auto object-contain rounded"
+                    className="h-10 w-auto object-contain"
                   />
                   <div>
                     <span className="font-black text-sm tracking-tight text-[#071426] block">

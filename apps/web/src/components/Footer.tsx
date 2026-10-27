@@ -14,17 +14,18 @@ export const Footer: React.FC<FooterProps> = () => {
           {/* ── 1. LOGO & BRANDING ── */}
           <div className="flex items-center space-x-3.5">
             <img 
-              src="/assets/syolo-trips-logo.png" 
-              alt="Syolo Trips Logo" 
-              className="h-11 w-auto object-contain rounded-lg" 
+              src="/assets/syolo-trips-emblem.png" 
+              alt="Syolo Trips" 
+              className="h-12 w-auto object-contain drop-shadow" 
             />
             <div>
-              <div className="flex items-center space-x-1.5">
-                <h3 className="text-xl font-black text-white tracking-tight">
-                  <span className="text-[#00aeef]">SYOLO</span> <span className="text-[#ff9900]">TRIPS</span>
+              <div className="flex items-center space-x-1.5 leading-none">
+                <h3 className="text-2xl font-black text-white tracking-tight leading-none">
+                  <span className="text-[#00aeef]">SYOLO</span>{' '}
+                  <span className="text-[#ff9900]">TRIPS</span>
                 </h3>
               </div>
-              <p className="text-[11px] text-blue-200/80 font-medium tracking-wide">
+              <p className="text-[11px] text-[#00aeef] font-bold tracking-wider mt-1 uppercase">
                 Explore Beyond!
               </p>
             </div>

@@ -8,7 +8,6 @@ import {
   AlertCircle,
   Loader2,
   ArrowRight,
-  Compass,
   Sun,
   Moon,
 } from 'lucide-react';
@@ -107,8 +106,8 @@ export const AdminLoginPage: React.FC = () => {
       <div className="w-full max-w-md relative z-10">
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-lg shadow-brand-500/20 mb-4 border border-brand-400/30 p-1.5">
-            <img src="/assets/syolo-trips-logo.png" alt="Syolo Trips" className="w-full h-full object-contain rounded-xl" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-800/60 shadow-lg shadow-brand-500/20 mb-4 border border-brand-400/30 p-2">
+            <img src="/assets/syolo-trips-emblem.png" alt="Syolo Trips" className="w-full h-full object-contain drop-shadow" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center justify-center gap-2">
             <span><span className="text-[#00aeef]">SYOLO</span> <span className="text-[#ff9900]">TRIPS</span></span>

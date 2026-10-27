@@ -75,9 +75,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
           <div className="flex items-center gap-3">
             <img 
-              src="/assets/syolo-trips-logo.png" 
+              src="/assets/syolo-trips-emblem.png" 
               alt="Syolo Trips" 
-              className="h-10 w-auto object-contain drop-shadow-sm rounded-lg"
+              className="h-11 w-auto object-contain drop-shadow"
             />
             <div>
               <h3 className="text-headline-sm font-bold text-white">Syolo Trips Account</h3>
