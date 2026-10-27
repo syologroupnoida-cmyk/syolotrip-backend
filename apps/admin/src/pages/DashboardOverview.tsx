@@ -5,8 +5,10 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getAdminHealth, getAdminOverview } from '../services/api';
+import { useTheme } from '../context/ThemeContext';
 
 export const DashboardOverview: React.FC = () => {
+  const { theme } = useTheme();
   const { data: health, isLoading: healthLoading, refetch: refetchHealth } = useQuery({
     queryKey: ['adminHealth'],
     queryFn: getAdminHealth,
@@ -38,7 +40,7 @@ export const DashboardOverview: React.FC = () => {
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 border border-slate-800">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">SS Journey Admin Operations</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Syolo Trips Admin Operations</h1>
           <p className="text-xs text-slate-400 mt-1">
             Centralized operations hub connected with Consumer Web (Port 5173), Mobile App, and FastAPI Engine (Port 8000).
           </p>
@@ -132,45 +134,60 @@ export const DashboardOverview: React.FC = () => {
           </div>
 
           <div className="p-4 rounded-xl bg-slate-900/60 border border-emerald-500/30">
-            <div className="text-xs text-emerald-400 font-medium mb-1">Net Confirmed Revenue</div>
-            <div className="text-xl font-black text-emerald-400 tabular-nums">
+            <div className={`text-xs font-semibold mb-1 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-700'}`}>
+              Net Confirmed Revenue
+            </div>
+            <div className={`text-xl font-black tabular-nums ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-700'}`}>
               ₹{(overview?.total_revenue ?? 0).toLocaleString()}
             </div>
-            <div className="text-[10px] text-emerald-500/80 mt-1">Active confirmed reservations</div>
+            <div className={`text-[10px] mt-1 ${theme === 'dark' ? 'text-emerald-500/80' : 'text-emerald-600'}`}>
+              Active confirmed reservations
+            </div>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-900/60 border border-rose-500/30">
-            <div className="text-xs text-rose-400 font-medium mb-1">Cancelled &amp; Refunded</div>
-            <div className="text-xl font-black text-rose-400 tabular-nums">
+            <div className={`text-xs font-semibold mb-1 ${theme === 'dark' ? 'text-rose-400' : 'text-rose-700'}`}>
+              Cancelled &amp; Refunded
+            </div>
+            <div className={`text-xl font-black tabular-nums ${theme === 'dark' ? 'text-rose-400' : 'text-rose-700'}`}>
               ₹{((overview as any)?.refunded_total ?? 0).toLocaleString()}
             </div>
-            <div className="text-[10px] text-rose-500/80 mt-1">Restored to inventory</div>
+            <div className={`text-[10px] mt-1 ${theme === 'dark' ? 'text-rose-500/80' : 'text-rose-600'}`}>
+              Restored to inventory
+            </div>
           </div>
         </div>
       </div>
 
       {/* All 6 Travel Services Overview Grid */}
       <div className="space-y-3">
-        <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wider">All Active Travel Services</h2>
+        <h2 className={`text-sm font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+          All Active Travel Services
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {travelServices.map((svc) => {
             const Icon = svc.icon;
             return (
               <div 
                 key={svc.title}
-                className={`p-4 rounded-2xl bg-gradient-to-br ${svc.color} border space-y-2`}
+                className={`p-4 rounded-2xl bg-gradient-to-br ${svc.color} border space-y-2 shadow-xs`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white flex items-center gap-2">
+                  <span className={`text-xs font-bold flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
                     <Icon className="w-4 h-4" />
                     {svc.title}
                   </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
+                  <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 shadow-xs ${
+                    theme === 'dark'
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                      : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${theme === 'dark' ? 'bg-emerald-400' : 'bg-emerald-600'} animate-pulse`} />
                     ONLINE
                   </span>
                 </div>
-                <div className="text-xl font-extrabold text-white">{svc.count}</div>
-                <p className="text-[11px] text-slate-400">{svc.sub}</p>
+                <div className={`text-xl font-extrabold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{svc.count}</div>
+                <p className={`text-[11px] font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{svc.sub}</p>
               </div>
             );
           })}

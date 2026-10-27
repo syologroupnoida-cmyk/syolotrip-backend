@@ -126,9 +126,13 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleSidebar, isSid
           <button
             onClick={logout}
             title="Sign out of Admin Console"
-            className="flex items-center gap-1.5 ml-2 px-2.5 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 dark:text-rose-300 text-xs font-semibold transition cursor-pointer"
+            className={`flex items-center gap-1.5 ml-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition shadow-xs cursor-pointer ${
+              theme === 'dark'
+                ? 'border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300'
+                : 'border-rose-300 bg-rose-100 hover:bg-rose-200 text-rose-800'
+            }`}
           >
-            <LogOut className="w-3.5 h-3.5" />
+            <LogOut className={`w-3.5 h-3.5 ${theme === 'dark' ? 'text-rose-300' : 'text-rose-700'}`} />
             <span className="hidden md:inline">Sign Out</span>
           </button>
         </div>
