@@ -1,11 +1,16 @@
 import React from 'react';
-import { UserCheck, Bell, Sun, Moon, LogOut } from 'lucide-react';
+import { UserCheck, Bell, Sun, Moon, LogOut, Menu, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getAdminHealth } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { useAdminAuth } from '../context/AdminAuthContext';
 
-export const AdminHeader: React.FC = () => {
+interface AdminHeaderProps {
+  onToggleSidebar?: () => void;
+  isSidebarOpen?: boolean;
+}
+
+export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleSidebar, isSidebarOpen = false }) => {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAdminAuth();
 
@@ -17,19 +22,38 @@ export const AdminHeader: React.FC = () => {
 
   return (
     <header
-      className={`h-16 border-b px-6 flex items-center justify-between transition-colors backdrop-blur-md ${
+      className={`h-16 border-b px-3 sm:px-6 flex items-center justify-between transition-colors backdrop-blur-md sticky top-0 z-30 ${
         theme === 'dark'
           ? 'border-slate-800 bg-slate-950/80'
           : 'border-slate-200 bg-white/95 shadow-xs'
       }`}
     >
-      <div className="flex items-center gap-3">
-        <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-brand-500/10 text-brand-600 dark:text-brand-400 border border-brand-500/20">
-          Environment: {health?.environment || 'development'}
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Mobile Hamburger Toggle */}
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          aria-label={isSidebarOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          className={`lg:hidden p-2 rounded-xl border transition cursor-pointer flex items-center justify-center ${
+            theme === 'dark'
+              ? 'border-slate-800 bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800'
+              : 'border-slate-300 bg-slate-100 text-slate-700 hover:text-slate-900 hover:bg-slate-200'
+          }`}
+        >
+          {isSidebarOpen ? <X className="w-5 h-5 text-brand-500" /> : <Menu className="w-5 h-5" />}
+        </button>
+
+        {/* Environment Badge */}
+        <span className="text-[11px] sm:text-xs font-semibold px-2 sm:px-2.5 py-1 rounded-md bg-brand-500/10 text-brand-600 dark:text-brand-400 border border-brand-500/20 whitespace-nowrap">
+          <span className="hidden sm:inline">Environment: </span>
+          {health?.environment || 'development'}
         </span>
-        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+
+        {/* API Health */}
+        <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
           <span className={`w-2 h-2 rounded-full ${isSuccess ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
-          <span>API: {isSuccess ? 'Connected' : 'Checking...'}</span>
+          <span className="hidden sm:inline">API: </span>
+          <span>{isSuccess ? 'Connected' : 'Connecting'}</span>
         </div>
       </div>
 

@@ -428,7 +428,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
   return (
     <div className="min-h-screen bg-[#f4f6f8] text-[#333333] font-sans antialiased">
       {/* ── 1. SS JOURNEY TROPICAL HERO BACKDROP ── */}
-      <div className="relative w-full h-[540px] overflow-hidden select-none">
+      <div className="relative w-full h-[400px] sm:h-[480px] md:h-[540px] overflow-hidden select-none">
         <img 
           src="/assets/hero-bg-bright.jpg" 
           alt="Crystal Clear Sunny Tropical Beach & Azure Sky Hero Backdrop" 
@@ -439,7 +439,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
       </div>
 
       {/* ── 2. MAIN FLOATING CONTAINER OVERLAY ── */}
-      <main className="relative -mt-[440px] z-20 pb-20 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
+      <main className="relative -mt-[310px] sm:-mt-[380px] md:-mt-[440px] z-20 pb-20 px-3 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
         {/* Category Navigation Ribbon (Floating White Pill Card) */}
         <nav 
           aria-label="Service Categories"
@@ -656,8 +656,8 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                 <span className="text-[11px] text-gray-500 truncate block font-normal">{originAirport.code}, {originAirport.name}</span>
               </div>
 
-              {/* Interchange Swap Button */}
-              <div className="hidden md:flex absolute left-[25%] top-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+              {/* Interchange Swap Button (Mobile & Desktop) */}
+              <div className="absolute right-4 top-[78px] md:top-1/2 md:left-[25%] md:right-auto -translate-y-1/2 md:-translate-x-1/2 z-20">
                 <button 
                   type="button" 
                   onClick={handleSwapAirports}
@@ -771,7 +771,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
               {activeDropdown && (activeDropdown === 'origin' || activeDropdown === 'destination') && (
                 <div 
                   onClick={(e) => e.stopPropagation()}
-                  className={`absolute top-full z-50 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 w-full sm:w-96 ${
+                  className={`absolute top-full z-50 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 w-full sm:w-96 max-w-[95vw] ${
                     activeDropdown === 'origin' ? 'left-0' : 'left-0 sm:right-0 sm:left-auto'
                   }`}
                 >
@@ -1438,11 +1438,11 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
 
 
           {/* ── BIG FLOATING CENTERED GRADIENT SEARCH BUTTON ── */}
-          <div className="absolute left-1/2 -bottom-6 -translate-x-1/2 z-30">
+          <div className="absolute left-1/2 -bottom-6 -translate-x-1/2 z-30 w-full max-w-[90%] sm:w-auto flex justify-center">
             <button 
               type="button"
               onClick={handleMasterSearch}
-              className="bg-gradient-to-r from-[#53b2fe] to-[#065af3] hover:from-[#44a6f4] hover:to-[#0050e0] text-white text-base font-extrabold uppercase px-14 py-3.5 rounded-full shadow-[0_4px_16px_rgba(0,140,255,0.45)] tracking-wider hover:brightness-105 active:scale-[0.98] transition cursor-pointer flex items-center space-x-2"
+              className="w-full sm:w-auto bg-gradient-to-r from-[#53b2fe] to-[#065af3] hover:from-[#44a6f4] hover:to-[#0050e0] text-white text-sm sm:text-base font-extrabold uppercase px-6 sm:px-14 py-3 sm:py-3.5 rounded-full shadow-[0_4px_16px_rgba(0,140,255,0.45)] tracking-wider hover:brightness-105 active:scale-[0.98] transition cursor-pointer flex items-center justify-center space-x-2 whitespace-nowrap"
             >
               <span>
                 {searchMode === 'flights' && 'SEARCH FLIGHTS'}

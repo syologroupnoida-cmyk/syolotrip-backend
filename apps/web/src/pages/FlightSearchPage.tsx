@@ -121,6 +121,14 @@ export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({
   const [flightDetailTab, setFlightDetailTab] = useState<'info' | 'fare' | 'policy'>('info');
   const [zeroCancelProtection, setZeroCancelProtection] = useState(false);
   const [ignoreRouteFilter, setIgnoreRouteFilter] = useState(false);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+
+  const activeFilterCount =
+    (stopsFilter !== 'ALL' ? 1 : 0) +
+    (timeSlotFilter !== 'ALL' ? 1 : 0) +
+    selectedAirlines.length +
+    (freeMealOnly ? 1 : 0) +
+    (maxPrice < 150000 ? 1 : 0);
 
   // 7-day fare strip data
   const fareDays = [
@@ -350,19 +358,100 @@ export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({
       </section>
 
       {/* ── MAIN CONTENT (12-COLUMN STITCH LAYOUT) ── */}
-      <div className="max-w-[1240px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* ── LEFT SIDEBAR FILTERS (3 Cols) ── */}
-          <aside className="lg:col-span-3 flex flex-col gap-4 bg-white p-4 sm:p-5 rounded-2xl shadow-xs border border-[#E7EBF0]">
-            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-              <span className="font-bold text-base text-gray-900">Filters</span>
+      <div className="max-w-[1240px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        {/* Mobile Quick Filter & Filter Drawer Trigger */}
+        <div className="lg:hidden flex items-center justify-between gap-2 mb-4 bg-white p-3 rounded-xl border border-[#E7EBF0] shadow-xs">
+          <button
+            type="button"
+            onClick={() => setIsMobileFilterOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 bg-[#d5e3ff] text-[#005cab] font-bold text-xs rounded-lg active:scale-95 transition shrink-0"
+          >
+            <span>⚡ Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="bg-[#005cab] text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+            <button
+              type="button"
+              onClick={() => setStopsFilter(stopsFilter === 'NONSTOP' ? 'ALL' : 'NONSTOP')}
+              className={`shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                stopsFilter === 'NONSTOP' ? 'bg-[#005cab] text-white' : 'bg-gray-100 text-gray-700'
+              }`}
+            >
+              Non-Stop
+            </button>
+            <button
+              type="button"
+              onClick={() => setFreeMealOnly(!freeMealOnly)}
+              className={`shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                freeMealOnly ? 'bg-[#005cab] text-white' : 'bg-gray-100 text-gray-700'
+              }`}
+            >
+              Free Meal
+            </button>
+            <button
+              type="button"
+              onClick={() => setTimeSlotFilter(timeSlotFilter === 'AFTER_18' ? 'ALL' : 'AFTER_18')}
+              className={`shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                timeSlotFilter === 'AFTER_18' ? 'bg-[#005cab] text-white' : 'bg-gray-100 text-gray-700'
+              }`}
+            >
+              Late Dep
+            </button>
+            {activeFilterCount > 0 && (
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="text-xs font-bold text-[#bb0017] hover:underline"
+                className="shrink-0 px-2 py-1.5 text-xs text-red-600 font-bold hover:underline"
               >
-                RESET ALL
+                Reset
               </button>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile Filter Drawer Overlay Backdrop */}
+        {isMobileFilterOpen && (
+          <div
+            className="fixed inset-0 bg-black/60 z-40 lg:hidden transition-opacity"
+            onClick={() => setIsMobileFilterOpen(false)}
+          />
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* ── LEFT SIDEBAR FILTERS (Desktop: 3 Cols, Mobile: Off-canvas sliding drawer) ── */}
+          <aside
+            className={`
+              fixed lg:static inset-y-0 left-0 z-50 lg:z-auto
+              w-80 max-w-[85vw] lg:w-auto lg:col-span-3
+              bg-white p-4 sm:p-5 rounded-r-2xl lg:rounded-2xl shadow-2xl lg:shadow-xs border border-[#E7EBF0]
+              overflow-y-auto max-h-screen lg:max-h-none flex flex-col gap-4
+              transition-transform duration-300 ease-in-out
+              ${isMobileFilterOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+            `}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+              <span className="font-bold text-base text-gray-900">Filters</span>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="text-xs font-bold text-[#bb0017] hover:underline"
+                >
+                  RESET ALL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileFilterOpen(false)}
+                  className="lg:hidden p-1.5 rounded-lg text-gray-500 hover:bg-gray-100"
+                  aria-label="Close filters"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {/* Popular Filters */}
@@ -522,6 +611,15 @@ export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({
                 Instant refund on flight delays over 2 hours &bull; Priority baggage tags &bull; Free flight meal on selected carriers.
               </p>
             </div>
+
+            {/* Mobile Apply Filters Button */}
+            <button
+              type="button"
+              onClick={() => setIsMobileFilterOpen(false)}
+              className="lg:hidden mt-2 w-full py-3 bg-gradient-to-r from-[#008cff] to-[#005cab] text-white font-bold rounded-xl text-sm shadow-md transition active:scale-95"
+            >
+              Apply Filters ({filteredFlights.length} Flights)
+            </button>
           </aside>
 
           {/* ── RIGHT MAIN CONTENT (9 Cols) ── */}
@@ -693,16 +791,16 @@ export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({
                       </div>
 
                       {/* Price & Booking Button */}
-                      <div className="flex flex-col md:items-end justify-between gap-1 min-w-[160px]">
+                      <div className="flex flex-row md:flex-col items-center md:items-end justify-between gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-gray-100 min-w-[160px]">
                         <div className="flex flex-col md:text-right">
                           <span className="text-xs text-gray-400 line-through">₹{flight.originalPrice.toLocaleString('en-IN')}</span>
-                          <span className="text-2xl font-black text-[#005cab]">₹{flight.price.toLocaleString('en-IN')}</span>
-                          <span className="text-[11px] text-gray-500">per adult</span>
+                          <span className="text-xl sm:text-2xl font-black text-[#005cab]">₹{flight.price.toLocaleString('en-IN')}</span>
+                          <span className="text-[10px] sm:text-[11px] text-gray-500">per adult</span>
                         </div>
                         <button
                           type="button"
                           onClick={() => handleBookFlight(flight)}
-                          className="w-full md:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#008cff] to-[#0A58CA] hover:from-[#0A58CA] hover:to-[#005cab] text-white font-extrabold text-sm shadow-md transition transform active:scale-95 text-center"
+                          className="px-5 sm:px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#008cff] to-[#0A58CA] hover:from-[#0A58CA] hover:to-[#005cab] text-white font-extrabold text-xs sm:text-sm shadow-md transition transform active:scale-95 text-center whitespace-nowrap"
                         >
                           BOOK NOW
                         </button>

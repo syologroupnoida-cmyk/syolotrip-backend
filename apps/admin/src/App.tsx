@@ -33,6 +33,7 @@ const AdminMainContent: React.FC = () => {
   const { isAuthenticated } = useAdminAuth();
   const { theme } = useTheme();
   const [currentTab, setCurrentTab] = useState('dashboard');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   if (!isAuthenticated) {
     return <AdminLoginPage />;
@@ -70,10 +71,18 @@ const AdminMainContent: React.FC = () => {
         theme === 'dark' ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-900'
       }`}
     >
-      <AdminSidebar currentTab={currentTab} setCurrentTab={setCurrentTab} />
+      <AdminSidebar 
+        currentTab={currentTab} 
+        setCurrentTab={setCurrentTab} 
+        isOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
+      />
       <div className="flex-1 flex flex-col min-w-0">
-        <AdminHeader />
-        <main className="flex-1 p-6 overflow-y-auto">
+        <AdminHeader 
+          isSidebarOpen={isMobileSidebarOpen}
+          onToggleSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
+        />
+        <main className="flex-1 p-3 sm:p-5 lg:p-6 overflow-y-auto min-w-0">
           {renderContent()}
         </main>
       </div>

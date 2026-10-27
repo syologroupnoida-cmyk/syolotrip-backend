@@ -113,6 +113,14 @@ export const TrainSearchPage: React.FC<TrainSearchPageProps> = ({
   const [availableOnly, setAvailableOnly] = useState(true);
   const [sortBy, setSortBy] = useState<'EARLIEST' | 'DURATION' | 'PRICE'>('EARLIEST');
   const [ignoreRouteFilter, setIgnoreRouteFilter] = useState(false);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+
+  const activeFilterCount =
+    (selectedClass ? 1 : 0) +
+    (trainTypeFilter !== 'ALL' ? 1 : 0) +
+    (acOnly ? 1 : 0) +
+    (availableOnly ? 1 : 0) +
+    (maxPrice < 15000 ? 1 : 0);
 
   // Live Backend query
   const {
@@ -286,23 +294,101 @@ export const TrainSearchPage: React.FC<TrainSearchPageProps> = ({
       </section>
 
       {/* ── 12-COLUMN STITCH LAYOUT ── */}
-      <div className="max-w-[1240px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* ── LEFT SIDEBAR FILTERS (3 Cols) ── */}
-          <aside className="lg:col-span-3 bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-[#E7EBF0] flex flex-col gap-5 sticky top-52">
-            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-              <span className="font-bold text-base text-gray-900">Filters</span>
+      <div className="max-w-[1240px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        {/* Mobile Quick Filter & Filter Trigger Bar */}
+        <div className="lg:hidden flex items-center justify-between gap-2 mb-4 bg-white p-3 rounded-xl border border-[#E7EBF0] shadow-xs">
+          <button
+            type="button"
+            onClick={() => setIsMobileFilterOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 bg-[#d5e3ff] text-[#005cab] font-bold text-xs rounded-lg active:scale-95 transition shrink-0"
+          >
+            <span>⚡ Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="bg-[#005cab] text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+            <button
+              type="button"
+              onClick={() => setAvailableOnly(!availableOnly)}
+              className={`shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                availableOnly ? 'bg-[#005cab] text-white' : 'bg-gray-100 text-gray-700'
+              }`}
+            >
+              Available Only
+            </button>
+            <button
+              type="button"
+              onClick={() => setAcOnly(!acOnly)}
+              className={`shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                acOnly ? 'bg-[#005cab] text-white' : 'bg-gray-100 text-gray-700'
+              }`}
+            >
+              AC Only
+            </button>
+            {activeFilterCount > 0 && (
               <button
                 type="button"
                 onClick={() => {
                   setSelectedClass(null);
                   setTrainTypeFilter('ALL');
                   setAvailableOnly(false);
+                  setAcOnly(false);
+                  setMaxPrice(15000);
                 }}
-                className="text-xs font-bold text-[#008cff] hover:underline"
+                className="shrink-0 px-2 py-1.5 text-xs text-red-600 font-bold hover:underline"
               >
-                Clear All
+                Reset
               </button>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile Filter Drawer Overlay Backdrop */}
+        {isMobileFilterOpen && (
+          <div
+            className="fixed inset-0 bg-black/60 z-40 lg:hidden transition-opacity"
+            onClick={() => setIsMobileFilterOpen(false)}
+          />
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* ── LEFT SIDEBAR FILTERS (Desktop: 3 Cols, Mobile: Off-canvas sliding drawer) ── */}
+          <aside
+            className={`
+              fixed lg:static inset-y-0 left-0 z-50 lg:z-auto
+              w-80 max-w-[85vw] lg:w-auto lg:col-span-3
+              bg-white rounded-r-2xl lg:rounded-2xl p-4 sm:p-5 shadow-2xl lg:shadow-xs border border-[#E7EBF0]
+              overflow-y-auto max-h-screen lg:max-h-none flex flex-col gap-5
+              transition-transform duration-300 ease-in-out
+              ${isMobileFilterOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+            `}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+              <span className="font-bold text-base text-gray-900">Filters</span>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedClass(null);
+                    setTrainTypeFilter('ALL');
+                    setAvailableOnly(false);
+                  }}
+                  className="text-xs font-bold text-[#008cff] hover:underline"
+                >
+                  Clear All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileFilterOpen(false)}
+                  className="lg:hidden p-1.5 rounded-lg text-gray-500 hover:bg-gray-100"
+                  aria-label="Close filters"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {/* Quick Availability Toggles */}
@@ -376,6 +462,15 @@ export const TrainSearchPage: React.FC<TrainSearchPageProps> = ({
                 100% Guaranteed PNR generation &bull; Instant Tatkal booking confirmation &bull; Zero cancellation fee option available.
               </p>
             </div>
+
+            {/* Mobile Apply Filters Button */}
+            <button
+              type="button"
+              onClick={() => setIsMobileFilterOpen(false)}
+              className="lg:hidden mt-2 w-full py-3 bg-gradient-to-r from-[#008cff] to-[#005cab] text-white font-bold rounded-xl text-sm shadow-md transition active:scale-95"
+            >
+              Apply Filters ({filteredTrains.length} Trains)
+            </button>
           </aside>
 
           {/* ── RIGHT TRAIN LISTINGS (9 Cols) ── */}

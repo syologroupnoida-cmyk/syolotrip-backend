@@ -8,9 +8,16 @@ import { useTheme } from '../context/ThemeContext';
 interface AdminSidebarProps {
   currentTab: string;
   setCurrentTab: (tab: string) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentTab, setCurrentTab }) => {
+export const AdminSidebar: React.FC<AdminSidebarProps> = ({ 
+  currentTab, 
+  setCurrentTab,
+  isOpen = false,
+  onClose,
+}) => {
   const { theme } = useTheme();
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
@@ -27,33 +34,66 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentTab, setCurre
     { id: 'settings', label: 'Platform Settings', icon: Settings },
   ];
 
+  const handleSelectTab = (tabId: string) => {
+    setCurrentTab(tabId);
+    if (onClose) {
+      onClose();
+    }
+  };
+
   return (
-    <aside
-      className={`w-64 border-r flex flex-col justify-between p-4 transition-colors ${
-        theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'
-      }`}
-    >
-      <div className="space-y-6">
-        {/* Brand */}
-        <div className="flex items-center gap-3 px-2 py-3">
-          <img 
-            src="/assets/ss-journey-logo.jpg" 
-            alt="SS Journey" 
-            className="w-9 h-9 rounded-lg object-contain bg-white shadow-md shadow-brand-600/30"
-          />
-          <div>
-            <span
-              className={`font-extrabold text-base tracking-wider ${
-                theme === 'dark' ? 'text-white' : 'text-slate-900'
-              }`}
+    <>
+      {/* Mobile Backdrop Overlay */}
+      {isOpen && (
+        <div 
+          onClick={onClose}
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden transition-opacity duration-300"
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-72 lg:w-64 border-r flex flex-col justify-between p-4 transition-all duration-300 shrink-0 select-none overflow-y-auto ${
+          isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
+        } ${
+          theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'
+        }`}
+      >
+        <div className="space-y-6">
+          {/* Brand & Mobile Close */}
+          <div className="flex items-center justify-between px-2 py-2">
+            <div className="flex items-center gap-3">
+              <img 
+                src="/assets/ss-journey-logo.jpg" 
+                alt="SS Journey" 
+                className="w-9 h-9 rounded-lg object-contain bg-white shadow-md shadow-brand-600/30"
+              />
+              <div>
+                <span
+                  className={`font-extrabold text-base tracking-wider ${
+                    theme === 'dark' ? 'text-white' : 'text-slate-900'
+                  }`}
+                >
+                  SS JOURNEY
+                </span>
+                <span className="block text-[10px] uppercase font-semibold text-brand-500">
+                  ADMIN CONSOLE
+                </span>
+              </div>
+            </div>
+
+            {/* Mobile Drawer Close Button */}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close menu"
+              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 transition cursor-pointer"
             >
-              SS JOURNEY
-            </span>
-            <span className="block text-[10px] uppercase font-semibold text-brand-500">
-              ADMIN CONSOLE
-            </span>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-        </div>
 
         {/* Navigation list */}
         <nav className="space-y-1">
@@ -63,7 +103,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentTab, setCurre
             return (
               <button
                 key={item.id}
-                onClick={() => setCurrentTab(item.id)}
+                onClick={() => handleSelectTab(item.id)}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                   isActive
                     ? 'bg-brand-600/15 text-brand-600 dark:text-brand-400 border border-brand-500/30 shadow-xs font-bold'
@@ -124,5 +164,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentTab, setCurre
         </p>
       </div>
     </aside>
+    </>
   );
 };

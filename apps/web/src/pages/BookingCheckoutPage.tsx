@@ -547,22 +547,22 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
     <div className="w-full bg-background">
       {/* ── Progress Steps ── */}
       <section className="bg-surface-container-low border-b border-outline-variant/30">
-        <div className="max-w-[1280px] mx-auto px-gutter py-space-md">
-          <div className="flex items-center justify-center gap-space-lg">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-gutter py-3 sm:py-space-md">
+          <div className="flex items-center justify-center gap-3 sm:gap-space-lg">
             {steps.map((s, i) => (
               <React.Fragment key={s.num}>
-                <div className="flex items-center gap-space-sm cursor-pointer" onClick={() => setStep(s.num as 1 | 2 | 3)}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-label-lg font-bold transition-colors ${
+                <div className="flex items-center gap-1.5 sm:gap-space-sm cursor-pointer" onClick={() => setStep(s.num as 1 | 2 | 3)}>
+                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-label-lg font-bold transition-colors ${
                     step >= s.num ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface-variant'
                   }`}>
                     {step > s.num ? (
-                      <span className="material-symbols-outlined text-[18px]">check</span>
+                      <span className="material-symbols-outlined text-[16px] sm:text-[18px]">check</span>
                     ) : s.num}
                   </div>
-                  <span className={`text-label-lg ${step >= s.num ? 'text-primary font-bold' : 'text-on-surface-variant'} hidden sm:inline`}>{s.label}</span>
+                  <span className={`text-xs sm:text-label-lg ${step >= s.num ? 'text-primary font-bold' : 'text-on-surface-variant'} hidden sm:inline`}>{s.label}</span>
                 </div>
                 {i < steps.length - 1 && (
-                  <div className={`w-16 h-[2px] ${step > s.num ? 'bg-primary' : 'bg-outline-variant/40'}`} />
+                  <div className={`w-8 sm:w-16 h-[2px] ${step > s.num ? 'bg-primary' : 'bg-outline-variant/40'}`} />
                 )}
               </React.Fragment>
             ))}
@@ -571,7 +571,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
       </section>
 
       {/* ── Main Content ── */}
-      <div className="max-w-[1280px] mx-auto px-gutter py-space-lg">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-gutter py-4 sm:py-space-lg pb-28 lg:pb-space-lg">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
           {/* ── LEFT: Details ── */}
           <div className="lg:col-span-8 flex flex-col gap-space-md">
@@ -1355,6 +1355,48 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ── Mobile Sticky Bottom Checkout Bar ── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface-container-lowest/95 backdrop-blur-md border-t border-outline-variant/30 px-4 py-3 shadow-2xl flex items-center justify-between gap-3">
+        <div className="flex flex-col">
+          <span className="text-[10px] uppercase font-bold text-on-surface-variant tracking-wider">Grand Total</span>
+          <span className="text-xl font-black text-primary tabular-nums">₹{grandTotal.toLocaleString('en-IN')}</span>
+        </div>
+        {step < 3 ? (
+          <button
+            type="button"
+            disabled={!hasValidInventoryId}
+            onClick={() => setStep((step + 1) as 1 | 2 | 3)}
+            className="px-5 py-2.5 bg-primary hover:bg-primary-container disabled:opacity-50 text-on-primary rounded-xl text-sm font-bold shadow-md transition active:scale-95 flex items-center gap-1.5"
+          >
+            <span>Continue</span>
+            <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={!agreeTerms || isProcessing || !hasValidInventoryId}
+            onClick={handleConfirmAndPay}
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold shadow-md transition active:scale-95 flex items-center gap-1.5 ${
+              !agreeTerms || isProcessing || !hasValidInventoryId
+                ? 'bg-outline-variant/30 text-on-surface-variant/50 cursor-not-allowed'
+                : 'bg-primary hover:bg-primary-container text-on-primary shadow-lg cursor-pointer'
+            }`}
+          >
+            {isProcessing ? (
+              <>
+                <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+                <span>Processing...</span>
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-[18px]">lock</span>
+                <span>Pay ₹{grandTotal.toLocaleString('en-IN')}</span>
+              </>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

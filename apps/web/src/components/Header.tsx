@@ -27,6 +27,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -37,8 +38,25 @@ export const Header: React.FC<HeaderProps> = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileMenuOpen]);
+
   // Header is transparent ONLY on the explore/hero page when not scrolled down
   const isTransparent = activeScreen === 'explore' && !isScrolled;
+
+  const handleMobileNav = (screen: ScreenType) => {
+    setActiveScreen(screen);
+    setIsMobileMenuOpen(false);
+  };
 
   return (
     <header 
@@ -119,7 +137,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => setActiveScreen('list-property')}
-              className={`flex items-center space-x-1.5 sm:space-x-2 py-1.5 px-2 sm:px-2.5 rounded-lg transition cursor-pointer ${
+              className={`hidden md:flex items-center space-x-1.5 sm:space-x-2 py-1.5 px-2 sm:px-2.5 rounded-lg transition cursor-pointer ${
                 activeScreen === 'list-property'
                   ? isTransparent
                     ? 'bg-white/20 text-white font-bold ring-1 ring-white/30'
@@ -154,7 +172,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button 
               type="button"
               onClick={() => setActiveScreen('trips')}
-              className={`flex items-center space-x-2 py-1.5 px-2.5 rounded-lg transition cursor-pointer ${
+              className={`hidden md:flex items-center space-x-2 py-1.5 px-2.5 rounded-lg transition cursor-pointer ${
                 activeScreen === 'trips'
                   ? isTransparent 
                     ? 'bg-white/20 text-white font-bold' 
@@ -181,7 +199,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button 
               type="button"
               onClick={onOpenWishlist}
-              className={`relative flex items-center space-x-2 py-1.5 px-2.5 rounded-lg transition cursor-pointer ${
+              className={`relative flex items-center space-x-2 py-1.5 px-2 sm:px-2.5 rounded-lg transition cursor-pointer ${
                 isTransparent 
                   ? 'hover:bg-white/15 text-white/90 hover:text-white' 
                   : 'hover:bg-rose-50 text-gray-700 hover:text-rose-600'
@@ -203,7 +221,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                 )}
               </div>
-              <div className="text-left leading-tight hidden sm:block">
+              <div className="text-left leading-tight hidden md:block">
                 <p className={`text-[11px] font-bold ${isTransparent ? 'text-white' : 'text-gray-900'}`}>
                   Wishlist
                 </p>
@@ -217,7 +235,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button 
               type="button"
               onClick={() => setActiveScreen('checkout')}
-              className={`flex items-center space-x-1.5 py-1.5 px-2.5 rounded-lg transition cursor-pointer ${
+              className={`hidden md:flex items-center space-x-1.5 py-1.5 px-2.5 rounded-lg transition cursor-pointer ${
                 activeScreen === 'checkout'
                   ? isTransparent 
                     ? 'bg-white/20 text-white font-bold' 
@@ -233,8 +251,8 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="hidden xl:inline text-[11px] font-bold">Checkout</span>
             </button>
 
-            {/* Country & Currency Selector */}
-            <div className="relative">
+            {/* Country & Currency Selector (Desktop) */}
+            <div className="relative hidden md:block">
               <div 
                 onClick={() => setIsCurrencyOpen(!isCurrencyOpen)}
                 className={`flex items-center space-x-1.5 cursor-pointer transition py-1 px-2 rounded-lg ${
@@ -293,7 +311,7 @@ export const Header: React.FC<HeaderProps> = ({
                 href="http://localhost:5174/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-red-600 to-amber-600 text-white font-extrabold text-[11px] hover:brightness-110 shadow-sm transition"
+                className="hidden lg:flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-red-600 to-amber-600 text-white font-extrabold text-[11px] hover:brightness-110 shadow-sm transition"
               >
                 <span className="material-symbols-outlined text-[15px]">admin_panel_settings</span>
                 <span>Admin Portal</span>
@@ -302,7 +320,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Login or User Account Button */}
             {user ? (
-              <div className={`flex items-center border backdrop-blur-md rounded-full px-3 py-1 space-x-2 transition ${
+              <div className={`flex items-center border backdrop-blur-md rounded-full px-2.5 sm:px-3 py-1 space-x-1.5 sm:space-x-2 transition ${
                 isTransparent 
                   ? 'bg-white/15 border-white/25 text-white' 
                   : 'bg-gray-100 border-gray-200 text-gray-800'
@@ -310,7 +328,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-[10px] font-black text-white shadow-xs">
                   {(user.fullName || user.email).charAt(0).toUpperCase()}
                 </div>
-                <div className="leading-tight max-w-[100px] truncate">
+                <div className="leading-tight max-w-[80px] sm:max-w-[100px] truncate hidden sm:block">
                   <span className={`block text-[11px] font-bold tracking-wide truncate ${
                     isTransparent ? 'text-white' : 'text-gray-900'
                   }`}>
@@ -330,7 +348,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button 
                 type="button"
                 onClick={onOpenAuth}
-                className={`flex items-center border backdrop-blur-md rounded-full px-3.5 py-1.5 transition text-left space-x-2.5 shadow-xs cursor-pointer ${
+                className={`flex items-center border backdrop-blur-md rounded-full px-2.5 sm:px-3.5 py-1.5 transition text-left space-x-1.5 sm:space-x-2.5 shadow-xs cursor-pointer ${
                   isTransparent 
                     ? 'bg-white/15 hover:bg-white/25 border-white/30 text-white' 
                     : 'bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 border-blue-200/80 text-gray-900'
@@ -347,14 +365,299 @@ export const Header: React.FC<HeaderProps> = ({
                     isTransparent ? 'text-white' : 'text-gray-800'
                   }`}>Create Account</span>
                 </div>
-                <span className={`material-symbols-outlined text-[16px] ${
+                <span className={`material-symbols-outlined text-[16px] hidden sm:inline ${
                   isTransparent ? 'text-white' : 'text-gray-600'
                 }`}>expand_more</span>
               </button>
             )}
+
+            {/* Mobile Hamburger Menu Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(true)}
+              aria-label="Open mobile navigation menu"
+              className={`md:hidden flex items-center justify-center p-2 rounded-xl transition cursor-pointer ${
+                isTransparent
+                  ? 'bg-white/15 text-white hover:bg-white/25 border border-white/20'
+                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200 border border-gray-200'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[22px]">menu</span>
+            </button>
           </div>
         </div>
       </div>
+
+      {/* ── RESPONSIVE MOBILE SLIDE-OUT DRAWER ── */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex justify-end">
+          {/* Backdrop Overlay */}
+          <div 
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-fade-in"
+            aria-hidden="true"
+          />
+
+          {/* Drawer Content Panel */}
+          <div className="relative w-[310px] max-w-[85vw] h-full bg-white text-gray-900 shadow-2xl flex flex-col justify-between z-10 overflow-y-auto animate-slide-left border-l border-gray-200">
+            {/* Drawer Header */}
+            <div>
+              <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-slate-50">
+                <div className="flex items-center space-x-2.5">
+                  <img 
+                    src="/assets/ss-journey-emblem.png" 
+                    alt="SS Journey" 
+                    className="h-8 w-auto object-contain"
+                  />
+                  <div>
+                    <span className="font-black text-sm tracking-tight text-[#071426] block">
+                      SS JOURNEY
+                    </span>
+                    <span className="text-[9px] uppercase tracking-wider font-bold text-[#008cff]">
+                      Travel Platform
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition"
+                  aria-label="Close menu"
+                >
+                  <span className="material-symbols-outlined text-[20px]">close</span>
+                </button>
+              </div>
+
+              {/* User Account Section */}
+              <div className="p-4 bg-gradient-to-r from-blue-50/80 to-indigo-50/60 border-b border-gray-100">
+                {user ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-sm font-black text-white shadow-xs">
+                        {(user.fullName || user.email).charAt(0).toUpperCase()}
+                      </div>
+                      <div className="leading-tight max-w-[150px] truncate">
+                        <p className="font-bold text-xs text-gray-900 truncate">
+                          {user.fullName || user.email.split('@')[0]}
+                        </p>
+                        <p className="text-[10px] text-gray-500 truncate mt-0.5">
+                          {user.email}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { onLogout(); setIsMobileMenuOpen(false); }}
+                      className="px-2.5 py-1 text-[11px] font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { onOpenAuth(); setIsMobileMenuOpen(false); }}
+                    className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#008cff] to-[#0A58CA] text-white font-bold text-xs text-center shadow-md flex items-center justify-center space-x-2"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">account_circle</span>
+                    <span>Sign In or Create Account</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Travel Services Menu */}
+              <div className="p-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-3 py-1 block">
+                  Book Services
+                </span>
+                <nav className="space-y-0.5">
+                  {[
+                    { id: 'explore' as const, label: 'Explore & Search', icon: 'explore', color: 'text-blue-500' },
+                    { id: 'flights' as const, label: 'Flights', icon: 'flight', color: 'text-sky-500' },
+                    { id: 'hotels' as const, label: 'Hotels & Stays', icon: 'hotel', color: 'text-indigo-500' },
+                    { id: 'trains' as const, label: 'Trains (IRCTC)', icon: 'train', color: 'text-emerald-500' },
+                    { id: 'buses' as const, label: 'Buses', icon: 'directions_bus', color: 'text-purple-500' },
+                    { id: 'cabs' as const, label: 'Cabs & Airport Taxi', icon: 'local_taxi', color: 'text-amber-500' },
+                    { id: 'packages' as const, label: 'Holiday Packages', icon: 'beach_access', color: 'text-rose-500' },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleMobileNav(item.id)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                        activeScreen === item.id
+                          ? 'bg-blue-50 text-[#008cff] font-bold'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <span className={`material-symbols-outlined text-[19px] ${item.color}`}>
+                          {item.icon}
+                        </span>
+                        <span>{item.label}</span>
+                      </div>
+                      <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
+                    </button>
+                  ))}
+                </nav>
+
+                <div className="my-2 border-t border-gray-100" />
+
+                {/* Corporate & Partner Options */}
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-3 py-1 block">
+                  Business & Hosting
+                </span>
+                <nav className="space-y-0.5">
+                  {/* myBiz */}
+                  <button
+                    type="button"
+                    onClick={() => handleMobileNav(bizContext?.is_biz_user ? 'mybiz-dashboard' : 'mybiz')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                      activeScreen === 'mybiz' || activeScreen === 'mybiz-dashboard'
+                        ? 'bg-amber-50 text-amber-900 font-bold'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-5 h-5 rounded-md bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-[10px] text-white font-black">
+                        B
+                      </div>
+                      <span>{bizContext?.is_biz_user ? 'myBiz Dashboard' : 'Introducing myBiz'}</span>
+                    </div>
+                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                      Corporate
+                    </span>
+                  </button>
+
+                  {/* List Your Property */}
+                  <button
+                    type="button"
+                    onClick={() => handleMobileNav('list-property')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                      activeScreen === 'list-property'
+                        ? 'bg-emerald-50 text-emerald-800 font-bold'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <span className="material-symbols-outlined text-[19px] text-emerald-600">apartment</span>
+                      <span>List Your Property</span>
+                    </div>
+                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                      Free
+                    </span>
+                  </button>
+                </nav>
+
+                <div className="my-2 border-t border-gray-100" />
+
+                {/* Account & Orders */}
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-3 py-1 block">
+                  My Travel Desk
+                </span>
+                <nav className="space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => handleMobileNav('trips')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                      activeScreen === 'trips' ? 'bg-blue-50 text-[#008cff] font-bold' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <span className="material-symbols-outlined text-[19px] text-[#008cff]">luggage</span>
+                      <span>My Trips &amp; Bookings</span>
+                    </div>
+                    <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      if (onOpenWishlist) onOpenWishlist();
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <span className="material-symbols-outlined text-[19px] text-rose-500" style={{ fontVariationSettings: "'FILL' 1" }}>
+                        favorite
+                      </span>
+                      <span>Saved &amp; Wishlist</span>
+                    </div>
+                    <span className="text-xs font-bold bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full">
+                      {wishlistCount}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleMobileNav('checkout')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                      activeScreen === 'checkout' ? 'bg-blue-50 text-[#008cff] font-bold' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <span className="material-symbols-outlined text-[19px] text-[#008cff]">shopping_cart</span>
+                      <span>Checkout Cart</span>
+                    </div>
+                    <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
+                  </button>
+
+                  {/* Admin Portal link for admin users */}
+                  {user?.role === 'ADMIN' && (
+                    <a
+                      href="http://localhost:5174/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 transition mt-1"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <span className="material-symbols-outlined text-[19px] text-red-600">admin_panel_settings</span>
+                        <span>Open Admin Console</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-red-500">(:5174) ↗</span>
+                    </a>
+                  )}
+                </nav>
+              </div>
+            </div>
+
+            {/* Drawer Footer with Currency Switcher */}
+            <div className="p-4 bg-gray-50 border-t border-gray-100 space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-500 font-semibold flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[16px]">language</span>
+                  <span>Currency:</span>
+                </span>
+                <div className="flex items-center space-x-1 bg-white border border-gray-200 rounded-lg p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setCurrency('INR')}
+                    className={`px-2.5 py-1 rounded text-xs font-bold transition ${
+                      currency === 'INR' ? 'bg-[#008cff] text-white shadow-xs' : 'text-gray-600 hover:text-black'
+                    }`}
+                  >
+                    INR ₹
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrency('USD')}
+                    className={`px-2.5 py-1 rounded text-xs font-bold transition ${
+                      currency === 'USD' ? 'bg-[#008cff] text-white shadow-xs' : 'text-gray-600 hover:text-black'
+                    }`}
+                  >
+                    USD $
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-gray-400 text-center">
+                SS Journey &bull; Explore &bull; Book &bull; Travel &bull; More
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };

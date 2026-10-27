@@ -83,10 +83,10 @@ export const MyBizLandingPage: React.FC<MyBizLandingPageProps> = ({
 
         <div className="max-w-[1240px] mx-auto relative z-10">
           {/* Breadcrumb / badge */}
-          <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-500/20 to-orange-500/10 border border-amber-400/30 px-3.5 py-1.5 rounded-full text-xs font-semibold text-amber-300 mb-6">
+          {/* <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-500/20 to-orange-500/10 border border-amber-400/30 px-3.5 py-1.5 rounded-full text-xs font-semibold text-amber-300 mb-6">
             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
             <span>SS Journey myBiz &bull; Corporate Travel Engine</span>
-          </div>
+          </div> */}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             {/* Left Content */}
@@ -116,7 +116,7 @@ export const MyBizLandingPage: React.FC<MyBizLandingPageProps> = ({
                 Unlock exclusive corporate flight & hotel fares, automated GST invoices for 100% input tax credit (ITC), customized employee travel policies, and transparent multi-tier approvals.
               </p>
 
-              {/* Key Highlights */}
+              {/* Key Highlights
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
                 <div className="bg-white/5 border border-white/10 rounded-xl p-3 backdrop-blur-sm">
                   <p className="text-2xl font-black text-amber-400">Up to 25%</p>
@@ -130,7 +130,7 @@ export const MyBizLandingPage: React.FC<MyBizLandingPageProps> = ({
                   <p className="text-2xl font-black text-sky-400">2-Min</p>
                   <p className="text-xs text-slate-300 mt-0.5">Instant Self-Onboarding</p>
                 </div>
-              </div>
+              </div> */}
 
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-4 pt-4">
@@ -172,13 +172,13 @@ export const MyBizLandingPage: React.FC<MyBizLandingPageProps> = ({
             <div className="lg:col-span-5">
               <div className="bg-gradient-to-b from-slate-900/90 to-slate-950/90 border border-slate-700/60 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
                 <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-                  <div className="flex items-center space-x-2.5">
+                  {/* <div className="flex items-center space-x-2.5">
                     <span className="w-3 h-3 rounded-full bg-emerald-500 ring-4 ring-emerald-500/20" />
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Live Corporate Suite</span>
-                  </div>
-                  <span className="text-[11px] font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-md">
+                  </div> */}
+                  {/* <span className="text-[11px] font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-md">
                     Zero Setup Fee
-                  </span>
+                  </span> */}
                 </div>
 
                 <div className="mt-5 space-y-3.5">

@@ -742,10 +742,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
 
       {/* Add Flight Modal */}
       {showAddModal && type === 'flights' && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-2xl">
             <h3 className="text-lg font-bold text-white">Add New Flight Listing</h3>
-            <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
                 <label className="text-slate-400 block mb-1">Airline</label>
                 <input
@@ -826,10 +826,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
 
       {/* Add Hotel Modal */}
       {showAddModal && type === 'hotels' && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-2xl">
             <h3 className="text-lg font-bold text-white">Add New Hotel Property</h3>
-            <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="col-span-2">
                 <label className="text-slate-400 block mb-1">Hotel Name</label>
                 <input
@@ -899,10 +899,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
 
       {/* Add Train Modal */}
       {showAddModal && type === 'trains' && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-2xl">
             <h3 className="text-lg font-bold text-white">Add New Train Route</h3>
-            <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
                 <label className="text-slate-400 block mb-1">Train Number</label>
                 <input
@@ -979,10 +979,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
 
       {/* Add Bus Modal */}
       {showAddModal && type === 'buses' && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-2xl">
             <h3 className="text-lg font-bold text-white">Add New Bus Route</h3>
-            <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
                 <label className="text-slate-400 block mb-1">Operator Name</label>
                 <input
@@ -1059,10 +1059,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
 
       {/* Add Cab Modal */}
       {showAddModal && type === 'cabs' && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-2xl">
             <h3 className="text-lg font-bold text-white">Add New Cab Vehicle</h3>
-            <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
                 <label className="text-slate-400 block mb-1">Vehicle Model</label>
                 <input
@@ -1124,10 +1124,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
 
       {/* Add Package Modal */}
       {showAddModal && type === 'packages' && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-2xl">
             <h3 className="text-lg font-bold text-white">Add New Holiday Package</h3>
-            <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="col-span-2">
                 <label className="text-slate-400 block mb-1">Package Title</label>
                 <input
@@ -1195,8 +1195,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
 
       {/* Edit Inventory Item Modal */}
       {editItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md max-h-[92vh] overflow-y-auto p-4 sm:p-6 shadow-2xl relative">
             <button
               onClick={() => setEditItem(null)}
               className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"

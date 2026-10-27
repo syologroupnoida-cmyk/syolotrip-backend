@@ -93,7 +93,7 @@ export const MyTripsPage: React.FC<MyTripsPageProps> = ({ onNavigate, onOpenAuth
   }
 
   return (
-    <div className="w-full bg-background min-h-[70vh] py-10 px-gutter">
+    <div className="w-full bg-background min-h-[70vh] py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-[1100px] mx-auto">
         {/* Title banner */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-outline-variant/20 gap-4">
