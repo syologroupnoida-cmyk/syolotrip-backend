@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, Shadows } from '../theme/theme';
+import { useCurrency } from '../context/CurrencyContext';
 
 const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = Math.min(width * 0.82, 340);
@@ -36,14 +37,11 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
   wishlistCount = 0,
   onPressTrips,
 }) => {
-  const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
+  const { currency, setCurrency, currencyConfig, currencies } = useCurrency();
+  const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
   const [country, setCountry] = useState<'India' | 'United States' | 'UAE'>('India');
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
   const [userStars, setUserStars] = useState(5);
-
-  const toggleCurrency = () => {
-    setCurrency((prev) => (prev === 'INR' ? 'USD' : 'INR'));
-  };
 
   const cycleCountry = () => {
     setCountry((prev) => {
@@ -219,7 +217,7 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
               {/* 4. Currency Selector */}
               <TouchableOpacity
                 style={styles.menuItem}
-                onPress={toggleCurrency}
+                onPress={() => setCurrencyModalVisible(true)}
                 activeOpacity={0.7}
               >
                 <View style={[styles.itemIconCircle, { backgroundColor: '#ecfdf5' }]}>
@@ -230,8 +228,8 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
                   <Text style={styles.itemSubtitle}>Display prices in your currency</Text>
                 </View>
                 <View style={styles.togglePill}>
-                  <Text style={styles.togglePillText}>{currency === 'INR' ? '₹ INR' : '$ USD'}</Text>
-                  <MaterialIcons name="swap-horiz" size={14} color={Colors.primary} />
+                  <Text style={styles.togglePillText}>{currencyConfig.flag} {currencyConfig.code} ({currencyConfig.symbol})</Text>
+                  <MaterialIcons name="chevron-right" size={16} color={Colors.primary} />
                 </View>
               </TouchableOpacity>
 
@@ -341,6 +339,83 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Interactive Currency Selection Dialog */}
+      <Modal
+        visible={currencyModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCurrencyModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.ratingOverlay}
+          activeOpacity={1}
+          onPress={() => setCurrencyModalVisible(false)}
+        >
+          <TouchableWithoutFeedback>
+            <View style={[styles.ratingCard, { maxWidth: 360, width: '90%' }]}>
+              <View style={[styles.ratingIconCircle, { backgroundColor: '#ecfdf5' }]}>
+                <MaterialIcons name="currency-exchange" size={28} color="#059669" />
+              </View>
+              <Text style={styles.ratingTitle}>Select Display Currency</Text>
+              <Text style={styles.ratingSubtitle}>
+                All flights, hotels, trains, and packages convert live with official rates.
+              </Text>
+
+              <View style={{ width: '100%', marginTop: 12, marginBottom: 16 }}>
+                {Object.values(currencies).map((c) => {
+                  const isSelected = currency === c.code;
+                  return (
+                    <TouchableOpacity
+                      key={c.code}
+                      onPress={() => {
+                        setCurrency(c.code);
+                        setCurrencyModalVisible(false);
+                      }}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingVertical: 10,
+                        paddingHorizontal: 12,
+                        borderRadius: 10,
+                        backgroundColor: isSelected ? '#eff6ff' : '#ffffff',
+                        borderWidth: 1,
+                        borderColor: isSelected ? '#008cff' : '#f1f5f9',
+                        marginBottom: 6,
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 20, marginRight: 10 }}>{c.flag}</Text>
+                        <View>
+                          <Text style={{ fontSize: 14, fontWeight: '700', color: isSelected ? '#005cab' : '#1e293b' }}>
+                            {c.code} &bull; {c.symbol}
+                          </Text>
+                          <Text style={{ fontSize: 11, color: '#64748b' }}>{c.name}</Text>
+                        </View>
+                      </View>
+                      {isSelected ? (
+                        <MaterialIcons name="check-circle" size={20} color="#008cff" />
+                      ) : (
+                        <MaterialIcons name="radio-button-unchecked" size={20} color="#cbd5e1" />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <TouchableOpacity
+                style={[styles.cancelRatingBtn, { width: '100%', alignItems: 'center' }]}
+                onPress={() => setCurrencyModalVisible(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.cancelRatingText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableWithoutFeedback>
+        </TouchableOpacity>
       </Modal>
     </>
   );

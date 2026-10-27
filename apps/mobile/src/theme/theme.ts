@@ -111,6 +111,51 @@ export const Shadows = {
   },
 };
 
+export type MobileCurrencyCode = 'INR' | 'USD' | 'EUR' | 'GBP' | 'AED' | 'SGD';
+
+export interface CurrencyConfig {
+  code: MobileCurrencyCode;
+  symbol: string;
+  name: string;
+  flag: string;
+  rate: number;
+  locale: string;
+}
+
+export const MOBILE_CURRENCIES: Record<MobileCurrencyCode, CurrencyConfig> = {
+  INR: { code: 'INR', symbol: '₹', name: 'Indian Rupee', flag: '🇮🇳', rate: 1.0, locale: 'en-IN' },
+  USD: { code: 'USD', symbol: '$', name: 'US Dollar', flag: '🇺🇸', rate: 0.0118, locale: 'en-US' },
+  EUR: { code: 'EUR', symbol: '€', name: 'Euro', flag: '🇪🇺', rate: 0.0109, locale: 'de-DE' },
+  GBP: { code: 'GBP', symbol: '£', name: 'British Pound', flag: '🇬🇧', rate: 0.0093, locale: 'en-GB' },
+  AED: { code: 'AED', symbol: 'AED ', name: 'UAE Dirham', flag: '🇦🇪', rate: 0.0433, locale: 'en-AE' },
+  SGD: { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar', flag: '🇸🇬', rate: 0.0156, locale: 'en-SG' },
+};
+
+let activeMobileCurrency: MobileCurrencyCode = 'INR';
+
+export const setGlobalMobileCurrency = (code: MobileCurrencyCode) => {
+  if (MOBILE_CURRENCIES[code]) {
+    activeMobileCurrency = code;
+  }
+};
+
+export const getGlobalMobileCurrency = (): MobileCurrencyCode => activeMobileCurrency;
+
+export const formatPrice = (val: number, overrideCode?: MobileCurrencyCode): string => {
+  const code = overrideCode || activeMobileCurrency;
+  const cfg = MOBILE_CURRENCIES[code] || MOBILE_CURRENCIES.INR;
+  if (isNaN(val) || val === 0) return `${cfg.symbol}0`;
+  const converted = val * cfg.rate;
+  if (cfg.code === 'INR' || cfg.code === 'AED') {
+    return `${cfg.symbol}${Math.round(converted).toLocaleString(cfg.locale)}`;
+  }
+  const hasDecimals = converted % 1 !== 0;
+  return `${cfg.symbol}${converted.toLocaleString(cfg.locale, {
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
+  })}`;
+};
+
 export const formatINR = (val: number): string => {
-  return '₹' + Math.round(val).toLocaleString('en-IN');
+  return formatPrice(val);
 };

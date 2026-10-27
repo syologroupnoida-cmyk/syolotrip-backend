@@ -13,7 +13,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing, BorderRadius, Shadows } from '../theme/theme';
-import { loginMobileApi, registerMobileApi, logoutMobileApi } from '../services/api';
+import { loginMobileApi, registerMobileApi, demoLoginMobileApi, logoutMobileApi } from '../services/api';
 
 interface AuthModalProps {
   visible: boolean;
@@ -69,6 +69,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Authentication failed. Please verify credentials.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInstantBypassLogin = async () => {
+    setErrorMsg(null);
+    setIsLoading(true);
+    try {
+      const res = await demoLoginMobileApi('CUSTOMER');
+      onLoginSuccess(res.user);
+      onClose();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Demo bypass login failed.');
     } finally {
       setIsLoading(false);
     }
@@ -269,12 +283,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 )}
               </TouchableOpacity>
 
-              {/* Quick Customer Demo Fill */}
+              {/* Quick Customer Demo Fill & Instant Bypass */}
               <View style={styles.demoSection}>
-                <Text style={styles.demoLabel}>Instant Demo Fill:</Text>
+                <TouchableOpacity
+                  style={styles.bypassBtn}
+                  onPress={handleInstantBypassLogin}
+                  disabled={isLoading}
+                  activeOpacity={0.8}
+                >
+                  <MaterialIcons name="bolt" size={16} color="#d97706" />
+                  <Text style={styles.bypassBtnText}>Instant Security Bypass Login (1-Click)</Text>
+                </TouchableOpacity>
+
                 <TouchableOpacity style={styles.demoBtn} onPress={handleQuickDemo} activeOpacity={0.8}>
-                  <MaterialIcons name="person" size={14} color={Colors.primary} />
-                  <Text style={styles.demoBtnText}>Customer Demo Account</Text>
+                  <MaterialIcons name="edit" size={13} color={Colors.primary} />
+                  <Text style={styles.demoBtnText}>Auto-fill Customer Credentials</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -501,5 +524,24 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: 'bold',
     color: Colors.primary,
+  },
+  bypassBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    width: '100%',
+    paddingVertical: 9,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fcd34d',
+    marginBottom: 8,
+  },
+  bypassBtnText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#92400e',
   },
 });

@@ -4,6 +4,7 @@ import {
   getCurrentUserApi,
   getPartnerProfileApi,
   loginPartnerApi,
+  demoLoginPartnerApi,
   registerPartnerAccountApi,
   registerPartnerFlowApi,
   createPartnerProfileApi,
@@ -18,6 +19,7 @@ interface PartnerAuthContextType {
   isVerified: boolean;
   status: string;
   login: (email: string, password: string) => Promise<void>;
+  demoLogin: (role?: 'PARTNER') => Promise<void>;
   register: (payload: {
     email: string;
     full_name: string;
@@ -67,6 +69,7 @@ const PartnerAuthContext = createContext<PartnerAuthContextType>({
   isVerified: false,
   status: 'PENDING_VERIFICATION',
   login: async () => {},
+  demoLogin: async () => {},
   register: async () => {},
   registerPartnerFlow: async () => ({ success: false, message: '' }),
   registerProfile: async () => {},
@@ -108,6 +111,20 @@ export const PartnerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const login = async (email: string, password: string) => {
     try {
       const res = await loginPartnerApi(email, password);
+      setUser(res.user);
+      const p = await getPartnerProfileApi();
+      setPartnerProfile(p);
+    } catch (err) {
+      await setStoredToken(null);
+      setUser(null);
+      setPartnerProfile(null);
+      throw err;
+    }
+  };
+
+  const demoLogin = async (role: 'PARTNER' = 'PARTNER') => {
+    try {
+      const res = await demoLoginPartnerApi(role);
       setUser(res.user);
       const p = await getPartnerProfileApi();
       setPartnerProfile(p);
@@ -197,6 +214,7 @@ export const PartnerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
         isVerified,
         status,
         login,
+        demoLogin,
         register,
         registerPartnerFlow,
         registerProfile,

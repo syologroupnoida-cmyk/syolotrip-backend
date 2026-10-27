@@ -20,7 +20,7 @@ interface PartnerAuthScreenProps {
 }
 
 export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess }) => {
-  const { user, partnerProfile, login, registerPartnerFlow, registerProfile } = usePartnerAuth();
+  const { user, partnerProfile, login, demoLogin, registerPartnerFlow, registerProfile } = usePartnerAuth();
 
   const scrollViewRef = useRef<any>(null);
   const isSubmittingRef = useRef(false);
@@ -93,6 +93,26 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
       onSuccess();
     } catch (err: any) {
       setErrorMsg(err.message || 'Login failed. Please check your credentials.');
+    } finally {
+      isSubmittingRef.current = false;
+      setLoading(false);
+      setLoadingStepText(null);
+    }
+  };
+
+  const handleInstantBypassLogin = async () => {
+    if (loading || isSubmittingRef.current) return;
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setPartialNotice(null);
+    isSubmittingRef.current = true;
+    setLoading(true);
+    setLoadingStepText('Authorizing Demo Partner...');
+    try {
+      await demoLogin('PARTNER');
+      onSuccess();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Demo bypass login failed.');
     } finally {
       isSubmittingRef.current = false;
       setLoading(false);
@@ -612,6 +632,19 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
                   </Text>
                 )}
               </TouchableOpacity>
+
+              {/* 1-Click Instant Security Bypass Login */}
+              <TouchableOpacity
+                style={styles.bypassBtn}
+                onPress={handleInstantBypassLogin}
+                disabled={loading}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="bolt" size={18} color="#d97706" />
+                <Text style={styles.bypassBtnText}>
+                  Instant Security Bypass Login (1-Click Partner)
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -849,5 +882,24 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.onSurfaceVariant,
     marginTop: 2,
+  },
+  bypassBtn: {
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fcd34d',
+    paddingVertical: Spacing.sm + 2,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.full,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.md,
+    gap: 6,
+    ...Shadows.sm,
+  },
+  bypassBtnText: {
+    color: '#92400e',
+    fontSize: 13,
+    fontWeight: 'bold',
   },
 });

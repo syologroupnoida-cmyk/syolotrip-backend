@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { loginApi, registerApi, UserProfile } from '../services/api';
+import { loginApi, registerApi, demoLoginApi, UserProfile } from '../services/api';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -17,6 +17,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  const handleInstantBypassLogin = async (role: 'CUSTOMER' | 'ADMIN' | 'PARTNER') => {
+    setErrorMsg(null);
+    setIsLoading(true);
+    try {
+      const res = await demoLoginApi(role);
+      onSuccess(res.user);
+      onClose();
+    } catch (err: any) {
+      let msg = err.response?.data?.message || err.response?.data?.detail || err.message || 'Bypass demo login failed';
+      setErrorMsg(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,6 +127,47 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           >
             Create Account
           </button>
+        </div>
+
+        {/* Instant Security Bypass / 1-Click Demo Login */}
+        <div className="bg-amber-50/90 border-b border-amber-200 p-3.5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-black uppercase tracking-wider text-amber-950 flex items-center gap-1.5">
+              <span>⚡</span> Security Bypass Login (1-Click)
+            </span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-900 border border-amber-400/30">
+              Instant
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={() => handleInstantBypassLogin('CUSTOMER')}
+              className="py-2 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex flex-col items-center justify-center gap-0.5 active:scale-95 disabled:opacity-50"
+            >
+              <span className="font-extrabold">👤 User</span>
+              <span className="text-[9px] font-normal opacity-90">Customer</span>
+            </button>
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={() => handleInstantBypassLogin('ADMIN')}
+              className="py-2 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex flex-col items-center justify-center gap-0.5 active:scale-95 disabled:opacity-50"
+            >
+              <span className="font-extrabold">🛡️ Admin</span>
+              <span className="text-[9px] font-normal opacity-90">Full Access</span>
+            </button>
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={() => handleInstantBypassLogin('PARTNER')}
+              className="py-2 px-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex flex-col items-center justify-center gap-0.5 active:scale-95 disabled:opacity-50"
+            >
+              <span className="font-extrabold">🏨 Partner</span>
+              <span className="text-[9px] font-normal opacity-90">Hotel/Host</span>
+            </button>
+          </div>
         </div>
 
         {/* Form Body */}

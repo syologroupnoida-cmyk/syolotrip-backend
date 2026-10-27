@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, MyBizContext } from '../services/api';
+import { useCurrency, CurrencyCode } from '../context/CurrencyContext';
 
 export type ScreenType = 'explore' | 'flights' | 'hotels' | 'trains' | 'buses' | 'cabs' | 'packages' | 'checkout' | 'trips' | 'list-property' | 'mybiz' | 'mybiz-dashboard';
 
@@ -24,10 +25,11 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenWishlist,
   wishlistCount = 0,
 }) => {
-  const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
+  const { currency, setCurrency, currencyInfo, currencies } = useCurrency();
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const currencyMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -49,6 +51,21 @@ export const Header: React.FC<HeaderProps> = ({
       document.body.style.overflow = '';
     };
   }, [isMobileMenuOpen]);
+
+  // Close currency dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (currencyMenuRef.current && !currencyMenuRef.current.contains(e.target as Node)) {
+        setIsCurrencyOpen(false);
+      }
+    };
+    if (isCurrencyOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isCurrencyOpen]);
 
   // Header is transparent ONLY on the explore/hero page when not scrolled down
   const isTransparent = activeScreen === 'explore' && !isScrolled;
@@ -252,54 +269,72 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             {/* Country & Currency Selector (Desktop) */}
-            <div className="relative hidden md:block">
-              <div 
+            <div className="relative hidden md:block" ref={currencyMenuRef}>
+              <button 
+                type="button"
                 onClick={() => setIsCurrencyOpen(!isCurrencyOpen)}
                 className={`flex items-center space-x-1.5 cursor-pointer transition py-1 px-2 rounded-lg ${
                   isTransparent ? 'hover:bg-white/15' : 'hover:bg-gray-100'
                 }`}
+                title="Change display currency"
               >
                 <span className={`material-symbols-outlined text-[18px] ${
                   isTransparent ? 'text-white' : 'text-[#008cff]'
                 }`}>language</span>
                 <div className="text-left leading-tight hidden sm:block">
                   <p className={`text-[9px] font-normal ${isTransparent ? 'text-white/80' : 'text-gray-500'}`}>
-                    Country &amp; Currency
+                    Currency
                   </p>
                   <div className={`flex items-center font-bold text-xs space-x-1 ${
                     isTransparent ? 'text-white' : 'text-gray-900'
                   }`}>
-                    <span>India | {currency}</span>
+                    <span>{currencyInfo.flag} {currencyInfo.code} ({currencyInfo.symbol})</span>
                     <span className="material-symbols-outlined text-[14px]">arrow_drop_down</span>
                   </div>
                 </div>
-              </div>
+              </button>
 
               {isCurrencyOpen && (
                 <div 
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute right-0 top-full mt-2 w-44 bg-white text-gray-800 rounded-xl shadow-2xl border border-gray-200 p-2 z-50 animate-fade-in"
+                  className="absolute right-0 top-full mt-2 w-56 bg-white text-gray-800 rounded-xl shadow-2xl border border-gray-200 p-2 z-50 animate-fade-in"
                 >
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block px-2 py-1">
-                    Select Currency
-                  </span>
-                  <div 
-                    onClick={() => { setCurrency('INR'); setIsCurrencyOpen(false); }}
-                    className={`flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer ${
-                      currency === 'INR' ? 'bg-blue-50 text-[#008cff] font-bold' : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <span>India (INR ₹)</span>
-                    {currency === 'INR' && <span className="material-symbols-outlined text-[16px] text-[#008cff]">check</span>}
+                  <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-100 mb-1">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                      Select Currency
+                    </span>
+                    <span className="text-[10px] font-semibold text-[#008cff] bg-blue-50 px-1.5 py-0.5 rounded">
+                      Live Conversion
+                    </span>
                   </div>
-                  <div 
-                    onClick={() => { setCurrency('USD'); setIsCurrencyOpen(false); }}
-                    className={`flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer ${
-                      currency === 'USD' ? 'bg-blue-50 text-[#008cff] font-bold' : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <span>United States (USD $)</span>
-                    {currency === 'USD' && <span className="material-symbols-outlined text-[16px] text-[#008cff]">check</span>}
+                  <div className="max-h-60 overflow-y-auto space-y-1">
+                    {Object.values(currencies).map((c) => {
+                      const isSelected = currency === c.code;
+                      return (
+                        <button
+                          key={c.code}
+                          type="button"
+                          onClick={() => {
+                            setCurrency(c.code);
+                            setIsCurrencyOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer transition ${
+                            isSelected ? 'bg-blue-50 text-[#008cff] font-bold' : 'hover:bg-gray-50 text-gray-700'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span className="text-base">{c.flag}</span>
+                            <div className="text-left">
+                              <span className="block leading-tight font-bold">{c.code} &bull; {c.symbol}</span>
+                              <span className="block text-[10px] text-gray-400 font-normal">{c.country}</span>
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <span className="material-symbols-outlined text-[16px] text-[#008cff]">check_circle</span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -623,36 +658,40 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* Drawer Footer with Currency Switcher */}
-            <div className="p-4 bg-gray-50 border-t border-gray-100 space-y-3">
+            <div className="p-4 bg-gray-50 border-t border-gray-100 space-y-2.5">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-500 font-semibold flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[16px]">language</span>
-                  <span>Currency:</span>
+                <span className="text-gray-600 font-bold flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[16px] text-[#008cff]">language</span>
+                  <span>Currency ({currencyInfo.code})</span>
                 </span>
-                <div className="flex items-center space-x-1 bg-white border border-gray-200 rounded-lg p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setCurrency('INR')}
-                    className={`px-2.5 py-1 rounded text-xs font-bold transition ${
-                      currency === 'INR' ? 'bg-[#008cff] text-white shadow-xs' : 'text-gray-600 hover:text-black'
-                    }`}
-                  >
-                    INR ₹
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrency('USD')}
-                    className={`px-2.5 py-1 rounded text-xs font-bold transition ${
-                      currency === 'USD' ? 'bg-[#008cff] text-white shadow-xs' : 'text-gray-600 hover:text-black'
-                    }`}
-                  >
-                    USD $
-                  </button>
-                </div>
+                <span className="text-[10px] font-bold text-[#008cff] bg-blue-50 px-2 py-0.5 rounded-full">
+                  {currencyInfo.flag} {currencyInfo.symbol}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-1.5 bg-white border border-gray-200 rounded-xl p-1.5">
+                {Object.values(currencies).map((c) => {
+                  const isSelected = currency === c.code;
+                  return (
+                    <button
+                      key={c.code}
+                      type="button"
+                      onClick={() => setCurrency(c.code)}
+                      className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-[11px] font-bold transition ${
+                        isSelected
+                          ? 'bg-[#008cff] text-white shadow-xs'
+                          : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      <span className="text-xs">{c.flag}</span>
+                      <span className="leading-tight mt-0.5">{c.code} ({c.symbol})</span>
+                    </button>
+                  );
+                })}
               </div>
 
               <p className="text-[10px] text-gray-400 text-center">
-                SS Journey &bull; Explore &bull; Book &bull; Travel &bull; More
+                Prices update dynamically across all flights, hotels &amp; tours
               </p>
             </div>
           </div>

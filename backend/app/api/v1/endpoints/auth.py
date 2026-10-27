@@ -9,6 +9,7 @@ from backend.app.schemas.common import ApiResponse
 from backend.app.schemas.auth import (
     UserRegisterRequest,
     UserLoginRequest,
+    DemoLoginRequest,
     AuthResponse,
     UserProfileResponse,
 )
@@ -48,6 +49,24 @@ async def login(
         success=True,
         data=result,
         message="Login successful",
+    )
+
+
+@router.post("/demo-login", response_model=ApiResponse[AuthResponse])
+async def demo_login(
+    req: DemoLoginRequest = DemoLoginRequest(),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    1-Click Demo / Bypass login for testing and fast development.
+    Supports role: CUSTOMER, ADMIN, or PARTNER.
+    """
+    service = AuthService(db)
+    result = await service.demo_login(role=req.role, custom_email=req.email)
+    return ApiResponse(
+        success=True,
+        data=result,
+        message=f"Bypass demo login successful for role {req.role.upper()}",
     )
 
 

@@ -17,6 +17,7 @@ import { MyBizDashboardPage } from './pages/MyBizDashboardPage';
 import { AuthModal } from './components/AuthModal';
 import { WishlistModal } from './components/WishlistModal';
 import { WishlistProvider, useWishlist } from './context/WishlistContext';
+import { CurrencyProvider } from './context/CurrencyContext';
 import {
   getCurrentUserApi,
   logoutApi,
@@ -333,9 +334,11 @@ const AppContent: React.FC = () => {
 export const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <WishlistProvider>
-        <AppContent />
-      </WishlistProvider>
+      <CurrencyProvider>
+        <WishlistProvider>
+          <AppContent />
+        </WishlistProvider>
+      </CurrencyProvider>
     </QueryClientProvider>
   );
 };

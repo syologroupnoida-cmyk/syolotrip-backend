@@ -165,6 +165,32 @@ export async function loginPartnerApi(email: string, password: string): Promise<
   }
 }
 
+export async function demoLoginPartnerApi(role: 'PARTNER' = 'PARTNER'): Promise<{ token: string; user: UserProfile }> {
+  try {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/auth/demo-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role }),
+    });
+    if (!res.ok) {
+      await setStoredToken(null);
+      const err = await res.json().catch(() => ({ detail: 'Demo bypass login failed' }));
+      throw new Error(err.detail || 'Demo login failed');
+    }
+    const json: ApiResponse<any> = await res.json();
+    const token = json.data?.tokens?.accessToken || json.data?.tokens?.access_token;
+    if (!token) {
+      await setStoredToken(null);
+      throw new Error('Authentication failed: missing access token');
+    }
+    await setStoredToken(token);
+    return { token, user: json.data?.user };
+  } catch (err) {
+    await setStoredToken(null);
+    throw err;
+  }
+}
+
 export async function registerPartnerAccountApi(payload: {
   email: string;
   full_name: string;

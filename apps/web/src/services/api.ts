@@ -359,6 +359,16 @@ export const loginApi = async (email: string, password: string): Promise<AuthRes
   return data;
 };
 
+export const demoLoginApi = async (role: 'CUSTOMER' | 'ADMIN' | 'PARTNER' = 'CUSTOMER'): Promise<AuthResponse> => {
+  const res = await apiClient.post<ApiResponse<AuthResponse>>('/auth/demo-login', { role });
+  const data = res.data.data;
+  const token = data?.tokens?.accessToken || (data?.tokens as any)?.access_token;
+  if (token) {
+    localStorage.setItem('ss_access_token', token);
+  }
+  return data;
+};
+
 export const registerApi = async (payload: {
   email: string;
   full_name: string;

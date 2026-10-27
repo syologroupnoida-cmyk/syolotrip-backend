@@ -29,6 +29,7 @@ import {
 import { getCurrentUserMobileApi } from './src/services/api';
 import { Colors } from './src/theme/theme';
 import { WishlistProvider, useWishlist } from './src/context/WishlistContext';
+import { CurrencyProvider } from './src/context/CurrencyContext';
 import { WishlistModal } from './src/components/WishlistModal';
 
 function MainApp() {
@@ -320,9 +321,11 @@ function MainApp() {
 
 export default function App() {
   return (
-    <WishlistProvider>
-      <MainApp />
-    </WishlistProvider>
+    <CurrencyProvider>
+      <WishlistProvider>
+        <MainApp />
+      </WishlistProvider>
+    </CurrencyProvider>
   );
 }
 

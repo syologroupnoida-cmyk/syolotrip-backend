@@ -22,6 +22,7 @@ from backend.app.models.base import Base
 from backend.app.core.security import hash_password
 from backend.app.core.config import settings
 from backend.app.models.user import User, UserRole
+from backend.app.models.partner import PartnerProfile, PartnerStatus, PartnerBusinessType
 from backend.app.models.travel import Flight, Hotel, HotelRoom, Bus, HolidayPackage, Train, Cab
 
 
@@ -70,6 +71,39 @@ async def seed_data():
             print(f"  [+] Created demo customer: {customer_email} (Password: Customer@123456)")
         else:
             print(f"  [*] Demo customer already exists: {customer_email}")
+
+        # Seed Partner User
+        partner_email = "partner@ssjourney.com"
+        res = await session.execute(select(User).where(User.email == partner_email))
+        partner_user = res.scalar_one_or_none()
+        if not partner_user:
+            partner_user = User(
+                email=partner_email,
+                full_name="Ramesh Kumar (Hotelier Partner)",
+                phone="+91 98111 88899",
+                hashed_password=hash_password("Partner@123456"),
+                role=UserRole.PARTNER.value,
+                is_active=True,
+                is_verified=True,
+            )
+            session.add(partner_user)
+            await session.flush()
+
+            partner_profile = PartnerProfile(
+                user_id=partner_user.id,
+                business_name="SS Grand Luxury Resort & Suites",
+                business_type=PartnerBusinessType.HOTELIER.value,
+                phone="+91 98111 88899",
+                city="Goa",
+                address="Candolim Beach Road, North Goa",
+                country="India",
+                tax_id="30AAAAA0000A1Z5",
+                status=PartnerStatus.VERIFIED.value,
+            )
+            session.add(partner_profile)
+            print(f"  [+] Created demo partner: {partner_email} (Password: Partner@123456)")
+        else:
+            print(f"  [*] Demo partner already exists: {partner_email}")
 
         # 2. Seed Flights
         demo_flights = [

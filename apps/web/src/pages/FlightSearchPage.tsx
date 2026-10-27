@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { searchFlightsApi, FlightApiResponse } from '../services/api';
 import { ScreenType } from '../components/Header';
+import { useCurrency } from '../context/CurrencyContext';
 import { FlightSearchParams } from './ExplorePage';
 import { WebCheckoutItem } from './BookingCheckoutPage';
 
@@ -103,6 +104,7 @@ export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({
   searchParams,
   onInitiateCheckout,
 }) => {
+  const { formatPrice } = useCurrency();
   const fromCode = searchParams?.fromCode || 'DEL';
   const toCode = searchParams?.toCode || 'BLR';
   const fromCity = searchParams?.fromCity || 'Delhi';
@@ -343,7 +345,7 @@ export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({
                     </span>
                   )}
                 </div>
-                <span className="text-sm font-black mt-0.5">₹{fd.price.toLocaleString('en-IN')}</span>
+                <span className="text-sm font-black mt-0.5">{formatPrice(fd.price)}</span>
               </button>
             ))}
 
@@ -484,7 +486,7 @@ export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({
             <div className="flex flex-col gap-2 p-3 bg-[#F2F4F8] rounded-xl border border-gray-200">
               <div className="flex items-center justify-between text-xs font-semibold">
                 <span className="text-gray-600 uppercase text-[10px] tracking-wider">One Way Price</span>
-                <span className="text-[#008cff] font-bold">Up to ₹{maxPrice.toLocaleString('en-IN')}</span>
+                <span className="text-[#008cff] font-bold">Up to {formatPrice(maxPrice)}</span>
               </div>
               <input
                 type="range"
@@ -793,8 +795,8 @@ export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({
                       {/* Price & Booking Button */}
                       <div className="flex flex-row md:flex-col items-center md:items-end justify-between gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-gray-100 min-w-[160px]">
                         <div className="flex flex-col md:text-right">
-                          <span className="text-xs text-gray-400 line-through">₹{flight.originalPrice.toLocaleString('en-IN')}</span>
-                          <span className="text-xl sm:text-2xl font-black text-[#005cab]">₹{flight.price.toLocaleString('en-IN')}</span>
+                          <span className="text-xs text-gray-400 line-through">{formatPrice(flight.originalPrice)}</span>
+                          <span className="text-xl sm:text-2xl font-black text-[#005cab]">{formatPrice(flight.price)}</span>
                           <span className="text-[10px] sm:text-[11px] text-gray-500">per adult</span>
                         </div>
                         <button
@@ -867,10 +869,10 @@ export const FlightSearchPage: React.FC<FlightSearchPageProps> = ({
 
                         {flightDetailTab === 'fare' && (
                           <div className="text-xs text-gray-700 space-y-1">
-                            <p>Base Fare: <strong>₹{flight.baseFare.toLocaleString('en-IN')}</strong></p>
-                            <p>Airline Taxes & Regulatory Fees: <strong>₹{flight.taxes.toLocaleString('en-IN')}</strong></p>
-                            <p>Special Instant Discount: <strong className="text-[#1A7F37]">- ₹300</strong></p>
-                            <p className="border-t border-gray-200 pt-1 font-bold text-gray-900">Total Fare: ₹{flight.price.toLocaleString('en-IN')}</p>
+                            <p>Base Fare: <strong>{formatPrice(flight.baseFare)}</strong></p>
+                            <p>Airline Taxes &amp; Regulatory Fees: <strong>{formatPrice(flight.taxes)}</strong></p>
+                            <p>Special Instant Discount: <strong className="text-[#1A7F37]">- {formatPrice(300)}</strong></p>
+                            <p className="border-t border-gray-200 pt-1 font-bold text-gray-900">Total Fare: {formatPrice(flight.price)}</p>
                           </div>
                         )}
 

@@ -52,6 +52,22 @@ export const loginAdmin = async (payload: { email: string; password: string }): 
 };
 
 /**
+ * 1-Click Security Bypass / Demo Login for Admin console.
+ */
+export const demoLoginAdmin = async (role: 'ADMIN' = 'ADMIN'): Promise<AuthResponse> => {
+  const response = await adminApiClient.post<ApiResponse<AuthResponse>>('/auth/demo-login', { role });
+  const authData = response.data.data;
+  const token = authData.tokens?.accessToken || (authData.tokens as any)?.access_token;
+  if (token) {
+    localStorage.setItem('admin_token', token);
+    if (authData.user) {
+      localStorage.setItem('admin_user', JSON.stringify(authData.user));
+    }
+  }
+  return authData;
+};
+
+/**
  * Admin Logout: Clears stored session tokens and notifies the application.
  */
 export const logoutAdmin = (): void => {

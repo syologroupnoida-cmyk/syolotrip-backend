@@ -148,6 +148,28 @@ export async function loginMobileApi(email: string, password: string): Promise<a
 }
 
 /**
+ * 1-Click Security Bypass / Demo Login for Customer Mobile App
+ */
+export async function demoLoginMobileApi(role: 'CUSTOMER' = 'CUSTOMER'): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/auth/demo-login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role }),
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({ detail: 'Demo bypass login failed' }));
+    throw new Error(errData.detail || 'Demo login failed');
+  }
+  const json: ApiResponse<any> = await res.json();
+  const token = json.data?.tokens?.accessToken || json.data?.tokens?.access_token;
+  if (token) {
+    await setStoredToken(token);
+  }
+  cachedUser = json.data?.user;
+  return json.data;
+}
+
+/**
  * Customer Authentication: Registration
  */
 export async function registerMobileApi(payload: {

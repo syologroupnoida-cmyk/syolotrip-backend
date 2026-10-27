@@ -66,3 +66,8 @@ class AuthResponse(BaseModel):
     user: UserProfileResponse
     tokens: AuthTokenResponse
 
+
+class DemoLoginRequest(BaseModel):
+    role: str = "CUSTOMER"
+    email: Optional[str] = None
+

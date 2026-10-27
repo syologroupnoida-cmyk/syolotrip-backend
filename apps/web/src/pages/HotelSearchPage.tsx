@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { searchHotelsApi, HotelApiResponse, HotelRoomApiResponse } from '../services/api';
 import { useWishlist } from '../context/WishlistContext';
+import { useCurrency } from '../context/CurrencyContext';
 import { ScreenType } from '../components/Header';
 import { HotelSearchParams } from './ExplorePage';
 import { WebCheckoutItem } from './BookingCheckoutPage';
@@ -82,6 +83,7 @@ export const HotelSearchPage: React.FC<HotelSearchPageProps> = ({
   onInitiateCheckout,
 }) => {
   const { isWishlisted, toggleWishlist } = useWishlist();
+  const { formatPrice } = useCurrency();
   const rawCity = searchParams?.city || 'Paris';
   const cleanCity = rawCity.includes('&') ? '' : rawCity.trim();
   const checkIn = searchParams?.checkIn || '2026-10-24';
@@ -420,7 +422,7 @@ export const HotelSearchPage: React.FC<HotelSearchPageProps> = ({
             <div className="flex flex-col gap-2 p-3 bg-[#F2F4F8] rounded-xl border border-gray-200">
               <div className="flex justify-between items-center text-xs font-semibold">
                 <span className="text-gray-600 uppercase text-[10px] tracking-wider">Price per night</span>
-                <span className="text-[#008cff] font-bold">Up to ₹{maxPrice.toLocaleString('en-IN')}</span>
+                <span className="text-[#008cff] font-bold">Up to {formatPrice(maxPrice)}</span>
               </div>
               <input
                 type="range"
@@ -744,11 +746,11 @@ export const HotelSearchPage: React.FC<HotelSearchPageProps> = ({
                             ✔ {prop.cancellation}
                           </span>
                           <div className="flex items-baseline space-x-1.5 mt-0.5">
-                            <span className="text-xs text-gray-400 line-through">₹{prop.originalPrice.toLocaleString('en-IN')}</span>
-                            <span className="text-2xl font-black text-gray-900">₹{prop.price.toLocaleString('en-IN')}</span>
+                            <span className="text-xs text-gray-400 line-through">{formatPrice(prop.originalPrice)}</span>
+                            <span className="text-2xl font-black text-gray-900">{formatPrice(prop.price)}</span>
                             <span className="text-xs text-gray-500 font-semibold">/ night</span>
                           </div>
-                          <span className="text-[10px] text-gray-400">+ ₹{prop.taxes.toLocaleString('en-IN')} taxes & fees</span>
+                          <span className="text-[10px] text-gray-400">+ {formatPrice(prop.taxes)} taxes &amp; fees</span>
                         </div>
 
                         <button

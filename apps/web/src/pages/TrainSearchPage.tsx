@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { searchTrainsApi, TrainApiResponse } from '../services/api';
 import { ScreenType } from '../components/Header';
+import { useCurrency } from '../context/CurrencyContext';
 import { WebCheckoutItem } from './BookingCheckoutPage';
 
 interface TrainSearchPageProps {
@@ -105,6 +106,7 @@ export const TrainSearchPage: React.FC<TrainSearchPageProps> = ({
   fromCity = 'Delhi',
   toCity = 'Mumbai',
 }) => {
+  const { formatPrice } = useCurrency();
   const [selectedQuota, setSelectedQuota] = useState('General');
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [maxPrice, setMaxPrice] = useState(15000);
@@ -638,7 +640,7 @@ export const TrainSearchPage: React.FC<TrainSearchPageProps> = ({
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-gray-900">{cls.name} ({cls.code})</span>
-                          <span className="text-xs font-black text-gray-900">₹{cls.price.toLocaleString('en-IN')}</span>
+                          <span className="text-xs font-black text-gray-900">{formatPrice(cls.price)}</span>
                         </div>
                         <span className={`text-xs font-black ${cls.statusColor}`}>
                           {cls.status}

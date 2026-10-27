@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { searchBusesApi, BusApiResponse } from '../services/api';
 import { ScreenType } from '../components/Header';
+import { useCurrency } from '../context/CurrencyContext';
 import { WebCheckoutItem } from './BookingCheckoutPage';
 
 interface BusSearchPageProps {
@@ -68,6 +69,7 @@ export const BusSearchPage: React.FC<BusSearchPageProps> = ({
   fromCity = 'Mumbai',
   toCity = 'Goa',
 }) => {
+  const { formatPrice } = useCurrency();
   const [operatorFilter, setOperatorFilter] = useState<'ALL' | 'ZINGBUS' | 'INTRCITY' | 'NUEGO' | 'HRTC'>('ALL');
   const [acOnly, setAcOnly] = useState(false);
   const [sleeperOnly, setSleeperOnly] = useState(false);

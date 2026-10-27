@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import type { UserProfile, AuthResponse } from '@traveler/contracts';
-import { loginAdmin, logoutAdmin } from '../services/api';
+import { loginAdmin, demoLoginAdmin, logoutAdmin } from '../services/api';
 
 interface AdminAuthContextType {
   isAuthenticated: boolean;
   user: UserProfile | null;
   token: string | null;
   login: (email: string, password: string) => Promise<AuthResponse>;
+  demoLogin: (role?: 'ADMIN') => Promise<AuthResponse>;
   logout: () => void;
 }
 
@@ -57,6 +58,15 @@ export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     return authData;
   };
 
+  const demoLogin = async (role: 'ADMIN' = 'ADMIN'): Promise<AuthResponse> => {
+    const authData = await demoLoginAdmin(role);
+    const receivedToken =
+      authData.tokens?.accessToken || (authData.tokens as any)?.access_token || null;
+    setToken(receivedToken);
+    setUser(authData.user || null);
+    return authData;
+  };
+
   const logout = () => {
     logoutAdmin();
     setToken(null);
@@ -70,6 +80,7 @@ export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
         user,
         token,
         login,
+        demoLogin,
         logout,
       }}
     >

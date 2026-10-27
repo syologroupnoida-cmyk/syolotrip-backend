@@ -16,13 +16,26 @@ import { useAdminAuth } from '../context/AdminAuthContext';
 import { useTheme } from '../context/ThemeContext';
 
 export const AdminLoginPage: React.FC = () => {
-  const { login } = useAdminAuth();
+  const { login, demoLogin } = useAdminAuth();
   const { theme, toggleTheme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleInstantBypass = async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      await demoLogin('ADMIN');
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.response?.data?.detail || err.message || 'Bypass demo login failed';
+      setErrorMessage(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -210,6 +223,16 @@ export const AdminLoginPage: React.FC = () => {
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
+            </button>
+
+            {/* 1-Click Security Bypass Login */}
+            <button
+              type="button"
+              onClick={handleInstantBypass}
+              disabled={isLoading}
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/50 text-amber-300 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-98 disabled:opacity-50 cursor-pointer shadow-sm"
+            >
+              <span>⚡ Instant Security Bypass Login (1-Click Admin)</span>
             </button>
 
             {/* Quick Fill Demo / Dev Helper */}
