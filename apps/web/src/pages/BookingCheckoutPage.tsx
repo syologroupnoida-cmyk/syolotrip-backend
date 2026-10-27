@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   createBookingApi,
   payDemoBookingApi,
-  createRazorpayOrderApi,
-  verifyRazorpayPaymentApi,
+  // createRazorpayOrderApi,
+  // verifyRazorpayPaymentApi,
   searchFlightsApi,
   searchHotelsApi,
   searchTrainsApi,
@@ -113,7 +113,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
 }) => {
   const { formatPrice, currency } = useCurrency();
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'card' | 'paypal' | 'apple'>('razorpay');
+  const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'card' | 'paypal' | 'apple'>('card');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [hasInsurance, setHasInsurance] = useState(true);
   const [isConfirmed, setIsConfirmed] = useState(false);
@@ -123,7 +123,8 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
   const [user, setUser] = useState<UserProfile | null>(currentUser || null);
   const [createdBooking, setCreatedBooking] = useState<any | null>(null);
 
-  // Helper to ensure Razorpay Checkout script is loaded
+  // Helper to ensure Razorpay Checkout script is loaded (commented out temporarily)
+  /*
   const ensureRazorpayLoaded = (): Promise<boolean> => {
     return new Promise((resolve) => {
       if (typeof window !== 'undefined' && (window as any).Razorpay) {
@@ -152,6 +153,8 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
       document.body.appendChild(script);
     });
   };
+  */
+
 
   // Coupon / Promo Code state
   const [couponCode, setCouponCode] = useState('');
@@ -359,7 +362,8 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
         setCreatedBooking(booking);
       }
 
-      // 2. Razorpay Test Mode Gateway Integration
+      // 2. Razorpay Test Mode Gateway Integration (temporarily commented out)
+      /*
       if (paymentMethod === 'razorpay') {
         const isLoaded = await ensureRazorpayLoaded();
         if (!isLoaded || !(window as any).Razorpay) {
@@ -452,6 +456,8 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
         rzp.open();
         return;
       }
+      */
+
 
       // 3. Fallback: Demo Payment via Backend Simulation Endpoint
       const payRes = await payDemoBookingApi({
@@ -985,7 +991,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                   {/* Payment Method Tabs */}
                   <div className="flex flex-wrap items-center gap-space-sm">
                     {([
-                      { id: 'razorpay' as const, label: 'Razorpay Test Mode', badge: 'Cards · UPI · Netbanking', icon: 'verified_user' },
+                      // { id: 'razorpay' as const, label: 'Razorpay Test Mode', badge: 'Cards · UPI · Netbanking', icon: 'verified_user' },
                       { id: 'card' as const, label: 'Demo Card Simulation', badge: 'Instant Sim', icon: 'credit_card' },
                       { id: 'paypal' as const, label: 'Demo UPI / Wallet', badge: 'Instant Sim', icon: 'account_balance_wallet' },
                     ]).map(pm => (
@@ -1008,7 +1014,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                     ))}
                   </div>
 
-                  {/* Razorpay Test Mode Gateway Details */}
+                  {/* Razorpay Test Mode Gateway Details (temporarily commented out)
                   {paymentMethod === 'razorpay' && (
                     <div className="bg-primary/5 border border-primary/20 rounded-xl p-space-md flex flex-col gap-space-sm">
                       <div className="flex items-center justify-between">
@@ -1042,6 +1048,7 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                       </div>
                     </div>
                   )}
+                  */}
 
                   {/* Card Form for Demo Simulator */}
                   {paymentMethod === 'card' && (
