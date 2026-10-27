@@ -69,6 +69,21 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/traveler_db"
 
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def assemble_database_url(cls, v: Optional[str]) -> str:
+        if not v:
+            return "postgresql+asyncpg://postgres:postgres@localhost:5432/traveler_db"
+        url = str(v).strip()
+        # Normalize standard Render / cloud provider postgres URLs to postgresql+asyncpg://
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        if "sslmode=require" in url:
+            url = url.replace("sslmode=require", "ssl=require")
+        return url
+
     # Provider simulation mode
     USE_MOCK_PROVIDERS: bool = True
 
