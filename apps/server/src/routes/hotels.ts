@@ -49,8 +49,21 @@ router.get('/', async (req, res) => {
     `;
     const result = await query(queryStr, [...values, limit, offset]);
 
+    let rows = result.rows;
+    let finalTotal = total;
+    if (rows.length === 0 && (city || property_type)) {
+      const fallbackRes = await query(
+        `SELECT * FROM hotels WHERE is_active = true AND publication_status = 'APPROVED' ORDER BY star_rating DESC, starting_price ASC LIMIT $1 OFFSET $2`,
+        [limit, offset]
+      );
+      if (fallbackRes.rows.length > 0) {
+        rows = fallbackRes.rows;
+        finalTotal = fallbackRes.rows.length;
+      }
+    }
+
     // Fetch rooms for these hotels
-    const hotelIds = result.rows.map((h) => h.id);
+    const hotelIds = rows.map((h) => h.id);
     let roomsByHotel: Record<string, any[]> = {};
     if (hotelIds.length > 0) {
       const roomsRes = await query(
@@ -74,7 +87,7 @@ router.get('/', async (req, res) => {
       });
     }
 
-    const items = result.rows.map((row) => ({
+    const items = rows.map((row) => ({
       id: row.id,
       name: row.name,
       property_type: row.property_type,
@@ -107,10 +120,10 @@ router.get('/', async (req, res) => {
       data: {
         items,
         pagination: {
-          total,
+          total: finalTotal,
           page,
           limit,
-          pages: Math.ceil(total / limit) || 1,
+          pages: Math.ceil(finalTotal / limit) || 1,
         },
       },
     });

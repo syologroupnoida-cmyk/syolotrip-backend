@@ -47,7 +47,20 @@ trainsRouter.get('/', async (req, res) => {
       [...values, limit, offset]
     );
 
-    const items = result.rows.map((r) => ({
+    let rows = result.rows;
+    let finalTotal = total;
+    if (rows.length === 0 && (from_city || to_city || train_type)) {
+      const fallbackRes = await query(
+        `SELECT * FROM trains WHERE is_active = true ORDER BY base_fare ASC LIMIT $1 OFFSET $2`,
+        [limit, offset]
+      );
+      if (fallbackRes.rows.length > 0) {
+        rows = fallbackRes.rows;
+        finalTotal = fallbackRes.rows.length;
+      }
+    }
+
+    const items = rows.map((r) => ({
       id: r.id,
       train_number: r.train_number,
       train_name: r.train_name,
@@ -73,7 +86,7 @@ trainsRouter.get('/', async (req, res) => {
       success: true,
       data: {
         items,
-        pagination: { total, page, limit, pages: Math.ceil(total / limit) || 1 },
+        pagination: { total: finalTotal, page, limit, pages: Math.ceil(finalTotal / limit) || 1 },
       },
     });
   } catch (err: any) {
@@ -159,7 +172,20 @@ busesRouter.get('/', async (req, res) => {
       [...values, limit, offset]
     );
 
-    const items = result.rows.map((r) => ({
+    let rows = result.rows;
+    let finalTotal = total;
+    if (rows.length === 0 && (from_city || to_city || bus_type)) {
+      const fallbackRes = await query(
+        `SELECT * FROM buses WHERE is_active = true ORDER BY base_fare ASC LIMIT $1 OFFSET $2`,
+        [limit, offset]
+      );
+      if (fallbackRes.rows.length > 0) {
+        rows = fallbackRes.rows;
+        finalTotal = fallbackRes.rows.length;
+      }
+    }
+
+    const items = rows.map((r) => ({
       id: r.id,
       operator_name: r.operator_name,
       bus_type: r.bus_type,
@@ -181,7 +207,7 @@ busesRouter.get('/', async (req, res) => {
       success: true,
       data: {
         items,
-        pagination: { total, page, limit, pages: Math.ceil(total / limit) || 1 },
+        pagination: { total: finalTotal, page, limit, pages: Math.ceil(finalTotal / limit) || 1 },
       },
     });
   } catch (err: any) {
@@ -223,7 +249,20 @@ cabsRouter.get('/', async (req, res) => {
       [...values, limit, offset]
     );
 
-    const items = result.rows.map((r) => ({
+    let rows = result.rows;
+    let finalTotal = total;
+    if (rows.length === 0 && (city || cab_type)) {
+      const fallbackRes = await query(
+        `SELECT * FROM cabs WHERE is_active = true ORDER BY base_fare ASC LIMIT $1 OFFSET $2`,
+        [limit, offset]
+      );
+      if (fallbackRes.rows.length > 0) {
+        rows = fallbackRes.rows;
+        finalTotal = fallbackRes.rows.length;
+      }
+    }
+
+    const items = rows.map((r) => ({
       id: r.id,
       cab_type: r.cab_type,
       vehicle_model: r.vehicle_model,
@@ -244,7 +283,7 @@ cabsRouter.get('/', async (req, res) => {
       success: true,
       data: {
         items,
-        pagination: { total, page, limit, pages: Math.ceil(total / limit) || 1 },
+        pagination: { total: finalTotal, page, limit, pages: Math.ceil(finalTotal / limit) || 1 },
       },
     });
   } catch (err: any) {
@@ -286,7 +325,20 @@ packagesRouter.get('/', async (req, res) => {
       [...values, limit, offset]
     );
 
-    const items = result.rows.map((r) => ({
+    let rows = result.rows;
+    let finalTotal = total;
+    if (rows.length === 0 && destination) {
+      const fallbackRes = await query(
+        `SELECT * FROM holiday_packages WHERE is_active = true ORDER BY price_per_person ASC LIMIT $1 OFFSET $2`,
+        [limit, offset]
+      );
+      if (fallbackRes.rows.length > 0) {
+        rows = fallbackRes.rows;
+        finalTotal = fallbackRes.rows.length;
+      }
+    }
+
+    const items = rows.map((r) => ({
       id: r.id,
       title: r.title,
       destination: r.destination,
@@ -308,7 +360,7 @@ packagesRouter.get('/', async (req, res) => {
       success: true,
       data: {
         items,
-        pagination: { total, page, limit, pages: Math.ceil(total / limit) || 1 },
+        pagination: { total: finalTotal, page, limit, pages: Math.ceil(finalTotal / limit) || 1 },
       },
     });
   } catch (err: any) {

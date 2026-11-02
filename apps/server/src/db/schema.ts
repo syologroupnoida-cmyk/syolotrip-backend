@@ -493,6 +493,152 @@ export async function initDbSchema() {
     INSERT INTO pricing_rules (name, channel, service_type, calculation_type, value, priority, description)
     SELECT 'General B2B Corporate Default', 'B2B', 'ALL', 'PERCENTAGE_MARKUP', 2.00, 100, 'Global 2% fallback corporate fee on ancillary services'
     WHERE NOT EXISTS (SELECT 1 FROM pricing_rules WHERE channel = 'B2B' AND service_type = 'ALL');
+
+    -- Auto-seed Flights if empty
+    INSERT INTO flights (airline, airline_code, flight_number, aircraft, origin_code, origin_name, origin_city, origin_country, destination_code, destination_name, destination_city, destination_country, departure_time, arrival_time, duration_minutes, stops, cabin_class, available_seats, base_fare, taxes, total_price, currency, is_active)
+    SELECT 'Air India', 'AI', 'AI-101', 'Boeing 787-8', 'DEL', 'Indira Gandhi Intl', 'Delhi', 'India', 'BOM', 'Chhatrapati Shivaji Intl', 'Mumbai', 'India', '06:00', '08:15', 135, 0, 'ECONOMY', 45, 4500, 750, 5250, 'INR', true
+    WHERE NOT EXISTS (SELECT 1 FROM flights WHERE origin_code = 'DEL' AND destination_code = 'BOM');
+
+    INSERT INTO flights (airline, airline_code, flight_number, aircraft, origin_code, origin_name, origin_city, origin_country, destination_code, destination_name, destination_city, destination_country, departure_time, arrival_time, duration_minutes, stops, cabin_class, available_seats, base_fare, taxes, total_price, currency, is_active)
+    SELECT 'IndiGo', '6E', '6E-204', 'Airbus A320neo', 'DEL', 'Indira Gandhi Intl', 'Delhi', 'India', 'BLR', 'Kempegowda Intl', 'Bengaluru', 'India', '09:30', '12:15', 165, 0, 'ECONOMY', 32, 5200, 800, 6000, 'INR', true
+    WHERE NOT EXISTS (SELECT 1 FROM flights WHERE origin_code = 'DEL' AND destination_code = 'BLR');
+
+    INSERT INTO flights (airline, airline_code, flight_number, aircraft, origin_code, origin_name, origin_city, origin_country, destination_code, destination_name, destination_city, destination_country, departure_time, arrival_time, duration_minutes, stops, cabin_class, available_seats, base_fare, taxes, total_price, currency, is_active)
+    SELECT 'Vistara', 'UK', 'UK-811', 'Airbus A321neo', 'BOM', 'Chhatrapati Shivaji Intl', 'Mumbai', 'India', 'GOI', 'Dabolim Airport', 'Goa', 'India', '14:00', '15:15', 75, 0, 'ECONOMY', 28, 3800, 600, 4400, 'INR', true
+    WHERE NOT EXISTS (SELECT 1 FROM flights WHERE origin_code = 'BOM' AND destination_code = 'GOI');
+
+    INSERT INTO flights (airline, airline_code, flight_number, aircraft, origin_code, origin_name, origin_city, origin_country, destination_code, destination_name, destination_city, destination_country, departure_time, arrival_time, duration_minutes, stops, cabin_class, available_seats, base_fare, taxes, total_price, currency, is_active)
+    SELECT 'Emirates', 'EK', 'EK-511', 'Boeing 777-300ER', 'DEL', 'Indira Gandhi Intl', 'Delhi', 'India', 'DXB', 'Dubai International', 'Dubai', 'UAE', '10:45', '13:15', 240, 0, 'ECONOMY', 36, 18500, 3200, 21700, 'INR', true
+    WHERE NOT EXISTS (SELECT 1 FROM flights WHERE origin_code = 'DEL' AND destination_code = 'DXB');
+
+    INSERT INTO flights (airline, airline_code, flight_number, aircraft, origin_code, origin_name, origin_city, origin_country, destination_code, destination_name, destination_city, destination_country, departure_time, arrival_time, duration_minutes, stops, cabin_class, available_seats, base_fare, taxes, total_price, currency, is_active)
+    SELECT 'British Airways', 'BA', 'BA-142', 'Boeing 787-9', 'DEL', 'Indira Gandhi Intl', 'Delhi', 'India', 'LHR', 'Heathrow Airport', 'London', 'UK', '03:15', '07:45', 540, 0, 'ECONOMY', 22, 42000, 6500, 48500, 'INR', true
+    WHERE NOT EXISTS (SELECT 1 FROM flights WHERE origin_code = 'DEL' AND destination_code = 'LHR');
+
+    INSERT INTO flights (airline, airline_code, flight_number, aircraft, origin_code, origin_name, origin_city, origin_country, destination_code, destination_name, destination_city, destination_country, departure_time, arrival_time, duration_minutes, stops, cabin_class, available_seats, base_fare, taxes, total_price, currency, is_active)
+    SELECT 'Air France', 'AF', 'AF-225', 'Airbus A350-900', 'DEL', 'Indira Gandhi Intl', 'Delhi', 'India', 'CDG', 'Charles de Gaulle', 'Paris', 'France', '01:50', '07:05', 525, 0, 'ECONOMY', 19, 44000, 6800, 50800, 'INR', true
+    WHERE NOT EXISTS (SELECT 1 FROM flights WHERE origin_code = 'DEL' AND destination_code = 'CDG');
+
+    INSERT INTO flights (airline, airline_code, flight_number, aircraft, origin_code, origin_name, origin_city, origin_country, destination_code, destination_name, destination_city, destination_country, departure_time, arrival_time, duration_minutes, stops, cabin_class, available_seats, base_fare, taxes, total_price, currency, is_active)
+    SELECT 'Singapore Airlines', 'SQ', 'SQ-401', 'Airbus A380', 'DEL', 'Indira Gandhi Intl', 'Delhi', 'India', 'SIN', 'Changi Airport', 'Singapore', 'Singapore', '09:50', '18:05', 345, 0, 'ECONOMY', 48, 22500, 3600, 26100, 'INR', true
+    WHERE NOT EXISTS (SELECT 1 FROM flights WHERE origin_code = 'DEL' AND destination_code = 'SIN');
+
+    INSERT INTO flights (airline, airline_code, flight_number, aircraft, origin_code, origin_name, origin_city, origin_country, destination_code, destination_name, destination_city, destination_country, departure_time, arrival_time, duration_minutes, stops, cabin_class, available_seats, base_fare, taxes, total_price, currency, is_active)
+    SELECT 'United Airlines', 'UA', 'UA-802', 'Boeing 777-200LR', 'DEL', 'Indira Gandhi Intl', 'Delhi', 'India', 'NYC', 'JFK International', 'New York', 'USA', '23:35', '06:20+1', 915, 0, 'ECONOMY', 15, 68000, 9200, 77200, 'INR', true
+    WHERE NOT EXISTS (SELECT 1 FROM flights WHERE origin_code = 'DEL' AND destination_code = 'NYC');
+
+    INSERT INTO flights (airline, airline_code, flight_number, aircraft, origin_code, origin_name, origin_city, origin_country, destination_code, destination_name, destination_city, destination_country, departure_time, arrival_time, duration_minutes, stops, cabin_class, available_seats, base_fare, taxes, total_price, currency, is_active)
+    SELECT 'Batik Air', 'OD', 'OD-305', 'Boeing 737 MAX 8', 'DEL', 'Indira Gandhi Intl', 'Delhi', 'India', 'DPS', 'Ngurah Rai Intl', 'Bali', 'Indonesia', '22:15', '09:40+1', 535, 1, 'ECONOMY', 24, 26000, 4200, 30200, 'INR', true
+    WHERE NOT EXISTS (SELECT 1 FROM flights WHERE origin_code = 'DEL' AND destination_code = 'DPS');
+
+    -- Auto-seed Hotels if missing key destinations
+    INSERT INTO hotels (name, property_type, star_rating, guest_rating, rating_label, review_count, address, city, country, neighborhood, overview, featured_image, starting_price, currency, is_active, featured)
+    SELECT 'W Goa Beachfront Resort & Spa', 'HOTEL', 5, 9.1, 'Exceptional', 540, 'Vagator Beach', 'Goa', 'India', 'Vagator Beachfront · North Goa', 'Vibrant coastal escape featuring dramatic cliffs, pristine sand, and signature poolside beats.', 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&auto=format&fit=crop&q=80', 16500, 'INR', true, true
+    WHERE NOT EXISTS (SELECT 1 FROM hotels WHERE city = 'Goa');
+
+    INSERT INTO hotels (name, property_type, star_rating, guest_rating, rating_label, review_count, address, city, country, neighborhood, overview, featured_image, starting_price, currency, is_active, featured)
+    SELECT 'Villa Sol Candolim - Private Pool Villa', 'VILLA', 5, 9.5, 'Exceptional', 188, 'Candolim Beach Road', 'Goa', 'India', 'Candolim · 200m to Beach', 'Exclusive 4BHK private pool luxury villa with personal chef, tropical gardens, and private beach access.', 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800&auto=format&fit=crop&q=80', 14500, 'INR', true, true
+    WHERE NOT EXISTS (SELECT 1 FROM hotels WHERE name = 'Villa Sol Candolim - Private Pool Villa');
+
+    INSERT INTO hotels (name, property_type, star_rating, guest_rating, rating_label, review_count, address, city, country, neighborhood, overview, featured_image, starting_price, currency, is_active, featured)
+    SELECT 'Atlantis The Palm Dubai', 'HOTEL', 5, 9.3, 'Exceptional', 3120, 'Crescent Road, The Palm', 'Dubai', 'UAE', 'Palm Jumeirah Waterfront', 'World-famous luxury resort with private sandy beaches, Aquaventure waterpark, and Michelin-star dining.', 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&auto=format&fit=crop&q=80', 26000, 'INR', true, true
+    WHERE NOT EXISTS (SELECT 1 FROM hotels WHERE city = 'Dubai');
+
+    INSERT INTO hotels (name, property_type, star_rating, guest_rating, rating_label, review_count, address, city, country, neighborhood, overview, featured_image, starting_price, currency, is_active, featured)
+    SELECT 'Four Seasons Resort Bali at Sayan', 'HOTEL', 5, 9.6, 'Exceptional', 890, 'Sayan, Ubud', 'Bali', 'Indonesia', 'Ayung River Valley · Ubud', 'Immerse in lush tropical jungle canopy, private infinity plunge pools, and world-class Balinese wellness.', 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800&auto=format&fit=crop&q=80', 32000, 'INR', true, true
+    WHERE NOT EXISTS (SELECT 1 FROM hotels WHERE city = 'Bali');
+
+    INSERT INTO hotels (name, property_type, star_rating, guest_rating, rating_label, review_count, address, city, country, neighborhood, overview, featured_image, starting_price, currency, is_active, featured)
+    SELECT 'The Ritz London', 'HOTEL', 5, 9.4, 'Exceptional', 1420, '150 Piccadilly', 'London', 'UK', 'Mayfair · St James''s Park', 'The benchmark for global British elegance, legendary Afternoon Tea, and opulent neoclassical architecture.', 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&auto=format&fit=crop&q=80', 48000, 'INR', true, true
+    WHERE NOT EXISTS (SELECT 1 FROM hotels WHERE city = 'London');
+
+    INSERT INTO hotels (name, property_type, star_rating, guest_rating, rating_label, review_count, address, city, country, neighborhood, overview, featured_image, starting_price, currency, is_active, featured)
+    SELECT 'The Taj Mahal Palace', 'HOTEL', 5, 9.4, 'Exceptional', 4200, 'Apollo Bunder, Colaba', 'Mumbai', 'India', 'Colaba · Facing Gateway of India', 'Historic luxury landmark overlooking the Gateway of India with royal hospitality and fine dining.', 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&auto=format&fit=crop&q=80', 22000, 'INR', true, true
+    WHERE NOT EXISTS (SELECT 1 FROM hotels WHERE city = 'Mumbai');
+
+    INSERT INTO hotels (name, property_type, star_rating, guest_rating, rating_label, review_count, address, city, country, neighborhood, overview, featured_image, starting_price, currency, is_active, featured)
+    SELECT 'The Leela Palace New Delhi', 'HOTEL', 5, 9.3, 'Exceptional', 2150, 'Diplomatic Enclave, Chanakyapuri', 'Delhi', 'India', 'Chanakyapuri Diplomatic Enclave', 'Palatial elegance blending Lutyens architecture with modern luxury in the heart of Delhi.', 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&auto=format&fit=crop&q=80', 18500, 'INR', true, true
+    WHERE NOT EXISTS (SELECT 1 FROM hotels WHERE city = 'Delhi');
+
+    -- Auto-seed default rooms for hotels that have no rooms
+    INSERT INTO hotel_rooms (hotel_id, room_type, bed_type, max_occupancy, price_per_night, taxes_per_night, available_rooms, is_available)
+    SELECT h.id, 'Deluxe King Executive Room', 'King Bed', 2, h.starting_price, ROUND(h.starting_price * 0.12, 2), 6, true
+    FROM hotels h
+    WHERE NOT EXISTS (SELECT 1 FROM hotel_rooms r WHERE r.hotel_id = h.id);
+
+    -- Auto-seed Trains
+    INSERT INTO trains (id, train_number, train_name, train_type, from_station_code, from_station_name, from_city, to_station_code, to_station_name, to_city, departure_time, arrival_time, duration_minutes, train_class, available_seats, base_fare, rating, currency, is_active)
+    VALUES ('3a823f7d-7480-46d2-94c2-442092bc4f2b', '20172', 'Vande Bharat Express', 'Vande Bharat', 'NDLS', 'New Delhi Railway Station', 'Delhi', 'MMCT', 'Mumbai Central', 'Mumbai', '06:00', '14:05', 485, 'Executive Chair (EC)', 42, 2350, 4.9, 'INR', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    INSERT INTO trains (train_number, train_name, train_type, from_station_code, from_station_name, from_city, to_station_code, to_station_name, to_city, departure_time, arrival_time, duration_minutes, train_class, available_seats, base_fare, rating, currency, is_active)
+    SELECT '22436', 'Vande Bharat Express', 'Vande Bharat', 'NDLS', 'New Delhi Railway Station', 'Delhi', 'BSB', 'Varanasi Junction', 'Varanasi', '06:00', '14:00', 480, 'Executive Chair (EC)', 54, 3310, 4.9, 'INR', true
+    WHERE NOT EXISTS (SELECT 1 FROM trains WHERE train_number = '22436');
+
+    INSERT INTO trains (train_number, train_name, train_type, from_station_code, from_station_name, from_city, to_station_code, to_station_name, to_city, departure_time, arrival_time, duration_minutes, train_class, available_seats, base_fare, rating, currency, is_active)
+    SELECT '12002', 'Bhopal Shatabdi Express', 'Shatabdi', 'NDLS', 'New Delhi Railway Station', 'Delhi', 'AGC', 'Agra Cantt', 'Agra', '06:00', '07:50', 110, 'AC Chair Car (CC)', 88, 750, 4.8, 'INR', true
+    WHERE NOT EXISTS (SELECT 1 FROM trains WHERE train_number = '12002');
+
+    INSERT INTO trains (train_number, train_name, train_type, from_station_code, from_station_name, from_city, to_station_code, to_station_name, to_city, departure_time, arrival_time, duration_minutes, train_class, available_seats, base_fare, rating, currency, is_active)
+    SELECT '20608', 'Mysuru - Chennai Vande Bharat', 'Vande Bharat', 'SBC', 'KSR Bengaluru', 'Bengaluru', 'MAS', 'Chennai Central', 'Chennai', '14:50', '19:20', 270, 'AC Chair Car (CC)', 96, 995, 4.9, 'INR', true
+    WHERE NOT EXISTS (SELECT 1 FROM trains WHERE train_number = '20608');
+
+    -- Auto-seed Buses
+    INSERT INTO buses (id, operator_name, bus_type, from_city, to_city, boarding_point, dropping_point, departure_time, arrival_time, duration_minutes, available_seats, base_fare, rating, currency, is_active)
+    VALUES ('145c8396-2c87-4c67-bb1d-356fefb113ad', 'Zingbus Luxury AC Sleeper (2+1)', 'Volvo 9600 Multi-Axle AC Sleeper', 'Bengaluru', 'Goa', 'Majestic / Silk Board', 'Panjim KTC Bus Stand', '21:00', '07:30+1', 630, 24, 950, 4.8, 'INR', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    INSERT INTO buses (operator_name, bus_type, from_city, to_city, boarding_point, dropping_point, departure_time, arrival_time, duration_minutes, available_seats, base_fare, rating, currency, is_active)
+    SELECT 'IntrCity SmartBus Volvo Club Class', 'Scania Multi-Axle AC Sleeper', 'Mumbai', 'Goa', 'Borivali West / Dadar', 'Panjim Bus Stand', '22:15', '08:45+1', 630, 18, 1150, 4.9, 'INR', true
+    WHERE NOT EXISTS (SELECT 1 FROM buses WHERE operator_name = 'IntrCity SmartBus Volvo Club Class');
+
+    INSERT INTO buses (operator_name, bus_type, from_city, to_city, boarding_point, dropping_point, departure_time, arrival_time, duration_minutes, available_seats, base_fare, rating, currency, is_active)
+    SELECT 'Zingbus Electric Intercity', 'Electric Multi-Axle AC Seater', 'Delhi', 'Jaipur', 'Kashmere Gate ISBT', 'Sindhi Camp Bus Stand', '23:00', '04:30+1', 330, 26, 750, 4.8, 'INR', true
+    WHERE NOT EXISTS (SELECT 1 FROM buses WHERE operator_name = 'Zingbus Electric Intercity');
+
+    -- Auto-seed Cabs
+    INSERT INTO cabs (id, cab_type, vehicle_model, city, pickup_area, drop_area, driver_name, driver_rating, capacity, base_fare, currency, eta_minutes, features, is_active)
+    VALUES ('c394fa80-9c72-4868-8a22-d91b7a624d3d', 'Sedan Prime', 'Maruti Suzuki Dzire / Honda City', 'Delhi', 'IGI Airport Terminal 3', 'Connaught Place / Central Delhi', 'Rajinder Singh (Verified)', 4.92, 4, 650, 'INR', 8, '["AC", "Zero Cancellation Fee", "Clean Cab Guarantee"]'::jsonb, true)
+    ON CONFLICT (id) DO NOTHING;
+
+    INSERT INTO cabs (cab_type, vehicle_model, city, pickup_area, drop_area, driver_name, driver_rating, capacity, base_fare, currency, eta_minutes, features, is_active)
+    SELECT 'SUV XL Executive', 'Toyota Innova Crysta', 'Mumbai', 'Chhatrapati Shivaji Maharaj Airport (T2)', 'Bandra Kurla Complex (BKC)', 'Manoj Patil (Top Rated)', 4.95, 6, 1250, 'INR', 10, '["AC", "Extra Luggage Boot", "Tolls Included"]'::jsonb, true
+    WHERE NOT EXISTS (SELECT 1 FROM cabs WHERE city = 'Mumbai' AND cab_type = 'SUV XL Executive');
+
+    INSERT INTO cabs (cab_type, vehicle_model, city, pickup_area, drop_area, driver_name, driver_rating, capacity, base_fare, currency, eta_minutes, features, is_active)
+    SELECT 'Luxury Electric EV', 'BYD Seal / Ioniq 5', 'Bengaluru', 'Kempegowda International Airport (BLR)', 'Indiranagar / Koramangala', 'Naveen Gowda', 4.98, 4, 1450, 'INR', 10, '["Zero Emissions EV", "Silent Cabin", "Refreshments"]'::jsonb, true
+    WHERE NOT EXISTS (SELECT 1 FROM cabs WHERE city = 'Bengaluru' AND cab_type = 'Luxury Electric EV');
+
+    -- Auto-seed Holiday Packages
+    INSERT INTO holiday_packages (id, title, destination, duration_days, duration_nights, overview, inclusions, exclusions, itinerary, price_per_person, currency, featured_image, rating, available_capacity, is_active)
+    VALUES (
+      '69f529cb-0a00-4b6e-bc78-b1be05991eab',
+      'Kashmir Paradise: Srinagar, Gulmarg & Pahalgam',
+      'Kashmir, India',
+      5, 4,
+      'Experience the heaven on earth with stays on Dal Lake luxury houseboats, snow peaks of Gulmarg, and saffron fields of Pahalgam.',
+      '["Deluxe Houseboat Stay in Srinagar", "Gondola Cable Car Phase 1 Tickets", "Daily Buffet Breakfast & Dinner", "All Private Chauffeur Transfers"]'::jsonb,
+      '["Pony rides in Gulmarg"]'::jsonb,
+      '[{"day": 1, "title": "Arrival in Srinagar & Dal Lake Shikara", "description": "Check-in to luxury houseboat, evening romantic Shikara cruise"}, {"day": 2, "title": "Gulmarg Meadow of Flowers", "description": "World-famous Gondola ride up Apharwat peak"}, {"day": 3, "title": "Pahalgam Valley & Betaab Valley", "description": "Lidder river stroll, pine forests excursion"}]'::jsonb,
+      24500, 'INR',
+      'https://images.unsplash.com/photo-1598091383021-15ddea10925d?w=800&auto=format&fit=crop&q=80',
+      4.9, 25, true
+    )
+    ON CONFLICT (id) DO NOTHING;
+
+    INSERT INTO holiday_packages (title, destination, duration_days, duration_nights, overview, inclusions, exclusions, itinerary, price_per_person, currency, featured_image, rating, available_capacity, is_active)
+    SELECT
+      'Goa Coastal Bliss: Beachfront Resort & Heritage',
+      'Goa, India',
+      4, 3,
+      'Ultimate beach vacation featuring 5-star beachfront stays, private sunset catamaran cruise, and Old Goa Portuguese heritage tours.',
+      '["5-Star Beach Resort Stay", "Private Sunset Catamaran Cruise", "Daily Chef Breakfast", "Airport Roundtrip Transfers"]'::jsonb,
+      '["Water sports personal expenses"]'::jsonb,
+      '[{"day": 1, "title": "Welcome to Goa", "description": "Private transfer to beachfront resort"}, {"day": 2, "title": "Catamaran Cruise & Dolphin Sightings", "description": "Sunset cruise with refreshments"}, {"day": 3, "title": "Old Goa Latin Quarter Heritage", "description": "Fontainhas historic walking tour"}]'::jsonb,
+      16500, 'INR',
+      'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&auto=format&fit=crop&q=80',
+      4.85, 30, true
+    WHERE NOT EXISTS (SELECT 1 FROM holiday_packages WHERE title LIKE '%Goa Coastal Bliss%');
   `);
 }
 

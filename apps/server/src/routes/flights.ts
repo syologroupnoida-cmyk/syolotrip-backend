@@ -72,7 +72,20 @@ router.get('/', optionalAuthenticateToken, async (req: AuthenticatedRequest, res
     `;
     const result = await query(queryStr, [...values, limit, offset]);
 
-    const items = result.rows.map((row) => {
+    let rows = result.rows;
+    let finalTotal = total;
+    if (rows.length === 0 && (from_code || to_code || from_city || to_city)) {
+      const fallbackRes = await query(
+        `SELECT * FROM flights WHERE is_active = true ORDER BY total_price ASC LIMIT $1 OFFSET $2`,
+        [limit, offset]
+      );
+      if (fallbackRes.rows.length > 0) {
+        rows = fallbackRes.rows;
+        finalTotal = fallbackRes.rows.length;
+      }
+    }
+
+    const items = rows.map((row) => {
       const rawBaseFare = parseFloat(row.base_fare);
       const rawTaxes = parseFloat(row.taxes);
 
@@ -138,10 +151,10 @@ router.get('/', optionalAuthenticateToken, async (req: AuthenticatedRequest, res
           rule_applied: activeRule ? { id: activeRule.id, name: activeRule.name, type: activeRule.calculation_type, value: activeRule.value } : null,
         },
         pagination: {
-          total,
+          total: finalTotal,
           page,
           limit,
-          pages: Math.ceil(total / limit) || 1,
+          pages: Math.ceil(finalTotal / limit) || 1,
         },
       },
     });
