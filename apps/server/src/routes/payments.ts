@@ -24,6 +24,7 @@ router.post('/demo', async (req, res) => {
 
     const booking = bRes.rows[0];
     const paymentRef = 'PAY-DEMO-' + uuidv4().substring(0, 8).toUpperCase();
+    const serverVerifiedAmount = parseFloat(booking.total_amount);
 
     const payRes = await client.query(
       `INSERT INTO payments (booking_id, payment_reference, payment_method, amount, currency, status, is_demo, gateway_response)
@@ -33,7 +34,7 @@ router.post('/demo', async (req, res) => {
         booking.id,
         paymentRef,
         payment_method,
-        amount || booking.total_amount,
+        serverVerifiedAmount,
         booking.currency,
         JSON.stringify({ simulated: true, authorized_at: new Date().toISOString() }),
       ]
@@ -65,14 +66,25 @@ router.post('/demo', async (req, res) => {
 // POST /payments/razorpay/order
 router.post('/razorpay/order', async (req, res) => {
   try {
-    const { booking_id, amount, currency = 'INR' } = req.body;
+    const { booking_id } = req.body;
+    if (!booking_id) {
+      return res.status(400).json({ success: false, message: 'booking_id is required' });
+    }
+
+    const bRes = await query('SELECT total_amount, currency FROM bookings WHERE id = $1', [booking_id]);
+    if (bRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const serverAmount = parseFloat(bRes.rows[0].total_amount);
+    const currency = bRes.rows[0].currency || 'INR';
     const fakeOrderId = 'order_' + Math.random().toString(36).substring(2, 12);
 
     return res.json({
       success: true,
       data: {
         order_id: fakeOrderId,
-        amount: Math.round((amount || 1000) * 100),
+        amount: Math.round(serverAmount * 100), // integer paise
         currency,
         key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_mock_mode',
       },

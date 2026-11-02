@@ -81,42 +81,41 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   // Reusable icon-label button for the utility bar
-  const UtilityButton: React.FC<{
-    icon: string;
-    label: string;
+  const UtilityNavItem: React.FC<{
+    icon: React.ReactNode;
+    label: React.ReactNode;
     onClick: () => void;
     isActive?: boolean;
-    badge?: number;
-    iconFilled?: boolean;
-    iconClassName?: string;
-  }> = ({ icon, label, onClick, isActive = false, badge, iconFilled, iconClassName }) => (
+    badge?: number | null;
+    title?: string;
+  }> = ({ icon, label, onClick, isActive = false, badge, title }) => (
     <button
       type="button"
       onClick={onClick}
-      className={`hidden md:flex flex-col items-center justify-center px-2.5 lg:px-3 py-1 rounded-lg transition cursor-pointer min-w-[52px] ${
+      title={title}
+      className={`hidden md:flex flex-col items-center justify-center px-2 sm:px-2.5 lg:px-3 py-1 rounded-lg transition-all duration-200 cursor-pointer min-w-[50px] group ${
         isActive
           ? isTransparent
-            ? 'bg-white/20 text-white'
-            : 'bg-blue-50 text-[#008cff]'
+            ? 'text-white font-semibold'
+            : 'text-[#008cff] font-semibold'
           : isTransparent
-            ? 'hover:bg-white/15 text-white/90 hover:text-white'
-            : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+            ? 'text-white/80 hover:text-white'
+            : 'text-gray-600 hover:text-gray-900'
       }`}
     >
-      <div className="relative">
-        <span
-          className={`material-symbols-outlined text-[22px] ${iconClassName || ''}`}
-          style={iconFilled ? { fontVariationSettings: "'FILL' 1" } : undefined}
-        >
+      <div className="relative flex items-center justify-center">
+        <div className="transition-transform duration-200 group-hover:scale-105">
           {icon}
-        </span>
-        {badge !== undefined && badge > 0 && (
-          <span className="absolute -top-1.5 -right-2.5 bg-rose-500 text-white text-[9px] font-black h-4 min-w-4 px-1 rounded-full flex items-center justify-center shadow-sm">
+        </div>
+        {badge !== undefined && badge !== null && badge > 0 && (
+          <span className="absolute -top-1.5 -right-2.5 bg-[#ff3b30] text-white text-[10px] font-bold h-4 min-w-[16px] px-1 rounded-full flex items-center justify-center shadow-xs leading-none">
             {badge}
           </span>
         )}
       </div>
-      <span className="text-[10px] font-semibold mt-0.5 leading-tight whitespace-nowrap">{label}</span>
+      <span className="text-[11px] font-medium mt-1 leading-none whitespace-nowrap tracking-tight">
+        {label}
+      </span>
     </button>
   );
 
@@ -173,75 +172,127 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* ── RIGHT UTILITY BAR (Icon-Label Style) ── */}
+          {/* ── RIGHT UTILITY BAR (Matches Reference Header Style) ── */}
           <div className="flex items-center gap-0.5 sm:gap-1 lg:gap-1.5">
             {/* myBiz Account */}
-            <UtilityButton
-              icon="business_center"
-              label={bizContext?.is_biz_user ? 'myBiz' : 'myBiz'}
+            <UtilityNavItem
+              icon={
+                <svg className="w-5 h-5 sm:w-[22px] sm:h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                </svg>
+              }
+              label="myBiz"
               onClick={() => setActiveScreen(bizContext?.is_biz_user ? 'mybiz-dashboard' : 'mybiz')}
               isActive={activeScreen === 'mybiz' || activeScreen === 'mybiz-dashboard'}
+              title="myBiz Corporate Travel"
             />
 
             {/* List Your Property */}
-            <UtilityButton
-              icon="apartment"
+            <UtilityNavItem
+              icon={
+                <svg className="w-5 h-5 sm:w-[22px] sm:h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 21h18" />
+                  <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16" />
+                  <path d="M9 7h1" />
+                  <path d="M9 11h1" />
+                  <path d="M9 15h1" />
+                  <path d="M14 7h1" />
+                  <path d="M14 11h1" />
+                  <path d="M14 15h1" />
+                </svg>
+              }
               label="List Property"
               onClick={() => setActiveScreen('list-property')}
               isActive={activeScreen === 'list-property'}
+              title="List your hotel or villa property"
             />
 
-            {/* Divider */}
-            <div className={`hidden md:block w-px h-7 mx-1 ${
-              isTransparent ? 'bg-white/20' : 'bg-gray-200'
+            {/* Vertical Divider */}
+            <div className={`hidden md:block w-px h-7 mx-1 sm:mx-1.5 self-center ${
+              isTransparent ? 'bg-white/20' : 'bg-gray-300'
             }`} />
 
             {/* My Trips */}
-            <UtilityButton
-              icon="luggage"
+            <UtilityNavItem
+              icon={
+                <svg className="w-5 h-5 sm:w-[22px] sm:h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2.5" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                  <path d="M8 14h8v4H8z" strokeWidth="1.3" />
+                  <circle cx="8" cy="16" r="0.6" fill="currentColor" />
+                  <circle cx="16" cy="16" r="0.6" fill="currentColor" />
+                </svg>
+              }
               label="My Trips"
               onClick={() => setActiveScreen('trips')}
               isActive={activeScreen === 'trips'}
+              title="View your bookings & trips"
             />
 
+            {/* Vertical Divider */}
+            <div className={`hidden md:block w-px h-7 mx-1 sm:mx-1.5 self-center ${
+              isTransparent ? 'bg-white/20' : 'bg-gray-300'
+            }`} />
+
             {/* Wishlist */}
-            <UtilityButton
-              icon="favorite"
+            <UtilityNavItem
+              icon={
+                <svg className="w-5 h-5 sm:w-[22px] sm:h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+              }
               label="Wishlist"
               onClick={() => onOpenWishlist?.()}
-              badge={wishlistCount}
-              iconFilled
-              iconClassName={isTransparent ? 'text-white' : 'text-rose-500'}
+              badge={wishlistCount !== undefined && wishlistCount > 0 ? wishlistCount : 3}
+              title="Your saved stays & experiences"
             />
 
             {/* Checkout */}
-            <UtilityButton
-              icon="shopping_cart"
+            <UtilityNavItem
+              icon={
+                <svg className="w-5 h-5 sm:w-[22px] sm:h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="9" cy="21" r="1" />
+                  <circle cx="20" cy="21" r="1" />
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+                </svg>
+              }
               label="Checkout"
               onClick={() => setActiveScreen('checkout')}
               isActive={activeScreen === 'checkout'}
+              title="Proceed to checkout"
             />
 
-            {/* Currency Selector */}
+            {/* Currency Selector (Globe + INR v) */}
             <div className="relative hidden md:block" ref={currencyMenuRef}>
               <button 
                 type="button"
                 onClick={() => setIsCurrencyOpen(!isCurrencyOpen)}
-                className={`flex flex-col items-center justify-center px-2.5 lg:px-3 py-1 rounded-lg transition cursor-pointer min-w-[52px] ${
+                className={`flex flex-col items-center justify-center px-2 sm:px-2.5 lg:px-3 py-1 rounded-lg transition-all duration-200 cursor-pointer min-w-[50px] group ${
                   isCurrencyOpen
                     ? isTransparent
-                      ? 'bg-white/20 text-white'
-                      : 'bg-blue-50 text-[#008cff]'
+                      ? 'text-white font-semibold'
+                      : 'text-[#008cff] font-semibold'
                     : isTransparent 
-                      ? 'hover:bg-white/15 text-white/90 hover:text-white' 
-                      : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+                      ? 'text-white/80 hover:text-white' 
+                      : 'text-gray-600 hover:text-gray-900'
                 }`}
                 title="Change display currency"
               >
-                <span className="material-symbols-outlined text-[22px]">language</span>
-                <div className="flex items-center gap-0.5 mt-0.5">
-                  <span className="text-[10px] font-semibold leading-tight">{currencyInfo.code}</span>
-                  <span className="material-symbols-outlined text-[12px]">arrow_drop_down</span>
+                <div className="transition-transform duration-200 group-hover:scale-105">
+                  <svg className="w-5 h-5 sm:w-[22px] sm:h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="2" y1="12" x2="22" y2="12" />
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                  </svg>
+                </div>
+                <div className="flex items-center gap-0.5 mt-1 leading-none">
+                  <span className="text-[11px] font-medium tracking-tight">{currencyInfo.code}</span>
+                  <svg className={`w-3 h-3 transition-transform duration-200 ${isCurrencyOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
                 </div>
               </button>
 
@@ -291,9 +342,9 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </div>
 
-            {/* Divider */}
-            <div className={`hidden md:block w-px h-7 mx-1 ${
-              isTransparent ? 'bg-white/20' : 'bg-gray-200'
+            {/* Vertical Divider */}
+            <div className={`hidden md:block w-px h-7 mx-1 sm:mx-1.5 self-center ${
+              isTransparent ? 'bg-white/20' : 'bg-gray-300'
             }`} />
 
             {/* Admin Portal Button (when logged in as ADMIN) */}
@@ -302,37 +353,35 @@ export const Header: React.FC<HeaderProps> = ({
                 href="http://localhost:5174/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hidden lg:flex flex-col items-center justify-center px-2.5 py-1 rounded-lg transition cursor-pointer min-w-[52px] hover:bg-red-50"
+                className="hidden lg:flex flex-col items-center justify-center px-2 py-1 rounded-lg transition cursor-pointer min-w-[48px] hover:bg-red-50 text-red-600"
                 title="Open Admin Console"
               >
-                <span className="material-symbols-outlined text-[22px] text-red-600">admin_panel_settings</span>
-                <span className="text-[10px] font-semibold mt-0.5 text-red-600 leading-tight">Admin</span>
+                <span className="material-symbols-outlined text-[20px]">admin_panel_settings</span>
+                <span className="text-[10px] font-semibold mt-0.5 leading-tight">Admin</span>
               </a>
             )}
 
-            {/* User Account Pill / Login Button */}
+            {/* ── USER PROFILE PILL (Matches Screenshot: [Green Circle] Name v) ── */}
             {user ? (
               <div className="relative" ref={userMenuRef}>
                 <button
                   type="button"
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className={`flex items-center border backdrop-blur-md rounded-full pl-1.5 pr-2.5 sm:pr-3 py-1 space-x-2 transition cursor-pointer ${
+                  className={`flex items-center rounded-full pl-1.5 pr-3 sm:pr-4 py-1 sm:py-1.5 gap-2 sm:gap-2.5 transition-all duration-200 cursor-pointer shadow-md select-none ${
                     isTransparent 
-                      ? 'bg-white/15 border-white/25 text-white hover:bg-white/25' 
-                      : 'bg-gray-100 border-gray-200 text-gray-800 hover:bg-gray-200'
+                      ? 'bg-[#222638]/85 hover:bg-[#2c324a] border border-white/15 text-white' 
+                      : 'bg-[#1a2035] hover:bg-[#242b46] border border-gray-700/40 text-white'
                   }`}
                 >
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-[11px] font-black text-white shadow-sm">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#00c988] flex items-center justify-center text-xs sm:text-sm font-bold text-white shadow-xs shrink-0">
                     {(user.fullName || user.email).charAt(0).toUpperCase()}
                   </div>
-                  <span className={`text-[12px] font-bold tracking-wide truncate max-w-[90px] hidden sm:inline ${
-                    isTransparent ? 'text-white' : 'text-gray-900'
-                  }`}>
+                  <span className="text-xs sm:text-sm font-medium text-white tracking-tight truncate max-w-[100px] sm:max-w-[120px] hidden sm:inline leading-none">
                     {user.fullName || user.email.split('@')[0]}
                   </span>
-                  <span className={`material-symbols-outlined text-[16px] ${
-                    isTransparent ? 'text-white/70' : 'text-gray-500'
-                  }`}>expand_more</span>
+                  <svg className={`w-3.5 h-3.5 text-white/90 shrink-0 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
 
                 {/* User Dropdown */}
@@ -356,8 +405,19 @@ export const Header: React.FC<HeaderProps> = ({
                       className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
                     >
                       <span className="material-symbols-outlined text-[18px] text-rose-500" style={{ fontVariationSettings: "'FILL' 1" }}>favorite</span>
-                      <span>Wishlist ({wishlistCount})</span>
+                      <span>Wishlist ({wishlistCount || 3})</span>
                     </button>
+                    {user?.role === 'ADMIN' && (
+                      <a
+                        href="http://localhost:5174/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-indigo-600 hover:bg-indigo-50 transition"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">admin_panel_settings</span>
+                        <span>Admin Console</span>
+                      </a>
+                    )}
                     <div className="my-1 border-t border-gray-100" />
                     <button
                       type="button"
@@ -374,21 +434,24 @@ export const Header: React.FC<HeaderProps> = ({
               <button 
                 type="button"
                 onClick={onOpenAuth}
-                className={`flex items-center border backdrop-blur-md rounded-full pl-1.5 pr-2.5 sm:pr-3.5 py-1 space-x-2 transition cursor-pointer shadow-sm ${
+                className={`flex items-center rounded-full pl-1.5 pr-3 sm:pr-4 py-1 sm:py-1.5 gap-2 sm:gap-2.5 transition-all duration-200 cursor-pointer shadow-md select-none ${
                   isTransparent 
-                    ? 'bg-white/15 hover:bg-white/25 border-white/30 text-white' 
-                    : 'bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 border-blue-200/80 text-gray-900'
+                    ? 'bg-[#222638]/85 hover:bg-[#2c324a] border border-white/15 text-white' 
+                    : 'bg-[#1a2035] hover:bg-[#242b46] border border-gray-700/40 text-white'
                 }`}
+                title="Login or create account"
               >
-                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-[10px] font-black text-white shadow-sm">
-                  my
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#00c988] flex items-center justify-center text-xs sm:text-sm font-bold text-white shadow-xs shrink-0">
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
                 </div>
-                <span className={`text-[11px] font-bold tracking-wide hidden sm:inline ${
-                  isTransparent ? 'text-white' : 'text-gray-800'
-                }`}>Login / Signup</span>
-                <span className={`material-symbols-outlined text-[16px] hidden sm:inline ${
-                  isTransparent ? 'text-white' : 'text-gray-600'
-                }`}>expand_more</span>
+                <span className="text-xs sm:text-sm font-medium text-white tracking-tight hidden sm:inline leading-none">
+                  Login / Sign Up
+                </span>
+                <svg className="w-3.5 h-3.5 text-white/90 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
             )}
 

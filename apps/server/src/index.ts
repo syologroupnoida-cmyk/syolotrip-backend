@@ -13,6 +13,7 @@ import { trainsRouter, busesRouter, cabsRouter, packagesRouter } from './routes/
 import bookingsRouter from './routes/bookings.js';
 import paymentsRouter from './routes/payments.js';
 import adminRouter from './routes/admin.js';
+import pricingRouter from './routes/pricing.js';
 import { couponsRouter, wishlistRouter, locationsRouter } from './routes/misc.js';
 import { mybizRouter, partnerRouter } from './routes/partnerMybiz.js';
 
@@ -90,6 +91,7 @@ apiV1.use('/packages', packagesRouter);
 apiV1.use('/bookings', bookingsRouter);
 apiV1.use('/payments', paymentsRouter);
 apiV1.use('/admin', adminRouter);
+apiV1.use('/admin/pricing', pricingRouter);
 apiV1.use('/coupons', couponsRouter);
 apiV1.use('/wishlist', wishlistRouter);
 apiV1.use('/locations', locationsRouter);

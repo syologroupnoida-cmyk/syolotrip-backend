@@ -9,6 +9,7 @@ import { DashboardOverview } from './pages/DashboardOverview';
 import { BookingsManagement } from './pages/BookingsManagement';
 import { InventoryManagement } from './pages/InventoryManagement';
 import { UsersManagement } from './pages/UsersManagement';
+import { PricingManagement } from './pages/PricingManagement';
 import { CouponsManagement } from './pages/CouponsManagement';
 import { AuditLogsManagement } from './pages/AuditLogsManagement';
 import { PlatformSettings } from './pages/PlatformSettings';
@@ -55,6 +56,8 @@ const AdminMainContent: React.FC = () => {
       case 'users':
         return <UsersManagement />;
       case 'pricing':
+        return <PricingManagement />;
+      case 'coupons':
         return <CouponsManagement />;
       case 'audit':
         return <AuditLogsManagement />;

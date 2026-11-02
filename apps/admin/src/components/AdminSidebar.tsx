@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   LayoutDashboard, Plane, Hotel, Bus, Train, Car, Compass, 
-  Receipt, Users, Tag, FileText, Settings, ShieldAlert 
+  Receipt, Users, Tag, FileText, Settings, ShieldAlert, TrendingUp 
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -29,7 +29,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     { id: 'packages', label: 'Holiday Packages', icon: Compass },
     { id: 'bookings', label: 'Bookings & Orders', icon: Receipt },
     { id: 'users', label: 'Users & Customers', icon: Users },
-    { id: 'pricing', label: 'Offers & Coupons', icon: Tag },
+    { id: 'pricing', label: 'Pricing & Markups', icon: TrendingUp },
+    { id: 'coupons', label: 'Offers & Coupons', icon: Tag },
     { id: 'audit', label: 'Audit Trail Logs', icon: FileText },
     { id: 'settings', label: 'Platform Settings', icon: Settings },
   ];

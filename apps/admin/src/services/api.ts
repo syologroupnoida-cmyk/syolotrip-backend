@@ -235,6 +235,154 @@ export const rejectAdminProperty = async (propertyId: string, rejectionReason?: 
   return response.data;
 };
 
+// ================= Pricing & Dynamic Markup API =================
+export interface AdminPricingRule {
+  id: string;
+  name: string;
+  channel: 'B2C' | 'B2B' | 'ALL';
+  service_type: string;
+  company_id?: string | null;
+  company_name?: string | null;
+  calculation_type: 'PERCENTAGE_MARKUP' | 'FIXED_MARKUP' | 'PERCENTAGE_DISCOUNT' | 'FIXED_DISCOUNT';
+  value: number;
+  min_markup_amount?: number | null;
+  max_markup_amount?: number | null;
+  priority: number;
+  valid_from: string;
+  valid_until?: string | null;
+  is_active: boolean;
+  description?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PricingSimulationResult {
+  supplier_base_fare: number;
+  supplier_taxes: number;
+  markup_amount: number;
+  markup_percentage: number;
+  selling_base_fare: number;
+  total_selling_price: number;
+  platform_margin: number;
+  channel: string;
+  service_type: string;
+  rule_applied: {
+    id: string;
+    name: string;
+    calculation_type: string;
+    value: number;
+    channel: string;
+    priority: number;
+  } | null;
+}
+
+export interface PricingComparisonResult {
+  base_fare: number;
+  taxes: number;
+  service_type: string;
+  b2c: PricingSimulationResult;
+  b2b: PricingSimulationResult;
+  difference: {
+    markup_difference: number;
+    total_price_difference: number;
+    b2b_savings_percentage: number;
+  };
+}
+
+export interface PricingAuditLog {
+  id: string;
+  rule_id?: string | null;
+  rule_name?: string | null;
+  admin_id?: string | null;
+  admin_email: string;
+  action: string;
+  previous_state: Record<string, any>;
+  new_state: Record<string, any>;
+  reason?: string;
+  created_at: string;
+}
+
+export const getAdminPricingRules = async (params?: { channel?: string; service_type?: string }) => {
+  const response = await adminApiClient.get('/admin/pricing/rules', { params });
+  return response.data.data as AdminPricingRule[];
+};
+
+export const createAdminPricingRule = async (payload: Partial<AdminPricingRule> & { reason?: string }) => {
+  const response = await adminApiClient.post('/admin/pricing/rules', payload);
+  return response.data.data as AdminPricingRule;
+};
+
+export const updateAdminPricingRule = async (id: string, payload: Partial<AdminPricingRule> & { reason?: string }) => {
+  const response = await adminApiClient.put(`/admin/pricing/rules/${id}`, payload);
+  return response.data.data as AdminPricingRule;
+};
+
+export const toggleAdminPricingRule = async (id: string) => {
+  const response = await adminApiClient.patch(`/admin/pricing/rules/${id}/toggle`);
+  return response.data;
+};
+
+export const deleteAdminPricingRule = async (id: string) => {
+  const response = await adminApiClient.delete(`/admin/pricing/rules/${id}`);
+  return response.data;
+};
+
+export const simulateAdminPricingQuote = async (payload: {
+  base_fare: number;
+  taxes?: number;
+  channel: 'B2C' | 'B2B';
+  service_type: string;
+  company_id?: string | null;
+  custom_rule?: {
+    calculation_type: string;
+    value: number;
+    min_markup_amount?: number;
+    max_markup_amount?: number;
+  };
+}) => {
+  const response = await adminApiClient.post('/admin/pricing/simulate', payload);
+  return response.data.data as PricingSimulationResult;
+};
+
+export const getAdminPricingComparison = async (params: {
+  base_fare: number;
+  taxes?: number;
+  service_type: string;
+}) => {
+  const response = await adminApiClient.get('/admin/pricing/comparison', { params });
+  return response.data.data as PricingComparisonResult;
+};
+
+export const getAdminPricingAuditLogs = async (limit = 50) => {
+  const response = await adminApiClient.get('/admin/pricing/audit-logs', { params: { limit } });
+  return response.data.data as PricingAuditLog[];
+};
+
+export const getAdminCompanies = async () => {
+  const response = await adminApiClient.get('/admin/companies');
+  return response.data.data;
+};
+
+export const toggleAdminCompanyStatus = async (companyId: string, isActive: boolean) => {
+  const response = await adminApiClient.patch(`/admin/companies/${companyId}/status`, { is_active: isActive });
+  return response.data;
+};
+
+export const getAdminPartners = async () => {
+  const response = await adminApiClient.get('/admin/partners');
+  return response.data.data;
+};
+
+export const updateAdminPartnerStatus = async (partnerId: string, payload: { status: string; is_verified: boolean; rejection_reason?: string }) => {
+  const response = await adminApiClient.patch(`/admin/partners/${partnerId}/status`, payload);
+  return response.data;
+};
+
+export const getAdminPayments = async (limit = 100) => {
+  const response = await adminApiClient.get('/admin/payments', { params: { limit } });
+  return response.data.data;
+};
+
 
 
 

@@ -436,6 +436,63 @@ export async function initDbSchema() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS pricing_rules (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name VARCHAR(255) NOT NULL,
+      channel VARCHAR(20) NOT NULL DEFAULT 'B2C', -- 'B2C', 'B2B', 'ALL'
+      service_type VARCHAR(30) NOT NULL DEFAULT 'ALL', -- 'FLIGHT', 'HOTEL', 'TRAIN', 'BUS', 'CAB', 'PACKAGE', 'ALL'
+      company_id UUID REFERENCES mybiz_companies(id) ON DELETE CASCADE,
+      calculation_type VARCHAR(30) NOT NULL DEFAULT 'PERCENTAGE_MARKUP', -- 'PERCENTAGE_MARKUP', 'FIXED_MARKUP', 'PERCENTAGE_DISCOUNT', 'FIXED_DISCOUNT'
+      value NUMERIC(12, 2) NOT NULL DEFAULT 5.00,
+      min_markup_amount NUMERIC(12, 2) DEFAULT 0.00,
+      max_markup_amount NUMERIC(12, 2),
+      priority INT NOT NULL DEFAULT 100,
+      valid_from TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      valid_until TIMESTAMPTZ,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      description TEXT,
+      created_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS pricing_audit_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      rule_id UUID REFERENCES pricing_rules(id) ON DELETE SET NULL,
+      admin_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      admin_email VARCHAR(255) NOT NULL,
+      action VARCHAR(50) NOT NULL, -- 'CREATE', 'UPDATE', 'DELETE', 'TOGGLE'
+      previous_state JSONB DEFAULT '{}'::jsonb,
+      new_state JSONB DEFAULT '{}'::jsonb,
+      reason TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- Seed initial base rules if none exist
+    INSERT INTO pricing_rules (name, channel, service_type, calculation_type, value, priority, description)
+    SELECT 'Standard B2C Retail Flight Markup', 'B2C', 'FLIGHT', 'PERCENTAGE_MARKUP', 5.00, 50, 'Standard 5% retail markup on supplier flight base fare'
+    WHERE NOT EXISTS (SELECT 1 FROM pricing_rules WHERE channel = 'B2C' AND service_type = 'FLIGHT');
+
+    INSERT INTO pricing_rules (name, channel, service_type, calculation_type, value, priority, description)
+    SELECT 'Standard B2C Retail Hotel Markup', 'B2C', 'HOTEL', 'PERCENTAGE_MARKUP', 8.00, 50, 'Standard 8% retail markup on supplier hotel base rate'
+    WHERE NOT EXISTS (SELECT 1 FROM pricing_rules WHERE channel = 'B2C' AND service_type = 'HOTEL');
+
+    INSERT INTO pricing_rules (name, channel, service_type, calculation_type, value, priority, description)
+    SELECT 'myBiz Corporate Flight Corporate Rate', 'B2B', 'FLIGHT', 'FIXED_MARKUP', 199.00, 50, 'Exclusive corporate flat fee of ₹199 per ticket for myBiz accounts'
+    WHERE NOT EXISTS (SELECT 1 FROM pricing_rules WHERE channel = 'B2B' AND service_type = 'FLIGHT');
+
+    INSERT INTO pricing_rules (name, channel, service_type, calculation_type, value, priority, description)
+    SELECT 'myBiz Corporate Hotel Corporate Rate', 'B2B', 'HOTEL', 'PERCENTAGE_MARKUP', 3.00, 50, 'Special negotiated corporate markup of 3% for myBiz hotel stays'
+    WHERE NOT EXISTS (SELECT 1 FROM pricing_rules WHERE channel = 'B2B' AND service_type = 'HOTEL');
+
+    INSERT INTO pricing_rules (name, channel, service_type, calculation_type, value, priority, description)
+    SELECT 'General B2C Category Default', 'B2C', 'ALL', 'PERCENTAGE_MARKUP', 4.00, 100, 'Global 4% fallback markup on ancillary travel services'
+    WHERE NOT EXISTS (SELECT 1 FROM pricing_rules WHERE channel = 'B2C' AND service_type = 'ALL');
+
+    INSERT INTO pricing_rules (name, channel, service_type, calculation_type, value, priority, description)
+    SELECT 'General B2B Corporate Default', 'B2B', 'ALL', 'PERCENTAGE_MARKUP', 2.00, 100, 'Global 2% fallback corporate fee on ancillary services'
+    WHERE NOT EXISTS (SELECT 1 FROM pricing_rules WHERE channel = 'B2B' AND service_type = 'ALL');
   `);
 }
 
