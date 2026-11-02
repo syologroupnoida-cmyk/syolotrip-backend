@@ -155,3 +155,4 @@ locationsRouter.get('/', async (req, res) => {
 locationsRouter.post('/validate-route', async (req, res) => {
   return res.json({ success: true, data: { valid: true, message: 'Route is valid' } });
 });
+

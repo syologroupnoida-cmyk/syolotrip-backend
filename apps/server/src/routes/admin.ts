@@ -153,3 +153,4 @@ router.post('/properties/:id/reject', async (req, res) => {
 });
 
 export default router;
+
