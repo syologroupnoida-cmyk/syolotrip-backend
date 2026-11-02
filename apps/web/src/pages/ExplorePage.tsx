@@ -84,64 +84,39 @@ export type ServiceCategory =
 export interface HeroSlide {
   id: string;
   image: string;
-  tag: string;
-  icon: string;
-  title: string;
-  subtitle: string;
-  highlight: string;
-  category: ServiceCategory;
+  tagline: string;
 }
 
 export const heroSlides: HeroSlide[] = [
   {
-    id: 'slide-1',
+    id: 'slide-hotel',
+    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=2000&q=85',
+    tagline: 'Book the Finest Hotels & Luxury Stays with Us',
+  },
+  {
+    id: 'slide-flight',
+    image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=2000&q=85',
+    tagline: 'Fly Anywhere with Guaranteed Best Airfares',
+  },
+  {
+    id: 'slide-holiday',
     image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=2000&q=85',
-    tag: 'TROPICAL PARADISE',
-    icon: 'beach_access',
-    title: 'Discover Pure Serenity & Azure Waters',
-    subtitle: 'Overwater luxury villas, untouched coral reefs, and tranquil sunsets across Maldives, Bali & Andaman.',
-    highlight: 'Up to 35% Off on Island Retreats',
-    category: 'holidays',
+    tagline: 'Discover Unforgettable Holiday Packages & Tours',
   },
   {
-    id: 'slide-2',
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=2000&q=85',
-    tag: 'ALPINE ESCAPES',
-    icon: 'landscape',
-    title: 'Majestic Peaks & Scenic Mountain Chalets',
-    subtitle: 'Breathe in crisp mountain air, scenic train journeys, and snowy escapes in Himachal, Kashmir & Swiss Alps.',
-    highlight: 'Handpicked Mountain Stays & Treks',
-    category: 'hotels',
+    id: 'slide-villa',
+    image: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=2000&q=85',
+    tagline: 'Experience Handpicked Private Villas & Homestays',
   },
   {
-    id: 'slide-3',
-    image: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=2000&q=85',
-    tag: 'HERITAGE & ROYALTY',
-    icon: 'fort',
-    title: 'Step Into Timeless Forts & Grand Palaces',
-    subtitle: 'Relive regal grandeur, vibrant desert carnivals, and sacred heritage tours with bespoke luxury itineraries.',
-    highlight: 'Special IRCTC & Heritage Package Deals',
-    category: 'trains',
+    id: 'slide-train',
+    image: 'https://images.unsplash.com/photo-1474487548417-781cb71495f3?auto=format&fit=crop&w=2000&q=85',
+    tagline: 'Fast & Confirmed IRCTC Train Ticket Bookings',
   },
   {
-    id: 'slide-4',
-    image: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=2000&q=85',
-    tag: 'GLOBAL METROPOLIS',
-    icon: 'location_city',
-    title: 'Dazzling Skylines & Boundless City Energy',
-    subtitle: 'From neon streets of Tokyo and romantic alleys of Paris to Dubai’s golden skyline and futuristic attractions.',
-    highlight: 'Direct Flights with Zero Convenience Fees',
-    category: 'flights',
-  },
-  {
-    id: 'slide-5',
-    image: 'https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=2000&q=85',
-    tag: 'COASTAL ODYSSEY',
-    icon: 'sailing',
-    title: 'Sun-Drenched Coasts & Cliffside Dreams',
-    subtitle: 'Sail turquoise Mediterranean waters, uncover hidden ocean coves, and create memories that last forever.',
-    highlight: 'Private Pool Villas & Beachfront Stays',
-    category: 'villas',
+    id: 'slide-cab',
+    image: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=2000&q=85',
+    tagline: 'Ride Easy with Reliable Airport & Outstation Cabs',
   },
 ];
 
@@ -521,7 +496,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
           >
             <img 
               src={slide.image} 
-              alt={slide.title}
+              alt={slide.tagline}
               className={`w-full h-full object-cover object-center filter brightness-[0.78] contrast-105 transition-transform duration-[6000ms] ease-out ${
                 idx === currentSlide ? 'scale-105' : 'scale-100'
               }`}
@@ -534,40 +509,14 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
           </div>
         ))}
 
-        {/* Foreground Content: Title, Subtitle, Badges changing with image */}
-        <div className="relative z-20 h-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-center pt-16 sm:pt-20 pb-16 sm:pb-20">
-          {/* Active Slide Text Content with Keyed Fade Animation */}
-          <div className="max-w-3xl text-left">
-            <div 
-              key={`badge-${currentSlide}`} 
-              className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/25 text-white shadow-lg animate-fadeIn mb-3"
-            >
-              <span className="material-symbols-outlined text-[16px] text-amber-300">
-                {heroSlides[currentSlide].icon}
-              </span>
-              <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest text-amber-300">
-                {heroSlides[currentSlide].tag}
-              </span>
-              <span className="w-1 h-1 rounded-full bg-white/50" />
-              <span className="text-[10px] sm:text-[11px] font-semibold text-white/90">
-                {heroSlides[currentSlide].highlight}
-              </span>
-            </div>
-
-            <h1 
-              key={`title-${currentSlide}`}
-              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.12] drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)] animate-fadeIn"
-            >
-              {heroSlides[currentSlide].title}
-            </h1>
-
-            <p 
-              key={`sub-${currentSlide}`}
-              className="text-xs sm:text-base md:text-lg text-white/90 font-medium mt-2.5 sm:mt-3.5 max-w-2xl leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] animate-fadeIn"
-            >
-              {heroSlides[currentSlide].subtitle}
-            </p>
-          </div>
+        {/* Foreground Content: Only the Tagline changing with each image */}
+        <div className="relative z-20 h-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-center items-center text-center pt-16 sm:pt-20 pb-16 sm:pb-20">
+          <h1 
+            key={`tagline-${currentSlide}`}
+            className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.18] drop-shadow-[0_4px_16px_rgba(0,0,0,0.7)] animate-fadeIn max-w-4xl"
+          >
+            {heroSlides[currentSlide].tagline}
+          </h1>
         </div>
       </section>
 
