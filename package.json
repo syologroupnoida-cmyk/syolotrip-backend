@@ -36,6 +36,7 @@
   "license": "UNLICENSED",
   "devDependencies": {
     "@types/node": "^26.6.5",
+    "@vercel/node": "^29.0.1",
     "typescript": "^7.0.2"
   },
   "optionalDependencies": {
