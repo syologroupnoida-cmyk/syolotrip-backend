@@ -81,6 +81,70 @@ export type ServiceCategory =
   | 'visa' 
   | 'insurance';
 
+export interface HeroSlide {
+  id: string;
+  image: string;
+  tag: string;
+  icon: string;
+  title: string;
+  subtitle: string;
+  highlight: string;
+  category: ServiceCategory;
+}
+
+export const heroSlides: HeroSlide[] = [
+  {
+    id: 'slide-1',
+    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=2000&q=85',
+    tag: 'TROPICAL PARADISE',
+    icon: 'beach_access',
+    title: 'Discover Pure Serenity & Azure Waters',
+    subtitle: 'Overwater luxury villas, untouched coral reefs, and tranquil sunsets across Maldives, Bali & Andaman.',
+    highlight: 'Up to 35% Off on Island Retreats',
+    category: 'holidays',
+  },
+  {
+    id: 'slide-2',
+    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=2000&q=85',
+    tag: 'ALPINE ESCAPES',
+    icon: 'landscape',
+    title: 'Majestic Peaks & Scenic Mountain Chalets',
+    subtitle: 'Breathe in crisp mountain air, scenic train journeys, and snowy escapes in Himachal, Kashmir & Swiss Alps.',
+    highlight: 'Handpicked Mountain Stays & Treks',
+    category: 'hotels',
+  },
+  {
+    id: 'slide-3',
+    image: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=2000&q=85',
+    tag: 'HERITAGE & ROYALTY',
+    icon: 'fort',
+    title: 'Step Into Timeless Forts & Grand Palaces',
+    subtitle: 'Relive regal grandeur, vibrant desert carnivals, and sacred heritage tours with bespoke luxury itineraries.',
+    highlight: 'Special IRCTC & Heritage Package Deals',
+    category: 'trains',
+  },
+  {
+    id: 'slide-4',
+    image: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=2000&q=85',
+    tag: 'GLOBAL METROPOLIS',
+    icon: 'location_city',
+    title: 'Dazzling Skylines & Boundless City Energy',
+    subtitle: 'From neon streets of Tokyo and romantic alleys of Paris to Dubai’s golden skyline and futuristic attractions.',
+    highlight: 'Direct Flights with Zero Convenience Fees',
+    category: 'flights',
+  },
+  {
+    id: 'slide-5',
+    image: 'https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=2000&q=85',
+    tag: 'COASTAL ODYSSEY',
+    icon: 'sailing',
+    title: 'Sun-Drenched Coasts & Cliffside Dreams',
+    subtitle: 'Sail turquoise Mediterranean waters, uncover hidden ocean coves, and create memories that last forever.',
+    highlight: 'Private Pool Villas & Beachfront Stays',
+    category: 'villas',
+  },
+];
+
 interface ExplorePageProps {
   onNavigate?: (screen: ScreenType) => void;
   onSearchFlights?: (params: FlightSearchParams) => void;
@@ -96,6 +160,8 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
 }) => {
   const { isWishlisted, toggleWishlist } = useWishlist();
   const { formatPrice } = useCurrency();
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [searchMode, setSearchMode] = useState<ServiceCategory>('flights');
   const [tripType, setTripType] = useState<'oneway' | 'roundtrip' | 'multicity'>('oneway');
   const [specialFare, setSpecialFare] = useState('regular');
@@ -164,6 +230,23 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Auto-advance slideshow timer
+  useEffect(() => {
+    if (!isAutoPlaying) return;
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 5500);
+    return () => clearInterval(timer);
+  }, [isAutoPlaying]);
+
+  const handlePrevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
+  };
+
+  const handleNextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+  };
 
   const handleSwapAirports = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -429,19 +512,145 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
 
   return (
     <div className="min-h-screen bg-[#f4f6f8] text-[#333333] font-sans antialiased">
-      {/* ── 1. SS JOURNEY TROPICAL HERO BACKDROP ── */}
-      <div className="relative w-full h-[400px] sm:h-[480px] md:h-[540px] overflow-hidden select-none">
-        <img 
-          src="/assets/hero-bg-bright.jpg" 
-          alt="Crystal Clear Sunny Tropical Beach & Azure Sky Hero Backdrop" 
-          className="w-full h-full object-cover object-top filter brightness-105 contrast-105 saturate-110"
-        />
-        {/* Soft, bright atmospheric gradient that preserves sky clarity */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-[#f4f6f8] pointer-events-none" />
-      </div>
+      {/* ── 1. DYNAMIC TRAVEL HERO SLIDESHOW WITH CHANGING IMAGES & TEXT ── */}
+      <section 
+        className="relative w-full h-[520px] sm:h-[570px] md:h-[620px] overflow-hidden select-none bg-slate-950"
+        onMouseEnter={() => setIsAutoPlaying(false)}
+        onMouseLeave={() => setIsAutoPlaying(true)}
+        aria-label="Featured Travel Destinations Slideshow"
+      >
+        {/* Background Slides with Crossfade Animation */}
+        {heroSlides.map((slide, idx) => (
+          <div
+            key={slide.id}
+            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+              idx === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
+            }`}
+          >
+            <img 
+              src={slide.image} 
+              alt={slide.title}
+              className={`w-full h-full object-cover object-center filter brightness-[0.78] contrast-105 transition-transform duration-[6000ms] ease-out ${
+                idx === currentSlide ? 'scale-105' : 'scale-100'
+              }`}
+            />
+            {/* Atmospheric gradient layers:
+                - Dark top gradient ensures the transparent Header navigation is crystal-clear
+                - Dark bottom gradient ensures strong contrast and seamless transition to the search console */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-black/90" />
+            <div className="absolute inset-0 bg-radial from-transparent via-black/15 to-black/50 pointer-events-none" />
+          </div>
+        ))}
 
-      {/* ── 2. MAIN FLOATING CONTAINER OVERLAY ── */}
-      <main className="relative -mt-[310px] sm:-mt-[380px] md:-mt-[440px] z-20 pb-20 px-3 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
+        {/* Foreground Content: Title, Subtitle, Badges changing with image */}
+        <div className="relative z-20 h-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-between pt-24 sm:pt-28 md:pt-32 pb-24 sm:pb-28">
+          {/* Active Slide Text Content with Keyed Fade Animation */}
+          <div className="max-w-3xl text-left">
+            <div 
+              key={`badge-${currentSlide}`} 
+              className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/25 text-white shadow-lg animate-fadeIn mb-3"
+            >
+              <span className="material-symbols-outlined text-[16px] text-amber-300">
+                {heroSlides[currentSlide].icon}
+              </span>
+              <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest text-amber-300">
+                {heroSlides[currentSlide].tag}
+              </span>
+              <span className="w-1 h-1 rounded-full bg-white/50" />
+              <span className="text-[10px] sm:text-[11px] font-semibold text-white/90">
+                {heroSlides[currentSlide].highlight}
+              </span>
+            </div>
+
+            <h1 
+              key={`title-${currentSlide}`}
+              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.12] drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)] animate-fadeIn"
+            >
+              {heroSlides[currentSlide].title}
+            </h1>
+
+            <p 
+              key={`sub-${currentSlide}`}
+              className="text-xs sm:text-base md:text-lg text-white/90 font-medium mt-2.5 sm:mt-3.5 max-w-2xl leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] animate-fadeIn"
+            >
+              {heroSlides[currentSlide].subtitle}
+            </p>
+
+            <div 
+              key={`btn-${currentSlide}`}
+              className="mt-4 sm:mt-5 flex items-center space-x-3 animate-fadeIn"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchMode(heroSlides[currentSlide].category);
+                  const searchElem = document.getElementById('search-console-section');
+                  searchElem?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-[#008cff] hover:bg-[#0070cc] text-white text-xs sm:text-sm font-extrabold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center space-x-1.5 cursor-pointer"
+              >
+                <span>Explore This Destination</span>
+                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+              </button>
+
+              <span className="text-white/70 text-xs hidden sm:inline-flex items-center gap-1 font-medium bg-black/30 backdrop-blur-xs px-3 py-1.5 rounded-full border border-white/10">
+                <span className="material-symbols-outlined text-[14px] text-emerald-400">verified</span>
+                Best Price Guarantee &amp; Instant Booking
+              </span>
+            </div>
+          </div>
+
+          {/* Slideshow Bottom Bar: Navigation Arrows & Slide Indicators */}
+          <div className="flex items-center justify-between pt-4 border-t border-white/15">
+            {/* Slide Dots / Indicators */}
+            <div className="flex items-center space-x-2">
+              {heroSlides.map((slide, idx) => (
+                <button
+                  key={slide.id}
+                  type="button"
+                  onClick={() => setCurrentSlide(idx)}
+                  aria-label={`Go to slide ${idx + 1}: ${slide.title}`}
+                  className="group relative py-2 transition-all cursor-pointer"
+                >
+                  <span 
+                    className={`block h-1.5 rounded-full transition-all duration-300 ${
+                      idx === currentSlide 
+                        ? 'w-8 sm:w-10 bg-gradient-to-r from-amber-400 to-[#008cff] shadow-md' 
+                        : 'w-2 sm:w-3 bg-white/40 group-hover:bg-white/70'
+                    }`}
+                  />
+                </button>
+              ))}
+              <span className="text-[11px] font-bold text-white/70 ml-2 font-mono">
+                0{currentSlide + 1} / 0{heroSlides.length}
+              </span>
+            </div>
+
+            {/* Left / Right Arrows */}
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={handlePrevSlide}
+                aria-label="Previous slide"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/15 hover:bg-white/30 text-white backdrop-blur-md border border-white/20 flex items-center justify-center transition active:scale-95 cursor-pointer shadow-md"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleNextSlide}
+                aria-label="Next slide"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/15 hover:bg-white/30 text-white backdrop-blur-md border border-white/20 flex items-center justify-center transition active:scale-95 cursor-pointer shadow-md"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 2. SEARCH ENGINE CONSOLE PLACED BELOW THE HERO SLIDESHOW ── */}
+      <main id="search-console-section" className="relative -mt-10 sm:-mt-14 md:-mt-16 z-20 pb-20 px-3 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
         {/* Category Navigation Ribbon (Floating White Pill Card) */}
         <nav 
           aria-label="Service Categories"
