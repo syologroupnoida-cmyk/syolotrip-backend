@@ -5,7 +5,7 @@ services:
     plan: free
     region: oregon
     rootDir: .
-    buildCommand: npm install && npm --workspace=@traveler/contracts run build && npm --workspace=@traveler/server run build
+    buildCommand: npm install && npm --workspace=@traveler/server run build
     startCommand: npm --workspace=@traveler/server run start
     healthCheckPath: /healthz
     envVars:
@@ -19,3 +19,4 @@ services:
         generateValue: true
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: 1440
+

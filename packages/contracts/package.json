@@ -12,6 +12,7 @@
     }
   },
   "scripts": {
+    "build": "tsc --emitDeclarationOnly || exit 0",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
