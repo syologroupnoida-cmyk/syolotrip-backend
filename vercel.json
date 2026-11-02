@@ -12,6 +12,14 @@
   },
   "rewrites": [
     {
+      "source": "/api/v1/(.*)",
+      "destination": "https://traveler-backend-q26l.onrender.com/api/v1/$1"
+    },
+    {
+      "source": "/healthz",
+      "destination": "https://traveler-backend-q26l.onrender.com/healthz"
+    },
+    {
       "source": "/admin",
       "destination": {
         "service": "admin"
