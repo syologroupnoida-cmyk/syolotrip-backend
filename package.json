@@ -20,6 +20,7 @@
     "backend:seed": "npm --workspace=@traveler/server run seed",
     "backend:seed:py": "python -m backend.seed",
     "build:server": "npm --workspace=@traveler/server run build",
+    "start": "npm --workspace=@traveler/server run start",
     "start:server": "npm --workspace=@traveler/server run start",
     "build:web": "npm --workspace=@traveler/web run build",
     "build:admin": "npm --workspace=@traveler/admin run build",
