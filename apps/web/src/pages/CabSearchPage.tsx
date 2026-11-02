@@ -4,6 +4,7 @@ import { searchCabsApi, CabApiResponse } from '../services/api';
 import { ScreenType } from '../components/Header';
 import { useCurrency } from '../context/CurrencyContext';
 import { WebCheckoutItem } from './BookingCheckoutPage';
+import { MapLocationSearchModal } from '../components/MapLocationSearchModal';
 
 interface CabSearchPageProps {
   onNavigate?: (screen: ScreenType) => void;
@@ -85,6 +86,11 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
   const [currentPickup, setCurrentPickup] = useState(pickupLocation);
   const [currentDrop, setCurrentDrop] = useState(dropLocation);
   const [isModifyOpen, setIsModifyOpen] = useState(false);
+  const [mapModalState, setMapModalState] = useState<{
+    isOpen: boolean;
+    type: 'pickup' | 'drop';
+    title: string;
+  } | null>(null);
 
   useEffect(() => {
     if (city) setSelectedCity(city);
@@ -273,25 +279,81 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
               </div>
 
               <div className="md:col-span-4">
-                <label className="text-[11px] font-bold text-blue-200 block mb-1">Pickup Location</label>
-                <input
-                  type="text"
-                  value={currentPickup}
-                  onChange={(e) => setCurrentPickup(e.target.value)}
-                  placeholder="Enter pickup address or airport..."
-                  className="w-full bg-white text-gray-900 rounded-lg px-3 py-2 text-xs font-medium outline-none"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-bold text-blue-200">Pickup Location</label>
+                  <button
+                    type="button"
+                    onClick={() => setMapModalState({
+                      isOpen: true,
+                      type: 'pickup',
+                      title: 'Select Pickup Location (Map API)',
+                    })}
+                    className="text-[10px] font-bold text-amber-300 hover:text-white flex items-center space-x-1 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[13px]">map</span>
+                    <span>Map Search</span>
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={currentPickup}
+                    onChange={(e) => setCurrentPickup(e.target.value)}
+                    placeholder="Enter pickup address or airport..."
+                    className="w-full bg-white text-gray-900 rounded-lg pl-3 pr-8 py-2 text-xs font-medium outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setMapModalState({
+                      isOpen: true,
+                      type: 'pickup',
+                      title: 'Select Pickup Location (Map API)',
+                    })}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600"
+                    title="Open Map Location Search"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">my_location</span>
+                  </button>
+                </div>
               </div>
 
               <div className="md:col-span-3">
-                <label className="text-[11px] font-bold text-blue-200 block mb-1">Drop Location</label>
-                <input
-                  type="text"
-                  value={currentDrop}
-                  onChange={(e) => setCurrentDrop(e.target.value)}
-                  placeholder="Enter destination address..."
-                  className="w-full bg-white text-gray-900 rounded-lg px-3 py-2 text-xs font-medium outline-none"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-bold text-blue-200">Drop Location</label>
+                  <button
+                    type="button"
+                    onClick={() => setMapModalState({
+                      isOpen: true,
+                      type: 'drop',
+                      title: 'Select Drop Location (Map API)',
+                    })}
+                    className="text-[10px] font-bold text-amber-300 hover:text-white flex items-center space-x-1 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[13px]">map</span>
+                    <span>Map Search</span>
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={currentDrop}
+                    onChange={(e) => setCurrentDrop(e.target.value)}
+                    placeholder="Enter destination address..."
+                    className="w-full bg-white text-gray-900 rounded-lg pl-3 pr-8 py-2 text-xs font-medium outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setMapModalState({
+                      isOpen: true,
+                      type: 'drop',
+                      title: 'Select Drop Location (Map API)',
+                    })}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-rose-600"
+                    title="Open Map Location Search"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">location_on</span>
+                  </button>
+                </div>
               </div>
 
               <div className="md:col-span-2">
@@ -594,6 +656,30 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
           </section>
         </div>
       </main>
+
+      {/* Map Location Search Modal */}
+      <MapLocationSearchModal
+        isOpen={mapModalState?.isOpen ?? false}
+        onClose={() => setMapModalState(null)}
+        title={mapModalState?.title ?? 'Select Location (Map Search)'}
+        type={mapModalState?.type ?? 'pickup'}
+        currentValue={mapModalState?.type === 'pickup' ? currentPickup : currentDrop}
+        defaultCity={selectedCity}
+        onSelectLocation={(place) => {
+          if (mapModalState?.type === 'pickup') {
+            setCurrentPickup(place.name);
+            if (place.city) {
+              const matchedCity = Object.keys(cityPresets).find(
+                (c) => c.toLowerCase() === place.city!.toLowerCase()
+              );
+              if (matchedCity) setSelectedCity(matchedCity);
+            }
+          } else {
+            setCurrentDrop(place.name);
+          }
+          setMapModalState(null);
+        }}
+      />
     </div>
   );
 };

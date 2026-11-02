@@ -16,8 +16,9 @@ router.get('/', async (req, res) => {
     let idx = 1;
 
     if (city) {
-      conditions.push(`(LOWER(city) LIKE LOWER($${idx}) OR LOWER(name) LIKE LOWER($${idx}))`);
-      values.push(`%${city}%`);
+      const cleanCity = (city as string).split(',')[0].split('(')[0].trim();
+      conditions.push(`(LOWER(city) LIKE LOWER($${idx}) OR LOWER(name) LIKE LOWER($${idx}) OR LOWER(country) LIKE LOWER($${idx}))`);
+      values.push(`%${cleanCity}%`);
       idx++;
     }
     if (star_rating) {
@@ -49,18 +50,8 @@ router.get('/', async (req, res) => {
     `;
     const result = await query(queryStr, [...values, limit, offset]);
 
-    let rows = result.rows;
-    let finalTotal = total;
-    if (rows.length === 0 && (city || property_type)) {
-      const fallbackRes = await query(
-        `SELECT * FROM hotels WHERE is_active = true AND publication_status = 'APPROVED' ORDER BY star_rating DESC, starting_price ASC LIMIT $1 OFFSET $2`,
-        [limit, offset]
-      );
-      if (fallbackRes.rows.length > 0) {
-        rows = fallbackRes.rows;
-        finalTotal = fallbackRes.rows.length;
-      }
-    }
+    const rows = result.rows;
+    const finalTotal = total;
 
     // Fetch rooms for these hotels
     const hotelIds = rows.map((h) => h.id);
@@ -117,6 +108,11 @@ router.get('/', async (req, res) => {
 
     return res.json({
       success: true,
+      inventory_status: items.length > 0 ? 'AVAILABLE' : 'NO_INVENTORY',
+      message:
+        items.length > 0
+          ? 'Hotels retrieved successfully'
+          : `No hotels currently available in ${city || 'this location'}. Try adjusting your dates or explore our verified luxury stays.`,
       data: {
         items,
         pagination: {

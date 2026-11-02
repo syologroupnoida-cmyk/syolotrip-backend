@@ -72,18 +72,8 @@ router.get('/', optionalAuthenticateToken, async (req: AuthenticatedRequest, res
     `;
     const result = await query(queryStr, [...values, limit, offset]);
 
-    let rows = result.rows;
-    let finalTotal = total;
-    if (rows.length === 0 && (from_code || to_code || from_city || to_city)) {
-      const fallbackRes = await query(
-        `SELECT * FROM flights WHERE is_active = true ORDER BY total_price ASC LIMIT $1 OFFSET $2`,
-        [limit, offset]
-      );
-      if (fallbackRes.rows.length > 0) {
-        rows = fallbackRes.rows;
-        finalTotal = fallbackRes.rows.length;
-      }
-    }
+    const rows = result.rows;
+    const finalTotal = total;
 
     const items = rows.map((row) => {
       const rawBaseFare = parseFloat(row.base_fare);
@@ -142,6 +132,11 @@ router.get('/', optionalAuthenticateToken, async (req: AuthenticatedRequest, res
 
     return res.json({
       success: true,
+      inventory_status: items.length > 0 ? 'AVAILABLE' : 'NO_INVENTORY',
+      message:
+        items.length > 0
+          ? 'Flights retrieved successfully'
+          : `No flights found matching the selected route (${from_code || from_city || 'Origin'} → ${to_code || to_city || 'Destination'}). Try alternate dates or nearby airports.`,
       data: {
         items,
         pricing_context: {

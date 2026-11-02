@@ -18,13 +18,15 @@ trainsRouter.get('/', async (req, res) => {
     let idx = 1;
 
     if (from_city) {
-      conditions.push(`(LOWER(from_city) LIKE LOWER($${idx}) OR LOWER(from_station_name) LIKE LOWER($${idx}))`);
-      values.push(`%${from_city}%`);
+      const cleanFrom = (from_city as string).split('[')[0].split('(')[0].trim();
+      conditions.push(`(LOWER(from_city) LIKE LOWER($${idx}) OR LOWER(from_station_name) LIKE LOWER($${idx}) OR LOWER(from_station_code) LIKE LOWER($${idx}))`);
+      values.push(`%${cleanFrom}%`);
       idx++;
     }
     if (to_city) {
-      conditions.push(`(LOWER(to_city) LIKE LOWER($${idx}) OR LOWER(to_station_name) LIKE LOWER($${idx}))`);
-      values.push(`%${to_city}%`);
+      const cleanTo = (to_city as string).split('[')[0].split('(')[0].trim();
+      conditions.push(`(LOWER(to_city) LIKE LOWER($${idx}) OR LOWER(to_station_name) LIKE LOWER($${idx}) OR LOWER(to_station_code) LIKE LOWER($${idx}))`);
+      values.push(`%${cleanTo}%`);
       idx++;
     }
     if (train_type) {
@@ -47,18 +49,8 @@ trainsRouter.get('/', async (req, res) => {
       [...values, limit, offset]
     );
 
-    let rows = result.rows;
-    let finalTotal = total;
-    if (rows.length === 0 && (from_city || to_city || train_type)) {
-      const fallbackRes = await query(
-        `SELECT * FROM trains WHERE is_active = true ORDER BY base_fare ASC LIMIT $1 OFFSET $2`,
-        [limit, offset]
-      );
-      if (fallbackRes.rows.length > 0) {
-        rows = fallbackRes.rows;
-        finalTotal = fallbackRes.rows.length;
-      }
-    }
+    const rows = result.rows;
+    const finalTotal = total;
 
     const items = rows.map((r) => ({
       id: r.id,
@@ -84,6 +76,11 @@ trainsRouter.get('/', async (req, res) => {
 
     return res.json({
       success: true,
+      inventory_status: items.length > 0 ? 'AVAILABLE' : 'NO_INVENTORY',
+      message:
+        items.length > 0
+          ? 'Trains retrieved successfully'
+          : `No direct trains currently scheduled between ${from_city || 'Origin'} and ${to_city || 'Destination'}. Try selecting nearby railheads or alternate travel dates.`,
       data: {
         items,
         pagination: { total: finalTotal, page, limit, pages: Math.ceil(finalTotal / limit) || 1 },
@@ -143,13 +140,15 @@ busesRouter.get('/', async (req, res) => {
     let idx = 1;
 
     if (from_city) {
-      conditions.push(`LOWER(from_city) LIKE LOWER($${idx})`);
-      values.push(`%${from_city}%`);
+      const cleanFrom = (from_city as string).split('[')[0].split('(')[0].trim();
+      conditions.push(`(LOWER(from_city) LIKE LOWER($${idx}) OR LOWER(boarding_point) LIKE LOWER($${idx}))`);
+      values.push(`%${cleanFrom}%`);
       idx++;
     }
     if (to_city) {
-      conditions.push(`LOWER(to_city) LIKE LOWER($${idx})`);
-      values.push(`%${to_city}%`);
+      const cleanTo = (to_city as string).split('[')[0].split('(')[0].trim();
+      conditions.push(`(LOWER(to_city) LIKE LOWER($${idx}) OR LOWER(dropping_point) LIKE LOWER($${idx}))`);
+      values.push(`%${cleanTo}%`);
       idx++;
     }
     if (bus_type) {
@@ -172,18 +171,8 @@ busesRouter.get('/', async (req, res) => {
       [...values, limit, offset]
     );
 
-    let rows = result.rows;
-    let finalTotal = total;
-    if (rows.length === 0 && (from_city || to_city || bus_type)) {
-      const fallbackRes = await query(
-        `SELECT * FROM buses WHERE is_active = true ORDER BY base_fare ASC LIMIT $1 OFFSET $2`,
-        [limit, offset]
-      );
-      if (fallbackRes.rows.length > 0) {
-        rows = fallbackRes.rows;
-        finalTotal = fallbackRes.rows.length;
-      }
-    }
+    const rows = result.rows;
+    const finalTotal = total;
 
     const items = rows.map((r) => ({
       id: r.id,
@@ -205,6 +194,11 @@ busesRouter.get('/', async (req, res) => {
 
     return res.json({
       success: true,
+      inventory_status: items.length > 0 ? 'AVAILABLE' : 'NO_INVENTORY',
+      message:
+        items.length > 0
+          ? 'Buses retrieved successfully'
+          : `No bus services currently operating between ${from_city || 'Origin'} and ${to_city || 'Destination'}. Try selecting alternate dates or major bus terminals.`,
       data: {
         items,
         pagination: { total: finalTotal, page, limit, pages: Math.ceil(finalTotal / limit) || 1 },
@@ -232,7 +226,7 @@ cabsRouter.get('/', async (req, res) => {
     const cityStr = typeof city === 'string' ? city.split('(')[0].split(',')[0].trim() : '';
 
     if (cityStr) {
-      conditions.push(`(LOWER(city) LIKE LOWER($${idx}) OR LOWER($${idx}) LIKE '%' || LOWER(city) || '%')`);
+      conditions.push(`(LOWER(city) LIKE LOWER($${idx}) OR LOWER(pickup_area) LIKE LOWER($${idx}) OR LOWER(drop_area) LIKE LOWER($${idx}))`);
       values.push(`%${cityStr}%`);
       idx++;
     }
@@ -251,24 +245,8 @@ cabsRouter.get('/', async (req, res) => {
       [...values, limit, offset]
     );
 
-    let rows = result.rows;
-    let finalTotal = total;
-    if (rows.length === 0 && (city || cab_type)) {
-      const fallbackRes = await query(
-        `SELECT * FROM cabs WHERE is_active = true ORDER BY base_fare ASC LIMIT $1 OFFSET $2`,
-        [limit, offset]
-      );
-      if (fallbackRes.rows.length > 0) {
-        const displayCity = cityStr || (typeof city === 'string' ? city : '');
-        rows = fallbackRes.rows.map((r: any) => ({
-          ...r,
-          city: displayCity || r.city,
-          pickup_area: displayCity ? `${displayCity} Airport / Center` : r.pickup_area,
-          drop_area: displayCity ? `${displayCity} Drop Location` : r.drop_area,
-        }));
-        finalTotal = fallbackRes.rows.length;
-      }
-    }
+    const rows = result.rows;
+    const finalTotal = total;
 
     const items = rows.map((r) => ({
       id: r.id,
@@ -289,6 +267,11 @@ cabsRouter.get('/', async (req, res) => {
 
     return res.json({
       success: true,
+      inventory_status: items.length > 0 ? 'AVAILABLE' : 'NO_INVENTORY',
+      message:
+        items.length > 0
+          ? 'Cabs retrieved successfully'
+          : `No local cabs currently available in ${cityStr || 'this location'}. You can book an outstation chauffeur or schedule airport transfer in advance.`,
       data: {
         items,
         pagination: { total: finalTotal, page, limit, pages: Math.ceil(finalTotal / limit) || 1 },
@@ -314,8 +297,9 @@ packagesRouter.get('/', async (req, res) => {
     let idx = 1;
 
     if (destination) {
+      const cleanDest = (destination as string).split(',')[0].split('(')[0].trim();
       conditions.push(`(LOWER(destination) LIKE LOWER($${idx}) OR LOWER(title) LIKE LOWER($${idx}))`);
-      values.push(`%${destination}%`);
+      values.push(`%${cleanDest}%`);
       idx++;
     }
     if (max_price) {
@@ -333,18 +317,8 @@ packagesRouter.get('/', async (req, res) => {
       [...values, limit, offset]
     );
 
-    let rows = result.rows;
-    let finalTotal = total;
-    if (rows.length === 0 && destination) {
-      const fallbackRes = await query(
-        `SELECT * FROM holiday_packages WHERE is_active = true ORDER BY price_per_person ASC LIMIT $1 OFFSET $2`,
-        [limit, offset]
-      );
-      if (fallbackRes.rows.length > 0) {
-        rows = fallbackRes.rows;
-        finalTotal = fallbackRes.rows.length;
-      }
-    }
+    const rows = result.rows;
+    const finalTotal = total;
 
     const items = rows.map((r) => ({
       id: r.id,
@@ -366,6 +340,11 @@ packagesRouter.get('/', async (req, res) => {
 
     return res.json({
       success: true,
+      inventory_status: items.length > 0 ? 'AVAILABLE' : 'NO_INVENTORY',
+      message:
+        items.length > 0
+          ? 'Holiday packages retrieved successfully'
+          : `No holiday packages currently found for ${destination || 'this destination'}. Explore our trending Kashmir, Goa, and Dubai holiday packages.`,
       data: {
         items,
         pagination: { total: finalTotal, page, limit, pages: Math.ceil(finalTotal / limit) || 1 },

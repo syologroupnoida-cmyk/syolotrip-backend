@@ -17,6 +17,8 @@ import {
   InsuranceIsometricIcon,
 } from '../components/TravelCategoryIcons';
 import { CalendarPickerModal } from '../components/CalendarPickerModal';
+import { MapLocationSearchModal } from '../components/MapLocationSearchModal';
+import { getRouteEstimateApi, RouteEstimateResult } from '../services/api';
 
 export interface AirportOption {
   code: string;
@@ -271,6 +273,28 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
   const [cabCity, setCabCity] = useState<CabCityOption>(popularCabCities[0]); // Delhi
   const [cabPickupAddress, setCabPickupAddress] = useState(popularCabCities[0].pickup);
   const [cabDropAddress, setCabDropAddress] = useState(popularCabCities[0].drop);
+
+  // Map Location Search Modal state
+  const [mapModalState, setMapModalState] = useState<{
+    isOpen: boolean;
+    type: 'pickup' | 'drop';
+    title: string;
+  } | null>(null);
+
+  const [pickupCoords, setPickupCoords] = useState<{ lat: number; lon: number } | null>({ lat: 28.5562, lon: 77.1000 });
+  const [dropCoords, setDropCoords] = useState<{ lat: number; lon: number } | null>({ lat: 28.6315, lon: 77.2167 });
+  const [routeEstimate, setRouteEstimate] = useState<RouteEstimateResult | null>(null);
+
+  // Update route estimate when coordinates change
+  useEffect(() => {
+    if (pickupCoords && dropCoords) {
+      getRouteEstimateApi(pickupCoords.lat, pickupCoords.lon, dropCoords.lat, dropCoords.lon)
+        .then((res) => {
+          if (res) setRouteEstimate(res);
+        })
+        .catch(() => {});
+    }
+  }, [pickupCoords, dropCoords]);
 
   // Holiday search inputs
   const [holidayDestination, setHolidayDestination] = useState<HolidayOption>(popularHolidayThemes[0]); // Kashmir
@@ -1701,25 +1725,42 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
             </div>
           )}
 
-          {/* ── MODE 5: CABS (Dedicated: ONLY Pickup & Drop Location) ── */}
+          {/* ── MODE 5: CABS (Dedicated: ONLY Pickup & Drop Location with Map API Search) ── */}
           {searchMode === 'cabs' && (
             <div className="flex flex-col gap-3">
               <div className="relative grid grid-cols-1 md:grid-cols-12 border border-gray-200 rounded-xl overflow-visible hover:border-amber-400 transition bg-white shadow-xs">
                 {/* 1. Pickup Location Block */}
                 <div 
-                  onClick={() => { setActiveDropdown(activeDropdown === 'cabPickup' ? null : 'cabPickup'); setSearchQuery(''); }}
-                  className="md:col-span-6 p-4 sm:p-5 cursor-pointer hover:bg-amber-50/40 transition rounded-l-xl relative"
+                  onClick={() => setMapModalState({
+                    isOpen: true,
+                    type: 'pickup',
+                    title: 'Select Pickup Location (Map API)',
+                  })}
+                  className="md:col-span-6 p-4 sm:p-5 cursor-pointer hover:bg-amber-50/40 transition rounded-l-xl relative group"
                 >
-                  <div className="flex items-center space-x-1.5 text-gray-500 mb-1">
-                    <span className="material-symbols-outlined text-[16px] text-emerald-600">my_location</span>
-                    <span className="text-[12px] font-bold uppercase tracking-wider text-gray-600">Pickup Location</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center space-x-1.5 text-gray-500">
+                      <span className="material-symbols-outlined text-[16px] text-emerald-600">my_location</span>
+                      <span className="text-[12px] font-bold uppercase tracking-wider text-gray-600">Pickup Location</span>
+                    </div>
+                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-md text-[10px] font-bold border border-emerald-200 group-hover:bg-emerald-100 transition flex items-center space-x-1">
+                      <span className="material-symbols-outlined text-[12px]">map</span>
+                      <span>Map API Search</span>
+                    </span>
                   </div>
                   <span className="text-xl sm:text-2xl font-black text-gray-900 block tracking-tight line-clamp-1 my-1">
                     {cabPickupAddress}
                   </span>
-                  <span className="text-[11px] text-gray-500 truncate block font-medium">
-                    City Hub: <strong className="text-gray-800">{cabCity.city}</strong> · Tap to select airport, station or custom address
-                  </span>
+                  <div className="flex items-center justify-between text-[11px] text-gray-500">
+                    <span className="truncate font-medium">
+                      City Hub: <strong className="text-gray-800">{cabCity.city}</strong> · Tap to search live map places or GPS
+                    </span>
+                    {pickupCoords && (
+                      <span className="text-[10px] text-emerald-700 font-mono shrink-0 ml-1 hidden sm:inline">
+                        📍 {pickupCoords.lat.toFixed(3)}°, {pickupCoords.lon.toFixed(3)}°
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Center Interchange Button (Desktop & Mobile) */}
@@ -1738,144 +1779,60 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
 
                 {/* 2. Drop Location Block */}
                 <div 
-                  onClick={() => { setActiveDropdown(activeDropdown === 'cabDrop' ? null : 'cabDrop'); setSearchQuery(''); }}
-                  className="md:col-span-6 p-4 sm:p-5 cursor-pointer hover:bg-amber-50/40 transition border-t md:border-t-0 md:border-l border-gray-200 rounded-r-xl relative pl-4 md:pl-7"
+                  onClick={() => setMapModalState({
+                    isOpen: true,
+                    type: 'drop',
+                    title: 'Select Drop Location (Map API)',
+                  })}
+                  className="md:col-span-6 p-4 sm:p-5 cursor-pointer hover:bg-amber-50/40 transition border-t md:border-t-0 md:border-l border-gray-200 rounded-r-xl relative pl-4 md:pl-7 group"
                 >
-                  <div className="flex items-center space-x-1.5 text-gray-500 mb-1">
-                    <span className="material-symbols-outlined text-[16px] text-rose-500">location_on</span>
-                    <span className="text-[12px] font-bold uppercase tracking-wider text-gray-600">Drop Location</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center space-x-1.5 text-gray-500">
+                      <span className="material-symbols-outlined text-[16px] text-rose-500">location_on</span>
+                      <span className="text-[12px] font-bold uppercase tracking-wider text-gray-600">Drop Location</span>
+                    </div>
+                    <span className="px-2 py-0.5 bg-rose-50 text-rose-700 rounded-md text-[10px] font-bold border border-rose-200 group-hover:bg-rose-100 transition flex items-center space-x-1">
+                      <span className="material-symbols-outlined text-[12px]">map</span>
+                      <span>Map API Search</span>
+                    </span>
                   </div>
                   <span className="text-xl sm:text-2xl font-black text-gray-900 block tracking-tight line-clamp-1 my-1">
                     {cabDropAddress}
                   </span>
-                  <span className="text-[11px] text-emerald-600 font-semibold truncate block">
-                    Tolls &amp; State Taxes Included · Direct Doorstep or Outstation Drop
-                  </span>
+                  <div className="flex items-center justify-between text-[11px] text-emerald-600">
+                    <span className="truncate font-semibold">
+                      Tolls &amp; State Taxes Included · Direct Doorstep or Outstation Drop
+                    </span>
+                    {dropCoords && (
+                      <span className="text-[10px] text-rose-600 font-mono shrink-0 ml-1 hidden sm:inline">
+                        📍 {dropCoords.lat.toFixed(3)}°, {dropCoords.lon.toFixed(3)}°
+                      </span>
+                    )}
+                  </div>
                 </div>
-
-                {/* Pickup Dropdown Popover */}
-                {activeDropdown === 'cabPickup' && (
-                  <div 
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute top-full left-0 z-50 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 w-full sm:w-[440px] max-w-[95vw] animate-scaleIn"
-                  >
-                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100">
-                      <span className="text-xs font-bold text-gray-800">Select or Enter Pickup Location</span>
-                      <button type="button" onClick={() => setActiveDropdown(null)} className="text-gray-400 hover:text-gray-700">
-                        <span className="material-symbols-outlined text-[18px]">close</span>
-                      </button>
-                    </div>
-                    <div className="relative mb-3">
-                      <span className="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-[18px]">search</span>
-                      <input 
-                        type="text" 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Type pickup airport, station, hotel, or street..."
-                        className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-amber-500"
-                        autoFocus
-                      />
-                    </div>
-                    {searchQuery.trim().length > 0 && (
-                      <div 
-                        onClick={() => {
-                          setCabPickupAddress(searchQuery.trim());
-                          setActiveDropdown(null);
-                        }}
-                        className="mb-2 p-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg cursor-pointer flex items-center justify-between text-xs text-amber-900 font-bold transition"
-                      >
-                        <span>Use &quot;{searchQuery.trim()}&quot; as Pickup</span>
-                        <span className="material-symbols-outlined text-amber-700 text-sm">arrow_forward</span>
-                      </div>
-                    )}
-                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Popular Pickup Hubs</span>
-                    <div className="max-h-60 overflow-y-auto flex flex-col gap-1">
-                      {popularCabCities
-                        .filter(c => !searchQuery || c.city.toLowerCase().includes(searchQuery.toLowerCase()) || c.pickup.toLowerCase().includes(searchQuery.toLowerCase()))
-                        .map(c => (
-                          <div 
-                            key={c.city}
-                            onClick={() => {
-                              setCabCity(c);
-                              setCabPickupAddress(c.pickup);
-                              setCabDropAddress(c.drop);
-                              setActiveDropdown(null);
-                            }}
-                            className="p-2.5 rounded-lg hover:bg-amber-50 cursor-pointer flex flex-col transition border border-transparent hover:border-amber-200"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-gray-900">{c.city}</span>
-                              <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">All Cabs</span>
-                            </div>
-                            <span className="text-[11px] text-gray-600 mt-0.5">{c.pickup}</span>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Drop Dropdown Popover */}
-                {activeDropdown === 'cabDrop' && (
-                  <div 
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute top-full right-0 z-50 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 w-full sm:w-[440px] max-w-[95vw] animate-scaleIn"
-                  >
-                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100">
-                      <span className="text-xs font-bold text-gray-800">Select or Enter Drop Location</span>
-                      <button type="button" onClick={() => setActiveDropdown(null)} className="text-gray-400 hover:text-gray-700">
-                        <span className="material-symbols-outlined text-[18px]">close</span>
-                      </button>
-                    </div>
-                    <div className="relative mb-3">
-                      <span className="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-[18px]">location_on</span>
-                      <input 
-                        type="text" 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Type destination area, hotel, city or landmark..."
-                        className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-amber-500"
-                        autoFocus
-                      />
-                    </div>
-                    {searchQuery.trim().length > 0 && (
-                      <div 
-                        onClick={() => {
-                          setCabDropAddress(searchQuery.trim());
-                          setActiveDropdown(null);
-                        }}
-                        className="mb-2 p-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg cursor-pointer flex items-center justify-between text-xs text-amber-900 font-bold transition"
-                      >
-                        <span>Use &quot;{searchQuery.trim()}&quot; as Drop</span>
-                        <span className="material-symbols-outlined text-amber-700 text-sm">arrow_forward</span>
-                      </div>
-                    )}
-                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Suggested Drop Locations</span>
-                    <div className="max-h-60 overflow-y-auto flex flex-col gap-1">
-                      {[
-                        { title: cabCity.drop, subtitle: `${cabCity.city} Center & Key Landmarks` },
-                        { title: `${cabCity.city} Railway Station`, subtitle: 'Main Platform Exit / Auto Stand' },
-                        { title: `${cabCity.city} Luxury Hotels & Resorts`, subtitle: 'Direct Doorstep Drop' },
-                        { title: `${cabCity.city} Tech Park / Business District`, subtitle: 'Corporate Office Gates' },
-                        { title: 'Outstation Destination', subtitle: 'Intercity Highway Point-to-Point Drop' },
-                      ]
-                        .filter(d => !searchQuery || d.title.toLowerCase().includes(searchQuery.toLowerCase()) || d.subtitle.toLowerCase().includes(searchQuery.toLowerCase()))
-                        .map(d => (
-                          <div 
-                            key={d.title}
-                            onClick={() => {
-                              setCabDropAddress(d.title);
-                              setActiveDropdown(null);
-                            }}
-                            className="p-2.5 rounded-lg hover:bg-amber-50 cursor-pointer flex flex-col transition border border-transparent hover:border-amber-200"
-                          >
-                            <span className="text-xs font-bold text-gray-900">{d.title}</span>
-                            <span className="text-[11px] text-gray-500">{d.subtitle}</span>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
               </div>
+
+              {/* Live Driving Route & Distance Bar from Map API */}
+              {routeEstimate && (
+                <div className="flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-amber-50/80 via-white to-blue-50/80 rounded-xl border border-amber-200/60 shadow-xs text-xs animate-fadeIn">
+                  <div className="flex items-center space-x-2 text-gray-800">
+                    <span className="material-symbols-outlined text-amber-600 text-[18px]">directions_car</span>
+                    <span className="font-bold">
+                      Calculated Road Distance: <strong className="text-emerald-700 font-extrabold">{routeEstimate.distance_km} km</strong>
+                    </span>
+                    <span className="text-gray-300">|</span>
+                    <span>
+                      Est. Driving Time: <strong className="text-blue-700 font-extrabold">~{routeEstimate.formatted_duration}</strong>
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                      Live Map Calculation
+                    </span>
+                    <span className="text-[10px] text-gray-500 hidden sm:inline">Zero Surge Guaranteed</span>
+                  </div>
+                </div>
+              )}
 
               {/* Fast Available Cab Options */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
@@ -2890,6 +2847,36 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
           selectedDate={calendarModalState?.date ?? departDate}
           minDate={calendarModalState?.minDate}
           onSelectDate={handleDateSelected}
+        />
+
+        {/* ── 9. MAP LOCATION SEARCH MODAL ── */}
+        <MapLocationSearchModal
+          isOpen={mapModalState?.isOpen ?? false}
+          onClose={() => setMapModalState(null)}
+          title={mapModalState?.title ?? 'Select Location (Map Search)'}
+          type={mapModalState?.type ?? 'pickup'}
+          currentValue={mapModalState?.type === 'pickup' ? cabPickupAddress : cabDropAddress}
+          defaultCity={cabCity.city}
+          onSelectLocation={(place) => {
+            if (mapModalState?.type === 'pickup') {
+              setCabPickupAddress(place.name);
+              if (place.lat && place.lon) {
+                setPickupCoords({ lat: place.lat, lon: place.lon });
+              }
+              if (place.city) {
+                const matchedCity = popularCabCities.find(
+                  c => c.city.toLowerCase() === place.city!.toLowerCase()
+                );
+                if (matchedCity) setCabCity(matchedCity);
+              }
+            } else {
+              setCabDropAddress(place.name);
+              if (place.lat && place.lon) {
+                setDropCoords({ lat: place.lat, lon: place.lon });
+              }
+            }
+            setMapModalState(null);
+          }}
         />
       </main>
     </div>

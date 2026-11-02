@@ -793,4 +793,63 @@ export const validateRouteApi = async (
   return res.data?.data;
 };
 
+// ================= MAP / PLACES SEARCH API =================
+export interface MapPlaceResult {
+  id: string;
+  name: string;
+  display_name: string;
+  formatted_address: string;
+  category: 'AIRPORT' | 'STATION' | 'HOTEL' | 'LANDMARK' | 'LOCALITY' | 'ADDRESS';
+  category_label: string;
+  lat: number;
+  lon: number;
+  city?: string;
+  state?: string;
+  country?: string;
+  postcode?: string;
+}
+
+export interface RouteEstimateResult {
+  distance_km: number;
+  duration_minutes: number;
+  formatted_duration: string;
+  origin: { lat: number; lon: number };
+  destination: { lat: number; lon: number };
+}
+
+export const searchPlacesApi = async (
+  query: string,
+  options?: { lat?: number; lon?: number; limit?: number }
+): Promise<MapPlaceResult[]> => {
+  const res = await apiClient.get<ApiResponse<MapPlaceResult[]>>('/locations/places-search', {
+    params: {
+      q: query.trim(),
+      lat: options?.lat,
+      lon: options?.lon,
+      limit: options?.limit || 8,
+    },
+  });
+  return res.data?.data || [];
+};
+
+export const reverseGeocodeApi = async (lat: number, lon: number): Promise<MapPlaceResult | null> => {
+  const res = await apiClient.get<ApiResponse<MapPlaceResult>>('/locations/reverse-geocode', {
+    params: { lat, lon },
+  });
+  return res.data?.data || null;
+};
+
+export const getRouteEstimateApi = async (
+  originLat: number,
+  originLon: number,
+  destLat: number,
+  destLon: number
+): Promise<RouteEstimateResult | null> => {
+  const res = await apiClient.get<ApiResponse<RouteEstimateResult>>('/locations/route-estimate', {
+    params: { originLat, originLon, destLat, destLon },
+  });
+  return res.data?.data || null;
+};
+
+
 

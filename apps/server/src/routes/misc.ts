@@ -123,36 +123,5 @@ wishlistRouter.delete('/', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-// ================= LOCATIONS =================
-export const locationsRouter = Router();
-
-locationsRouter.get('/', async (req, res) => {
-  try {
-    const popularOrigins = [
-      { code: 'DEL', name: 'Indira Gandhi International Airport', city: 'Delhi', country: 'India' },
-      { code: 'BOM', name: 'Chhatrapati Shivaji Maharaj International Airport', city: 'Mumbai', country: 'India' },
-      { code: 'BLR', name: 'Kempegowda International Airport', city: 'Bengaluru', country: 'India' },
-      { code: 'MAA', name: 'Chennai International Airport', city: 'Chennai', country: 'India' },
-    ];
-    const popularDestinations = [
-      { code: 'GOI', name: 'Dabolim Airport', city: 'Goa', country: 'India' },
-      { code: 'DXB', name: 'Dubai International Airport', city: 'Dubai', country: 'UAE' },
-      { code: 'SIN', name: 'Singapore Changi Airport', city: 'Singapore', country: 'Singapore' },
-      { code: 'BKK', name: 'Suvarnabhumi Airport', city: 'Bangkok', country: 'Thailand' },
-    ];
-    return res.json({
-      success: true,
-      data: {
-        origins: popularOrigins,
-        destinations: popularDestinations,
-      },
-    });
-  } catch (err: any) {
-    return res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-locationsRouter.post('/validate-route', async (req, res) => {
-  return res.json({ success: true, data: { valid: true, message: 'Route is valid' } });
-});
-
+// ================= LOCATIONS & MAP API =================
+export { locationsRouter } from './locations.js';
