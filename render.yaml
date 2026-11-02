@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: traveler-server
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: .
+    buildCommand: npm install && npm --workspace=@traveler/contracts run build && npm --workspace=@traveler/server run build
+    startCommand: npm --workspace=@traveler/server run start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 1440

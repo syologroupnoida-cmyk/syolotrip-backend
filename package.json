@@ -19,6 +19,8 @@
     "dev:backend:py": "uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000",
     "backend:seed": "npm --workspace=@traveler/server run seed",
     "backend:seed:py": "python -m backend.seed",
+    "build:server": "npm --workspace=@traveler/server run build",
+    "start:server": "npm --workspace=@traveler/server run start",
     "build:web": "npm --workspace=@traveler/web run build",
     "build:admin": "npm --workspace=@traveler/admin run build",
     "build": "npm run --workspaces --if-present build",
