@@ -609,6 +609,22 @@ export async function initDbSchema() {
     SELECT 'Luxury Electric EV', 'BYD Seal / Ioniq 5', 'Bengaluru', 'Kempegowda International Airport (BLR)', 'Indiranagar / Koramangala', 'Naveen Gowda', 4.98, 4, 1450, 'INR', 10, '["Zero Emissions EV", "Silent Cabin", "Refreshments"]'::jsonb, true
     WHERE NOT EXISTS (SELECT 1 FROM cabs WHERE city = 'Bengaluru' AND cab_type = 'Luxury Electric EV');
 
+    INSERT INTO cabs (cab_type, vehicle_model, city, pickup_area, drop_area, driver_name, driver_rating, capacity, base_fare, currency, eta_minutes, features, is_active)
+    SELECT 'Sedan Prime', 'Maruti Suzuki Dzire / Toyota Etios', 'Goa', 'Dabolim / MOPA Airport (GOI/GOX)', 'Candolim & Calangute Beach', 'Ashley Fernandes (Goa Certified)', 4.94, 4, 950, 'INR', 8, '["AC", "Beach Route Expert", "Zero Surge Guarantee", "FASTag Included"]'::jsonb, true
+    WHERE NOT EXISTS (SELECT 1 FROM cabs WHERE city = 'Goa' AND cab_type = 'Sedan Prime');
+
+    INSERT INTO cabs (cab_type, vehicle_model, city, pickup_area, drop_area, driver_name, driver_rating, capacity, base_fare, currency, eta_minutes, features, is_active)
+    SELECT 'SUV XL Executive', 'Toyota Innova Crysta', 'Goa', 'Manohar Intl Airport (MOPA)', 'Anjuna / Vagator / Assagao', 'Savitri Naik (Top Rated)', 4.97, 6, 1550, 'INR', 10, '["AC", "Extra Luggage Space", "Chauffeur Driven", "Tolls Included"]'::jsonb, true
+    WHERE NOT EXISTS (SELECT 1 FROM cabs WHERE city = 'Goa' AND cab_type = 'SUV XL Executive');
+
+    INSERT INTO cabs (cab_type, vehicle_model, city, pickup_area, drop_area, driver_name, driver_rating, capacity, base_fare, currency, eta_minutes, features, is_active)
+    SELECT 'Luxury Sedan', 'Lexus ES 300h / Camry Hybrid', 'Dubai', 'Dubai International Airport (DXB T1/T3)', 'Downtown Dubai / Burj Khalifa & Palm Jumeirah', 'Ahmed Al-Mansoor (RTA Licensed)', 4.98, 4, 2800, 'INR', 5, '["RTA Approved Chauffeur", "Flight Delay Tracking", "Salik Tolls Included"]'::jsonb, true
+    WHERE NOT EXISTS (SELECT 1 FROM cabs WHERE city = 'Dubai' AND cab_type = 'Luxury Sedan');
+
+    INSERT INTO cabs (cab_type, vehicle_model, city, pickup_area, drop_area, driver_name, driver_rating, capacity, base_fare, currency, eta_minutes, features, is_active)
+    SELECT 'Sedan Prime', 'Mercedes-Benz C-Class / Peugeot 508', 'Paris', 'Charles de Gaulle Airport (CDG T2)', 'Central Paris (Champs-Élysées / Eiffel Tower)', 'Pierre Laurent (Chauffeur VTC)', 4.96, 4, 4200, 'INR', 10, '["English Speaking Chauffeur", "Fixed Airport Flat Fare", "Meet & Greet at Terminal"]'::jsonb, true
+    WHERE NOT EXISTS (SELECT 1 FROM cabs WHERE city = 'Paris' AND cab_type = 'Sedan Prime');
+
     -- Auto-seed Holiday Packages
     INSERT INTO holiday_packages (id, title, destination, duration_days, duration_nights, overview, inclusions, exclusions, itinerary, price_per_person, currency, featured_image, rating, available_capacity, is_active)
     VALUES (

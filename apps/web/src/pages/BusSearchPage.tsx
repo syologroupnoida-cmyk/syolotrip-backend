@@ -10,6 +10,10 @@ interface BusSearchPageProps {
   onInitiateCheckout?: (item: WebCheckoutItem) => void;
   fromCity?: string;
   toCity?: string;
+  travelDate?: string;
+  returnDate?: string;
+  seats?: string;
+  busType?: string;
 }
 
 interface BusOption {
@@ -68,6 +72,10 @@ export const BusSearchPage: React.FC<BusSearchPageProps> = ({
   onInitiateCheckout,
   fromCity = 'Mumbai',
   toCity = 'Goa',
+  travelDate,
+  returnDate,
+  seats,
+  busType,
 }) => {
   const { formatPrice } = useCurrency();
   const [operatorFilter, setOperatorFilter] = useState<'ALL' | 'ZINGBUS' | 'INTRCITY' | 'NUEGO' | 'HRTC'>('ALL');
@@ -181,9 +189,9 @@ export const BusSearchPage: React.FC<BusSearchPageProps> = ({
                   <span className="font-extrabold text-base tracking-wide">{toCity}</span>
                 </div>
                 <p className="text-xs text-blue-100 flex items-center space-x-2">
-                  <span>Today / Tomorrow</span>
+                  <span>{travelDate || 'Today / Tomorrow'}{returnDate ? ` · Return: ${returnDate}` : ''}</span>
                   <span>·</span>
-                  <span>1 Passenger</span>
+                  <span>{seats || '1 Seat'} {busType ? `(${busType})` : ''}</span>
                   <span>·</span>
                   <span className="bg-[#1A7F37] text-white text-[10px] font-bold px-1.5 py-0.2 rounded">SS Primo Verified</span>
                 </p>

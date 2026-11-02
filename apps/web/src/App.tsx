@@ -61,6 +61,48 @@ const AppContent: React.FC = () => {
     checkOut: '2026-11-11',
   });
 
+  const [trainSearchParams, setTrainSearchParams] = useState<{
+    fromCity: string;
+    toCity: string;
+    travelDate?: string;
+  }>({
+    fromCity: 'Delhi',
+    toCity: 'Mumbai',
+    travelDate: '2026-10-24',
+  });
+
+  const [busSearchParams, setBusSearchParams] = useState<{
+    fromCity: string;
+    toCity: string;
+    travelDate?: string;
+    returnDate?: string;
+    seats?: string;
+    busType?: string;
+  }>({
+    fromCity: 'Bengaluru',
+    toCity: 'Goa',
+    travelDate: '2026-10-24',
+    returnDate: '2026-10-28',
+    seats: '1 Seat',
+    busType: 'All Bus Types',
+  });
+
+  const [cabSearchParams, setCabSearchParams] = useState<{
+    city: string;
+    pickup?: string;
+    drop?: string;
+  }>({
+    city: 'Delhi',
+    pickup: 'IGI Airport Terminal 3',
+    drop: 'Connaught Place / Central Delhi',
+  });
+
+  const [packageSearchParams, setPackageSearchParams] = useState<{
+    destination: string;
+  }>({
+    destination: 'Kashmir',
+  });
+
   const syncUrlState = (
     screen: ScreenType,
     fParams?: FlightSearchParams,
@@ -205,6 +247,33 @@ const AppContent: React.FC = () => {
     syncUrlState('hotels', undefined, params, false);
   };
 
+  const handleSearchTrains = (params: { fromCity: string; toCity: string; travelDate?: string }) => {
+    setTrainSearchParams(params);
+    setActiveScreen('trains');
+  };
+
+  const handleSearchBuses = (params: { 
+    fromCity: string; 
+    toCity: string; 
+    travelDate?: string; 
+    returnDate?: string; 
+    seats?: string; 
+    busType?: string; 
+  }) => {
+    setBusSearchParams(params);
+    setActiveScreen('buses');
+  };
+
+  const handleSearchCabs = (params: { city: string; pickup?: string; drop?: string }) => {
+    setCabSearchParams(params);
+    setActiveScreen('cabs');
+  };
+
+  const handleSearchPackages = (params: { destination: string }) => {
+    setPackageSearchParams(params);
+    setActiveScreen('packages');
+  };
+
   const handleInitiateCheckout = (item: WebCheckoutItem) => {
     setCheckoutItem(item);
     setActiveScreen('checkout');
@@ -232,6 +301,10 @@ const AppContent: React.FC = () => {
             onNavigate={navigateTo} 
             onSearchFlights={handleSearchFlights}
             onSearchHotels={handleSearchHotels}
+            onSearchTrains={handleSearchTrains}
+            onSearchBuses={handleSearchBuses}
+            onSearchCabs={handleSearchCabs}
+            onSearchPackages={handleSearchPackages}
             onInitiateCheckout={handleInitiateCheckout}
           />
         )}
@@ -252,24 +325,36 @@ const AppContent: React.FC = () => {
         {activeScreen === 'trains' && (
           <TrainSearchPage 
             onNavigate={navigateTo} 
+            fromCity={trainSearchParams.fromCity}
+            toCity={trainSearchParams.toCity}
             onInitiateCheckout={handleInitiateCheckout}
           />
         )}
         {activeScreen === 'buses' && (
           <BusSearchPage 
             onNavigate={navigateTo} 
+            fromCity={busSearchParams.fromCity}
+            toCity={busSearchParams.toCity}
+            travelDate={busSearchParams.travelDate}
+            returnDate={busSearchParams.returnDate}
+            seats={busSearchParams.seats}
+            busType={busSearchParams.busType}
             onInitiateCheckout={handleInitiateCheckout}
           />
         )}
         {activeScreen === 'cabs' && (
           <CabSearchPage 
             onNavigate={navigateTo} 
+            city={cabSearchParams.city}
+            pickupLocation={cabSearchParams.pickup}
+            dropLocation={cabSearchParams.drop}
             onInitiateCheckout={handleInitiateCheckout}
           />
         )}
         {activeScreen === 'packages' && (
           <PackageSearchPage 
             onNavigate={navigateTo} 
+            destinationCity={packageSearchParams.destination}
             onInitiateCheckout={handleInitiateCheckout}
           />
         )}

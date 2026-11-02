@@ -91,8 +91,12 @@ export const HotelSearchPage: React.FC<HotelSearchPageProps> = ({
 
   // Filters state
   const [ignoreCityFilter, setIgnoreCityFilter] = useState(false);
-  const [selectedQuickFilter, setSelectedQuickFilter] = useState<string | null>(null);
-  const [propertyTypes, setPropertyTypes] = useState<string[]>([]);
+  const [selectedQuickFilter, setSelectedQuickFilter] = useState<string | null>(
+    searchParams?.propertyType === 'VILLA' ? 'Entire Villa' : null
+  );
+  const [propertyTypes, setPropertyTypes] = useState<string[]>(
+    searchParams?.propertyType ? [searchParams.propertyType] : []
+  );
   const [maxPrice, setMaxPrice] = useState(150000);
   const [minRating, setMinRating] = useState<number | null>(null);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
@@ -114,12 +118,12 @@ export const HotelSearchPage: React.FC<HotelSearchPageProps> = ({
     error,
     refetch,
   } = useQuery({
-    queryKey: ['hotelsSearch', cleanCity, ignoreCityFilter],
+    queryKey: ['hotelsSearch', cleanCity, searchParams?.propertyType, ignoreCityFilter],
     queryFn: () => {
-      if (ignoreCityFilter || !cleanCity) {
-        return searchHotelsApi();
-      }
-      return searchHotelsApi({ city: cleanCity });
+      const p: { city?: string; property_type?: string } = {};
+      if (!ignoreCityFilter && cleanCity) p.city = cleanCity;
+      if (searchParams?.propertyType) p.property_type = searchParams.propertyType;
+      return searchHotelsApi(p);
     },
     staleTime: 30000,
   });
@@ -150,7 +154,7 @@ export const HotelSearchPage: React.FC<HotelSearchPageProps> = ({
 
     // Property type
     if (propertyTypes.length > 0) {
-      list = list.filter((p) => propertyTypes.some(pt => p.propertyType.includes(pt)));
+      list = list.filter((p) => propertyTypes.some(pt => p.propertyType.toLowerCase().includes(pt.toLowerCase())));
     }
 
     // Price

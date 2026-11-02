@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { searchCabsApi, CabApiResponse } from '../services/api';
 import { ScreenType } from '../components/Header';
@@ -10,6 +10,7 @@ interface CabSearchPageProps {
   onInitiateCheckout?: (item: WebCheckoutItem) => void;
   pickupLocation?: string;
   dropLocation?: string;
+  city?: string;
 }
 
 interface CabOption {
@@ -70,6 +71,7 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
   onInitiateCheckout,
   pickupLocation = 'Delhi Airport T3 (DEL)',
   dropLocation = 'Connaught Place, Central Delhi',
+  city,
 }) => {
   const { formatPrice } = useCurrency();
   const [tripType, setTripType] = useState<'AIRPORT' | 'OUTSTATION' | 'HOURLY'>('AIRPORT');
@@ -79,12 +81,40 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
   const [sortBy, setSortBy] = useState<'CHEAPEST' | 'RATING' | 'POPULAR'>('POPULAR');
   const [ignoreCityFilter, setIgnoreCityFilter] = useState(false);
 
-  const detectedCity = useMemo(() => {
-    const loc = pickupLocation.toLowerCase();
-    if (loc.includes('mumbai')) return 'Mumbai';
-    if (loc.includes('bengaluru') || loc.includes('bangalore')) return 'Bengaluru';
-    return 'Delhi';
+  const [selectedCity, setSelectedCity] = useState(city || 'Delhi');
+  const [currentPickup, setCurrentPickup] = useState(pickupLocation);
+  const [currentDrop, setCurrentDrop] = useState(dropLocation);
+  const [isModifyOpen, setIsModifyOpen] = useState(false);
+
+  useEffect(() => {
+    if (city) setSelectedCity(city);
+  }, [city]);
+
+  useEffect(() => {
+    if (pickupLocation) setCurrentPickup(pickupLocation);
   }, [pickupLocation]);
+
+  useEffect(() => {
+    if (dropLocation) setCurrentDrop(dropLocation);
+  }, [dropLocation]);
+
+  const cityPresets: Record<string, { pickup: string; drop: string }> = {
+    Delhi: { pickup: 'IGI Airport Terminal 3', drop: 'Connaught Place / Central Delhi' },
+    Goa: { pickup: 'Dabolim / MOPA Airport', drop: 'Candolim / Calangute Beach' },
+    Mumbai: { pickup: 'Chhatrapati Shivaji Airport (T2)', drop: 'Bandra Kurla Complex (BKC)' },
+    Bengaluru: { pickup: 'Kempegowda Intl Airport (BLR)', drop: 'Indiranagar / Koramangala' },
+    Dubai: { pickup: 'Dubai International (DXB)', drop: 'Downtown Dubai / Palm Jumeirah' },
+    Paris: { pickup: 'Charles de Gaulle Airport (CDG)', drop: 'Central Paris / Champs-Élysées' },
+    Jaipur: { pickup: 'Jaipur International Airport (JAI)', drop: 'MI Road / Heritage Pink City' },
+  };
+
+  const handleSelectCityPreset = (cityName: string) => {
+    setSelectedCity(cityName);
+    if (cityPresets[cityName]) {
+      setCurrentPickup(cityPresets[cityName].pickup);
+      setCurrentDrop(cityPresets[cityName].drop);
+    }
+  };
 
   // Live Backend Query
   const {
@@ -94,12 +124,12 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
     error,
     refetch,
   } = useQuery({
-    queryKey: ['cabsSearch', detectedCity, ignoreCityFilter],
+    queryKey: ['cabsSearch', selectedCity, ignoreCityFilter],
     queryFn: () => {
       if (ignoreCityFilter) {
         return searchCabsApi();
       }
-      return searchCabsApi({ city: detectedCity });
+      return searchCabsApi({ city: selectedCity });
     },
     staleTime: 30000,
   });
@@ -138,7 +168,7 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
         itemId: cab.id,
         title: `${cab.name} (${cab.model})`,
         subtitle: `${cab.passengers} Passengers · ${cab.luggage} Bags · ${cab.fareBreakdown}`,
-        routeInfo: `${pickupLocation} → ${dropLocation}`,
+        routeInfo: `${currentPickup} → ${currentDrop}`,
         pricing: {
           baseAmount: cab.price,
           taxes: Math.round(cab.price * 0.05),
@@ -160,9 +190,12 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
             <span className="material-symbols-outlined text-amber-300 text-2xl">local_taxi</span>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-extrabold text-base tracking-wide">{pickupLocation}</span>
+                <span className="font-extrabold text-base tracking-wide">{currentPickup}</span>
                 <span className="material-symbols-outlined text-sm text-blue-200">arrow_forward</span>
-                <span className="font-extrabold text-base tracking-wide">{dropLocation}</span>
+                <span className="font-extrabold text-base tracking-wide">{currentDrop}</span>
+                <span className="bg-amber-400 text-gray-900 font-extrabold text-[10px] px-2 py-0.5 rounded-full uppercase ml-1">
+                  {selectedCity}
+                </span>
               </div>
               <p className="text-xs text-blue-100 flex items-center space-x-2">
                 <span>Pickup Now (Immediate)</span>
@@ -175,6 +208,25 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
           </div>
 
           <div className="flex items-center space-x-3">
+            {/* Quick City Switcher */}
+            <div className="hidden lg:flex items-center space-x-1 bg-white/10 p-1 rounded-lg text-xs">
+              <span className="text-blue-200 text-[11px] px-1 font-semibold">City:</span>
+              {Object.keys(cityPresets).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => handleSelectCityPreset(c)}
+                  className={`px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer ${
+                    selectedCity.toLowerCase() === c.toLowerCase()
+                      ? 'bg-amber-400 text-gray-900 shadow-xs'
+                      : 'text-white hover:bg-white/15'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+
             <div className="hidden sm:flex bg-white/10 rounded-lg p-1 text-xs">
               {[
                 { id: 'AIRPORT', label: 'Airport Transfer' },
@@ -193,17 +245,74 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
               ))}
             </div>
             <button
-              onClick={() => onNavigate && onNavigate('explore')}
+              type="button"
+              onClick={() => setIsModifyOpen(!isModifyOpen)}
               className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center space-x-1"
             >
-              <span className="material-symbols-outlined text-sm">edit</span>
-              <span>Modify</span>
+              <span className="material-symbols-outlined text-sm">{isModifyOpen ? 'close' : 'edit'}</span>
+              <span>{isModifyOpen ? 'Cancel' : 'Modify'}</span>
             </button>
           </div>
         </div>
 
+        {/* Expandable Inline Modify Search Form */}
+        {isModifyOpen && (
+          <div className="bg-[#004785] border-t border-white/15 px-4 py-4 animate-fadeIn">
+            <div className="max-w-[1240px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+              <div className="md:col-span-3">
+                <label className="text-[11px] font-bold text-blue-200 block mb-1">Service City</label>
+                <select
+                  value={selectedCity}
+                  onChange={(e) => handleSelectCityPreset(e.target.value)}
+                  className="w-full bg-white text-gray-900 rounded-lg px-3 py-2 text-xs font-bold outline-none"
+                >
+                  {Object.keys(cityPresets).map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="md:col-span-4">
+                <label className="text-[11px] font-bold text-blue-200 block mb-1">Pickup Location</label>
+                <input
+                  type="text"
+                  value={currentPickup}
+                  onChange={(e) => setCurrentPickup(e.target.value)}
+                  placeholder="Enter pickup address or airport..."
+                  className="w-full bg-white text-gray-900 rounded-lg px-3 py-2 text-xs font-medium outline-none"
+                />
+              </div>
+
+              <div className="md:col-span-3">
+                <label className="text-[11px] font-bold text-blue-200 block mb-1">Drop Location</label>
+                <input
+                  type="text"
+                  value={currentDrop}
+                  onChange={(e) => setCurrentDrop(e.target.value)}
+                  placeholder="Enter destination address..."
+                  className="w-full bg-white text-gray-900 rounded-lg px-3 py-2 text-xs font-medium outline-none"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    refetch();
+                    setIsModifyOpen(false);
+                  }}
+                  className="w-full bg-amber-400 hover:bg-amber-300 text-gray-900 font-extrabold text-xs py-2 px-4 rounded-lg transition cursor-pointer shadow-md flex items-center justify-center space-x-1"
+                >
+                  <span className="material-symbols-outlined text-sm">search</span>
+                  <span>Update Cabs</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Quick Cab Category Strip */}
-        <div className="bg-[#004785] border-t border-white/10 px-4 py-2">
+        <div className="bg-[#003d73] border-t border-white/10 px-4 py-2">
           <div className="max-w-[1240px] mx-auto flex items-center space-x-2 overflow-x-auto no-scrollbar text-xs">
             <span className="text-blue-200 font-medium text-[11px] shrink-0 mr-1">Vehicle Category:</span>
             {[
@@ -348,7 +457,7 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
                   onClick={() => setIgnoreCityFilter(false)}
                   className="font-bold text-[#005cab] hover:underline"
                 >
-                  Filter to {detectedCity}
+                  Filter to {selectedCity}
                 </button>
               </div>
             )}
@@ -358,7 +467,7 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
               <div className="bg-white rounded-xl p-12 text-center border border-[#E7EBF0] shadow-xs flex flex-col items-center justify-center">
                 <div className="w-10 h-10 border-4 border-[#005cab] border-t-transparent rounded-full animate-spin mb-4" />
                 <p className="text-base font-bold text-gray-800">Checking Live Chauffeur & Cab Availability...</p>
-                <p className="text-xs text-gray-500 mt-1">Connecting to live fleet for {pickupLocation}</p>
+                <p className="text-xs text-gray-500 mt-1">Connecting to live fleet for {currentPickup}</p>
               </div>
             )}
 
@@ -381,7 +490,7 @@ export const CabSearchPage: React.FC<CabSearchPageProps> = ({
             {!isLoading && !isError && filteredCabs.length === 0 ? (
               <div className="bg-white rounded-xl p-10 text-center border border-[#E7EBF0]">
                 <span className="material-symbols-outlined text-4xl text-gray-400 mb-2">local_taxi</span>
-                <p className="font-extrabold text-base text-gray-800">No cabs available in {detectedCity} matching filters</p>
+                <p className="font-extrabold text-base text-gray-800">No cabs available in {selectedCity} matching filters</p>
                 <p className="text-xs text-gray-500 mt-1">Try resetting the vehicle category or price filters, or browse all cabs.</p>
                 <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
                   <button

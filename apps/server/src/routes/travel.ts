@@ -229,9 +229,11 @@ cabsRouter.get('/', async (req, res) => {
     let values: any[] = [];
     let idx = 1;
 
-    if (city) {
-      conditions.push(`LOWER(city) LIKE LOWER($${idx})`);
-      values.push(`%${city}%`);
+    const cityStr = typeof city === 'string' ? city.split('(')[0].split(',')[0].trim() : '';
+
+    if (cityStr) {
+      conditions.push(`(LOWER(city) LIKE LOWER($${idx}) OR LOWER($${idx}) LIKE '%' || LOWER(city) || '%')`);
+      values.push(`%${cityStr}%`);
       idx++;
     }
     if (cab_type) {
@@ -257,7 +259,13 @@ cabsRouter.get('/', async (req, res) => {
         [limit, offset]
       );
       if (fallbackRes.rows.length > 0) {
-        rows = fallbackRes.rows;
+        const displayCity = cityStr || (typeof city === 'string' ? city : '');
+        rows = fallbackRes.rows.map((r: any) => ({
+          ...r,
+          city: displayCity || r.city,
+          pickup_area: displayCity ? `${displayCity} Airport / Center` : r.pickup_area,
+          drop_area: displayCity ? `${displayCity} Drop Location` : r.drop_area,
+        }));
         finalTotal = fallbackRes.rows.length;
       }
     }
