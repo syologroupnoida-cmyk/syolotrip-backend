@@ -23,6 +23,7 @@ import {
   fetchPackagesApi,
 } from '../services/api';
 import { CalendarModal } from '../components/CalendarModal';
+import { LocationSearchModal, SelectedLocationResult } from '../components/LocationSearchModal';
 
 const { width } = Dimensions.get('window');
 
@@ -51,25 +52,194 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
   const [specialFare, setSpecialFare] = useState('regular');
   const [offersTab, setOffersTab] = useState<'all' | 'flights' | 'hotels' | 'holidays' | 'trains'>('all');
 
+  // Service-specific destination and configuration states
+  const [hotelDestination, setHotelDestination] = useState<SelectedLocationResult>({
+    name: 'Paris',
+    city: 'Paris',
+    country: 'France',
+    displayName: 'Paris, France',
+    secondaryText: 'City of Light • Worldwide Destination',
+  });
+  const [hotelCheckIn, setHotelCheckIn] = useState('24 Oct 2026');
+  const [hotelCheckOut, setHotelCheckOut] = useState('27 Oct 2026');
+  const [hotelGuests, setHotelGuests] = useState('2 Guests, 1 Room');
+
+  const [villaDestination, setVillaDestination] = useState<SelectedLocationResult>({
+    name: 'North Goa',
+    city: 'Goa',
+    country: 'India',
+    displayName: 'North Goa (Candolim, Anjuna, Assagao)',
+    secondaryText: 'Luxury Private Pool Villas',
+  });
+  const [villaCheckIn, setVillaCheckIn] = useState('24 Oct 2026');
+  const [villaCheckOut, setVillaCheckOut] = useState('28 Oct 2026');
+  const [villaGuests, setVillaGuests] = useState('4 Guests (Entire Stay)');
+
+  const [trainOrigin, setTrainOrigin] = useState<SelectedLocationResult>({
+    name: 'New Delhi',
+    code: 'NDLS',
+    city: 'Delhi',
+    displayName: 'New Delhi Railway Station (NDLS)',
+    secondaryText: 'Central Delhi, India • Railway Station',
+  });
+  const [trainDest, setTrainDest] = useState<SelectedLocationResult>({
+    name: 'Mumbai Central',
+    code: 'MMCT',
+    city: 'Mumbai',
+    displayName: 'Mumbai Central (MMCT)',
+    secondaryText: 'Mumbai, Maharashtra • Railway Station',
+  });
+  const [trainDate, setTrainDate] = useState('24 Oct 2026');
+  const [trainClassQuota, setTrainClassQuota] = useState('All Classes • General Quota');
+
+  const [busOrigin, setBusOrigin] = useState<SelectedLocationResult>({
+    name: 'Delhi ISBT',
+    code: 'ISBT',
+    city: 'Delhi',
+    displayName: 'Kashmere Gate ISBT, Delhi',
+    secondaryText: 'Interstate Bus Terminal, Delhi',
+  });
+  const [busDest, setBusDest] = useState<SelectedLocationResult>({
+    name: 'Goa Panjim',
+    code: 'PNJ',
+    city: 'Goa',
+    displayName: 'Panjim Bus Stand, Goa',
+    secondaryText: 'Panaji, North Goa',
+  });
+  const [busDate, setBusDate] = useState('24 Oct 2026');
+  const [busReturnDate, setBusReturnDate] = useState('27 Oct 2026');
+  const [busSeats, setBusSeats] = useState('1 Seat • Volvo AC Sleeper');
+
+  const [cabTripType, setCabTripType] = useState<'AIRPORT' | 'OUTSTATION' | 'HOURLY'>('AIRPORT');
+  const [cabPickup, setCabPickup] = useState<SelectedLocationResult>({
+    name: 'Delhi Airport T3',
+    city: 'Delhi',
+    displayName: 'Indira Gandhi Int\'l Airport T3 (DEL)',
+    secondaryText: 'Palam, New Delhi • Airport Terminal',
+  });
+  const [cabDrop, setCabDrop] = useState<SelectedLocationResult>({
+    name: 'Connaught Place',
+    city: 'Delhi',
+    displayName: 'Connaught Place, Central Delhi',
+    secondaryText: 'Central Delhi, India • Commercial Hub',
+  });
+  const [cabTime, setCabTime] = useState('Today, 02:30 PM');
+  const [cabType, setCabType] = useState('Sedan (Dzire / Etios)');
+
+  const [packageDest, setPackageDest] = useState<SelectedLocationResult>({
+    name: 'Kashmir',
+    city: 'Srinagar',
+    country: 'India',
+    displayName: 'Kashmir Valley Paradise (Srinagar, Gulmarg)',
+    secondaryText: '5D/4N • Domestic Holiday',
+  });
+  const [packageMonth, setPackageMonth] = useState('October 2026');
+
+  const [tourDest, setTourDest] = useState<SelectedLocationResult>({
+    name: 'Burj Khalifa Top',
+    city: 'Dubai',
+    country: 'UAE',
+    displayName: 'Burj Khalifa 124th & 125th Floor Observation Deck',
+    secondaryText: 'Dubai, UAE • Iconic Landmark',
+  });
+  const [tourDate, setTourDate] = useState('25 Oct 2026');
+
+  const [visaCountry, setVisaCountry] = useState<SelectedLocationResult>({
+    name: 'United Arab Emirates',
+    country: 'United Arab Emirates',
+    displayName: 'United Arab Emirates',
+    secondaryText: '🇦🇪 30/60 Days Tourist & Business Visa • Sovereign Country',
+  });
+
+  const [insuranceCountry, setInsuranceCountry] = useState<SelectedLocationResult>({
+    name: 'Schengen Area',
+    country: 'Europe',
+    displayName: 'Schengen Countries Mandatory Shield',
+    secondaryText: '🛡️ €30,000+ Medical Evacuation & Hospitalization',
+  });
+
+  // Modal states
   const [calendarModalState, setCalendarModalState] = useState<{
     visible: boolean;
-    type: 'departure' | 'return';
+    type: 'departure' | 'return' | 'hotel_in' | 'hotel_out' | 'villa_in' | 'villa_out' | 'train' | 'bus' | 'tour';
     title: string;
     initialDate: string;
     minDate?: string;
   } | null>(null);
 
+  const [locationModalState, setLocationModalState] = useState<{
+    visible: boolean;
+    service: CategoryMode;
+    title: string;
+    field: string;
+    placeholder?: string;
+  } | null>(null);
+
   const handleMobileDateSelected = (formattedDate: string, dayOfWeek: string, _isoDate: string) => {
     if (!calendarModalState) return;
-    if (calendarModalState.type === 'departure') {
+    const { type } = calendarModalState;
+    if (type === 'departure') {
       setDepartureDate(formattedDate);
       setDepartureDay(dayOfWeek);
-    } else {
+    } else if (type === 'return') {
       setReturnDate(formattedDate);
       setReturnDay(dayOfWeek);
       setTripType('roundtrip');
+    } else if (type === 'hotel_in') {
+      setHotelCheckIn(formattedDate);
+    } else if (type === 'hotel_out') {
+      setHotelCheckOut(formattedDate);
+    } else if (type === 'villa_in') {
+      setVillaCheckIn(formattedDate);
+    } else if (type === 'villa_out') {
+      setVillaCheckOut(formattedDate);
+    } else if (type === 'train') {
+      setTrainDate(formattedDate);
+    } else if (type === 'bus') {
+      setBusDate(formattedDate);
+    } else if (type === 'tour') {
+      setTourDate(formattedDate);
     }
     setCalendarModalState(null);
+  };
+
+  const handleLocationSelected = (result: SelectedLocationResult) => {
+    if (!locationModalState) return;
+    const { field } = locationModalState;
+
+    if (field === 'flight_origin') {
+      setOriginCode(result.code || 'DEL');
+      setOriginCity(result.city || result.name);
+    } else if (field === 'flight_dest') {
+      setDestCode(result.code || 'BOM');
+      setDestCity(result.city || result.name);
+    } else if (field === 'hotel_dest') {
+      setHotelDestination(result);
+    } else if (field === 'villa_dest') {
+      setVillaDestination(result);
+    } else if (field === 'train_origin') {
+      setTrainOrigin(result);
+    } else if (field === 'train_dest') {
+      setTrainDest(result);
+    } else if (field === 'bus_origin') {
+      setBusOrigin(result);
+    } else if (field === 'bus_dest') {
+      setBusDest(result);
+    } else if (field === 'cab_pickup') {
+      setCabPickup(result);
+    } else if (field === 'cab_drop') {
+      setCabDrop(result);
+    } else if (field === 'package_dest') {
+      setPackageDest(result);
+    } else if (field === 'tour_dest') {
+      setTourDest(result);
+    } else if (field === 'visa_dest') {
+      setVisaCountry(result);
+    } else if (field === 'insurance_dest') {
+      setInsuranceCountry(result);
+    }
+
+    setLocationModalState(null);
   };
 
   const swapAnim = useState(new Animated.Value(0))[0];
@@ -88,28 +258,50 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
       }),
     ]).start();
 
-    const tempCode = originCode;
-    const tempCity = originCity;
-    setOriginCode(destCode);
-    setOriginCity(destCity);
-    setDestCode(tempCode);
-    setDestCity(tempCity);
+    if (activeCategory === 'flights') {
+      const tempCode = originCode;
+      const tempCity = originCity;
+      setOriginCode(destCode);
+      setOriginCity(destCity);
+      setDestCode(tempCode);
+      setDestCity(tempCity);
+    } else if (activeCategory === 'trains') {
+      const temp = trainOrigin;
+      setTrainOrigin(trainDest);
+      setTrainDest(temp);
+    } else if (activeCategory === 'buses') {
+      const temp = busOrigin;
+      setBusOrigin(busDest);
+      setBusDest(temp);
+    } else if (activeCategory === 'cabs') {
+      const temp = cabPickup;
+      setCabPickup(cabDrop);
+      setCabDrop(temp);
+    }
   };
 
   const handleSearchPress = async () => {
-    if (activeCategory === 'flights' && originCode === destCode) {
-      Alert.alert('Invalid Route', 'Departure and destination cannot be identical. Please select different cities.');
+    if (activeCategory === 'flights') {
+      if (originCode === destCode) {
+        Alert.alert('Invalid Route', 'Departure and destination airports cannot be identical. Please select different airports.');
+        return;
+      }
+      onNavigate('flights');
       return;
     }
     if (activeCategory === 'hotels') {
       onNavigate('hotels');
       return;
     }
-    if (activeCategory === 'flights') {
-      onNavigate('flights');
+    if (activeCategory === 'villas') {
+      onNavigate('hotels');
       return;
     }
     if (activeCategory === 'trains') {
+      if (trainOrigin.code && trainDest.code && trainOrigin.code === trainDest.code) {
+        Alert.alert('Invalid Route', 'From and To railway stations cannot be the same.');
+        return;
+      }
       onNavigate('trains');
       return;
     }
@@ -123,6 +315,20 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
     }
     if (activeCategory === 'packages') {
       onNavigate('packages');
+      return;
+    }
+    if (activeCategory === 'tours' || activeCategory === 'visa' || activeCategory === 'insurance') {
+      Alert.alert(
+        `${activeCategory.toUpperCase()} Service Selected`,
+        `Searching verified availability for ${
+          activeCategory === 'visa'
+            ? visaCountry.displayName
+            : activeCategory === 'insurance'
+            ? insuranceCountry.displayName
+            : tourDest.displayName
+        }.`,
+        [{ text: 'OK' }]
+      );
       return;
     }
 
@@ -278,176 +484,910 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
         </ScrollView>
       </View>
 
-      {/* ── 3. SEARCH ENGINE CONSOLE WIDGET CARD (Exact Pixel-Perfect Screenshot Replica) ── */}
+      {/* ── 3. SEARCH ENGINE CONSOLE WIDGET CARD (Service-Specific per Active Tab) ── */}
       <View style={styles.searchCard}>
-        {/* Top Row: Trip Mode Radio Buttons */}
-        <View style={styles.radioRow}>
-          {([
-            { id: 'oneway' as const, label: 'One way' },
-            { id: 'roundtrip' as const, label: 'Round trip' },
-            { id: 'multicity' as const, label: 'Multi-city' },
-          ]).map((tab) => {
-            const isSelected = tripType === tab.id;
-            return (
+        {/* ── SERVICE 1: FLIGHTS ── */}
+        {activeCategory === 'flights' && (
+          <View>
+            {/* Top Row: Trip Mode Radio Buttons */}
+            <View style={styles.radioRow}>
+              {([
+                { id: 'oneway' as const, label: 'One way' },
+                { id: 'roundtrip' as const, label: 'Round trip' },
+                { id: 'multicity' as const, label: 'Multi-city' },
+              ]).map((tab) => {
+                const isSelected = tripType === tab.id;
+                return (
+                  <TouchableOpacity
+                    key={tab.id}
+                    style={styles.radioOption}
+                    onPress={() => setTripType(tab.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
+                      {isSelected && <View style={styles.radioCircleDot} />}
+                    </View>
+                    <Text style={[styles.radioOptionText, isSelected && styles.radioOptionTextActive]}>
+                      {tab.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Row 2: FROM & TO Segment with Centered Swap Icon (AIRPORTS ONLY) */}
+            <View style={styles.routeRowWrapper}>
               <TouchableOpacity
-                key={tab.id}
-                style={styles.radioOption}
-                onPress={() => setTripType(tab.id)}
-                activeOpacity={0.7}
+                style={styles.routeTile}
+                onPress={() => setLocationModalState({
+                  visible: true,
+                  service: 'flights',
+                  title: 'Select Departure Airport',
+                  field: 'flight_origin',
+                  placeholder: 'Search origin airport (e.g. DEL)...',
+                })}
+                activeOpacity={0.8}
               >
-                <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
-                  {isSelected && <View style={styles.radioCircleDot} />}
+                <MaterialIcons name="flight-takeoff" size={24} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>From (Airport)</Text>
+                  <Text style={styles.tileMainText} numberOfLines={1}>{originCity}</Text>
+                  <Text style={styles.tileSubText}>{originCode}</Text>
                 </View>
-                <Text style={[styles.radioOptionText, isSelected && styles.radioOptionTextActive]}>
-                  {tab.label}
-                </Text>
               </TouchableOpacity>
-            );
-          })}
-        </View>
 
-        {/* Row 2: FROM & TO Segment with Centered Swap Icon */}
-        <View style={styles.routeRowWrapper}>
-          {/* FROM tile */}
-          <TouchableOpacity
-            style={styles.routeTile}
-            onPress={() => {
-              if (originCode === 'DEL') {
-                setOriginCode('BOM');
-                setOriginCity('Mumbai');
-              } else {
-                setOriginCode('DEL');
-                setOriginCity('Delhi');
-              }
-            }}
-            activeOpacity={0.8}
-          >
-            <MaterialIcons name="flight-takeoff" size={24} color="#0066FF" style={styles.tileIcon} />
-            <View style={styles.tileCol}>
-              <Text style={styles.tileLabel}>From</Text>
-              <Text style={styles.tileMainText} numberOfLines={1}>{originCity}</Text>
-              <Text style={styles.tileSubText}>{originCode}</Text>
+              <TouchableOpacity
+                style={styles.centerSwapFab}
+                onPress={handleSwapRoutes}
+                activeOpacity={0.8}
+              >
+                <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                  <MaterialIcons name="sync-alt" size={18} color="#0F172A" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.routeTile}
+                onPress={() => setLocationModalState({
+                  visible: true,
+                  service: 'flights',
+                  title: 'Select Arrival Airport',
+                  field: 'flight_dest',
+                  placeholder: 'Search destination airport (e.g. BOM)...',
+                })}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="flight-land" size={24} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>To (Airport)</Text>
+                  <Text style={styles.tileMainText} numberOfLines={1}>{destCity}</Text>
+                  <Text style={styles.tileSubText}>{destCode}</Text>
+                </View>
+              </TouchableOpacity>
             </View>
-          </TouchableOpacity>
 
-          {/* Center Swap Button */}
-          <TouchableOpacity
-            style={styles.centerSwapFab}
-            onPress={handleSwapRoutes}
-            activeOpacity={0.8}
-          >
-            <Animated.View style={{ transform: [{ rotate: spin }] }}>
-              <MaterialIcons name="sync-alt" size={18} color="#0F172A" />
-            </Animated.View>
-          </TouchableOpacity>
+            {/* Row 3: Departure & Return Grid */}
+            <View style={styles.datesRow}>
+              <TouchableOpacity
+                style={styles.dateTile}
+                onPress={() => setCalendarModalState({
+                  visible: true,
+                  type: 'departure',
+                  title: 'Select Departure Date',
+                  initialDate: departureDate,
+                })}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="calendar-today" size={22} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Departure</Text>
+                  <Text style={styles.tileDateMainText}>{departureDate}</Text>
+                  <Text style={styles.tileSubText}>{departureDay}</Text>
+                </View>
+              </TouchableOpacity>
 
-          {/* TO tile */}
-          <TouchableOpacity
-            style={styles.routeTile}
-            onPress={() => {
-              if (destCode === 'GOI') {
-                setDestCode('BLR');
-                setDestCity('Bengaluru');
-              } else {
-                setDestCode('GOI');
-                setDestCity('Goa');
-              }
-            }}
-            activeOpacity={0.8}
-          >
-            <MaterialIcons name="flight-land" size={24} color="#0066FF" style={styles.tileIcon} />
-            <View style={styles.tileCol}>
-              <Text style={styles.tileLabel}>To</Text>
-              <Text style={styles.tileMainText} numberOfLines={1}>{destCity}</Text>
-              <Text style={styles.tileSubText}>{destCode}</Text>
+              <TouchableOpacity
+                style={[styles.dateTile, tripType === 'oneway' && styles.dateTileDimmed]}
+                onPress={() => {
+                  if (tripType === 'oneway') setTripType('roundtrip');
+                  setCalendarModalState({
+                    visible: true,
+                    type: 'return',
+                    title: 'Select Return Date',
+                    initialDate: returnDate,
+                    minDate: departureDate,
+                  });
+                }}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="calendar-today" size={22} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Return</Text>
+                  <Text style={styles.tileDateMainText}>{returnDate}</Text>
+                  <Text style={styles.tileSubText}>{returnDay}</Text>
+                </View>
+              </TouchableOpacity>
             </View>
-          </TouchableOpacity>
-        </View>
 
-        {/* Row 3: Departure & Return Grid */}
-        <View style={styles.datesRow}>
-          {/* Departure tile */}
-          <TouchableOpacity
-            style={styles.dateTile}
-            onPress={() => setCalendarModalState({
-              visible: true,
-              type: 'departure',
-              title: 'Select Departure Date',
-              initialDate: departureDate,
-            })}
-            activeOpacity={0.8}
-          >
-            <MaterialIcons name="calendar-today" size={22} color="#0066FF" style={styles.tileIcon} />
-            <View style={styles.tileCol}>
-              <Text style={styles.tileLabel}>Departure</Text>
-              <Text style={styles.tileDateMainText}>{departureDate}</Text>
-              <Text style={styles.tileSubText}>{departureDay}</Text>
-            </View>
-          </TouchableOpacity>
+            {/* Row 4: Travellers & Class */}
+            <TouchableOpacity
+              style={styles.travellersTile}
+              onPress={() => {
+                if (travellersText === '2 Adults, 1 Child') {
+                  setTravellersText('1 Adult');
+                  setTravelClass('Economy');
+                } else if (travellersText === '1 Adult') {
+                  setTravellersText('2 Adults');
+                  setTravelClass('Business');
+                } else {
+                  setTravellersText('2 Adults, 1 Child');
+                  setTravelClass('Economy');
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.travellersLeft}>
+                <MaterialIcons name="person-outline" size={26} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Travellers & Cabin Class</Text>
+                  <Text style={styles.tileMainText}>{travellersText}</Text>
+                  <Text style={styles.tileSubText}>{travelClass}</Text>
+                </View>
+              </View>
+              <MaterialIcons name="keyboard-arrow-down" size={24} color="#0F172A" />
+            </TouchableOpacity>
 
-          {/* Return tile */}
-          <TouchableOpacity
-            style={[styles.dateTile, tripType === 'oneway' && styles.dateTileDimmed]}
-            onPress={() => {
-              if (tripType === 'oneway') {
-                setTripType('roundtrip');
-              }
-              setCalendarModalState({
-                visible: true,
-                type: 'return',
-                title: 'Select Return Date',
-                initialDate: returnDate,
-                minDate: departureDate,
-              });
-            }}
-            activeOpacity={0.8}
-          >
-            <MaterialIcons name="calendar-today" size={22} color="#0066FF" style={styles.tileIcon} />
-            <View style={styles.tileCol}>
-              <Text style={styles.tileLabel}>Return</Text>
-              <Text style={styles.tileDateMainText}>{returnDate}</Text>
-              <Text style={styles.tileSubText}>{returnDay}</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Row 4: Travellers & Class Full Width Box */}
-        <TouchableOpacity
-          style={styles.travellersTile}
-          onPress={() => {
-            if (travellersText === '2 Adults, 1 Child') {
-              setTravellersText('1 Adult');
-              setTravelClass('Economy');
-            } else if (travellersText === '1 Adult') {
-              setTravellersText('2 Adults');
-              setTravelClass('Premium Economy');
-            } else {
-              setTravellersText('2 Adults, 1 Child');
-              setTravelClass('Economy');
-            }
-          }}
-          activeOpacity={0.8}
-        >
-          <View style={styles.travellersLeft}>
-            <MaterialIcons name="person-outline" size={26} color="#0066FF" style={styles.tileIcon} />
-            <View style={styles.tileCol}>
-              <Text style={styles.tileLabel}>Travellers & Class</Text>
-              <Text style={styles.tileMainText}>{travellersText}</Text>
-              <Text style={styles.tileSubText}>{travelClass}</Text>
-            </View>
+            {/* Submit Button */}
+            <TouchableOpacity
+              style={styles.searchFlightsBtn}
+              onPress={handleSearchPress}
+              activeOpacity={0.88}
+            >
+              <MaterialIcons name="search" size={22} color="#ffffff" style={styles.searchBtnIcon} />
+              <Text style={styles.searchFlightsBtnText}>Search Scheduled Flights</Text>
+            </TouchableOpacity>
           </View>
-          <MaterialIcons name="keyboard-arrow-down" size={24} color="#0F172A" />
-        </TouchableOpacity>
+        )}
 
-        {/* Row 5: Solid Royal Blue Search Flights Button */}
-        <TouchableOpacity
-          style={styles.searchFlightsBtn}
-          onPress={handleSearchPress}
-          activeOpacity={0.88}
-        >
-          <MaterialIcons name="search" size={22} color="#ffffff" style={styles.searchBtnIcon} />
-          <Text style={styles.searchFlightsBtnText}>Search Flights</Text>
-        </TouchableOpacity>
+        {/* ── SERVICE 2: HOTELS ── */}
+        {activeCategory === 'hotels' && (
+          <View>
+            <TouchableOpacity
+              style={styles.fullWidthTile}
+              onPress={() => setLocationModalState({
+                visible: true,
+                service: 'hotels',
+                title: 'Select Destination City or Hotel',
+                field: 'hotel_dest',
+                placeholder: 'Search any worldwide destination...',
+              })}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="hotel" size={26} color="#005cab" style={styles.tileIcon} />
+              <View style={styles.tileCol}>
+                <Text style={styles.tileLabel}>City, Locality or Hotel</Text>
+                <Text style={styles.tileMainText} numberOfLines={1}>{hotelDestination.name}</Text>
+                <Text style={styles.tileSubText} numberOfLines={1}>{hotelDestination.secondaryText || hotelDestination.displayName}</Text>
+              </View>
+              <MaterialIcons name="edit-location" size={20} color="#64748B" />
+            </TouchableOpacity>
+
+            <View style={styles.datesRow}>
+              <TouchableOpacity
+                style={styles.dateTile}
+                onPress={() => setCalendarModalState({
+                  visible: true,
+                  type: 'hotel_in',
+                  title: 'Select Check-in Date',
+                  initialDate: hotelCheckIn,
+                })}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="calendar-today" size={22} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Check-in</Text>
+                  <Text style={styles.tileDateMainText}>{hotelCheckIn}</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dateTile}
+                onPress={() => setCalendarModalState({
+                  visible: true,
+                  type: 'hotel_out',
+                  title: 'Select Check-out Date',
+                  initialDate: hotelCheckOut,
+                  minDate: hotelCheckIn,
+                })}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="calendar-today" size={22} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Check-out</Text>
+                  <Text style={styles.tileDateMainText}>{hotelCheckOut}</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.travellersTile}
+              onPress={() => {
+                setHotelGuests(hotelGuests === '2 Guests, 1 Room' ? '3 Guests, 1 Room' : '2 Guests, 1 Room');
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.travellersLeft}>
+                <MaterialIcons name="meeting-room" size={26} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Rooms & Guests</Text>
+                  <Text style={styles.tileMainText}>{hotelGuests}</Text>
+                  <Text style={styles.tileSubText}>Price Per Night • Instant Confirmation</Text>
+                </View>
+              </View>
+              <MaterialIcons name="keyboard-arrow-down" size={24} color="#0F172A" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.searchFlightsBtn}
+              onPress={handleSearchPress}
+              activeOpacity={0.88}
+            >
+              <MaterialIcons name="search" size={22} color="#ffffff" style={styles.searchBtnIcon} />
+              <Text style={styles.searchFlightsBtnText}>Search Luxury Hotels & Stays</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── SERVICE 3: VILLAS & HOMESTAYS (Location & Dates Only) ── */}
+        {activeCategory === 'villas' && (
+          <View>
+            <TouchableOpacity
+              style={styles.fullWidthTile}
+              onPress={() => setLocationModalState({
+                visible: true,
+                service: 'villas',
+                title: 'Select Villa or Homestay Location',
+                field: 'villa_dest',
+                placeholder: 'Search hill station, beach or city...',
+              })}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="holiday-village" size={26} color="#005cab" style={styles.tileIcon} />
+              <View style={styles.tileCol}>
+                <Text style={styles.tileLabel}>Villa & Homestay Location</Text>
+                <Text style={styles.tileMainText} numberOfLines={1}>{villaDestination.name}</Text>
+                <Text style={styles.tileSubText} numberOfLines={1}>{villaDestination.secondaryText || villaDestination.displayName}</Text>
+              </View>
+              <MaterialIcons name="edit-location" size={20} color="#64748B" />
+            </TouchableOpacity>
+
+            <View style={styles.datesRow}>
+              <TouchableOpacity
+                style={styles.dateTile}
+                onPress={() => setCalendarModalState({
+                  visible: true,
+                  type: 'villa_in',
+                  title: 'Select Check-in Date',
+                  initialDate: villaCheckIn,
+                })}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="calendar-today" size={22} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Check-in</Text>
+                  <Text style={styles.tileDateMainText}>{villaCheckIn}</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dateTile}
+                onPress={() => setCalendarModalState({
+                  visible: true,
+                  type: 'villa_out',
+                  title: 'Select Check-out Date',
+                  initialDate: villaCheckOut,
+                  minDate: villaCheckIn,
+                })}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="calendar-today" size={22} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Check-out</Text>
+                  <Text style={styles.tileDateMainText}>{villaCheckOut}</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.travellersTile}
+              onPress={() => {
+                setVillaGuests(villaGuests === '4 Guests (Entire Stay)' ? '6 Guests (Entire Villa)' : '4 Guests (Entire Stay)');
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.travellersLeft}>
+                <MaterialIcons name="pool" size={26} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Guests & Property Type</Text>
+                  <Text style={styles.tileMainText}>{villaGuests}</Text>
+                  <Text style={styles.tileSubText}>Entire Villa • Private Pool & Chef on Call</Text>
+                </View>
+              </View>
+              <MaterialIcons name="keyboard-arrow-down" size={24} color="#0F172A" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.searchFlightsBtn}
+              onPress={handleSearchPress}
+              activeOpacity={0.88}
+            >
+              <MaterialIcons name="search" size={22} color="#ffffff" style={styles.searchBtnIcon} />
+              <Text style={styles.searchFlightsBtnText}>Search Private Villas & Homestays</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── SERVICE 4: HOLIDAY PACKAGES ── */}
+        {activeCategory === 'packages' && (
+          <View>
+            <TouchableOpacity
+              style={styles.fullWidthTile}
+              onPress={() => setLocationModalState({
+                visible: true,
+                service: 'packages',
+                title: 'Select Holiday Package Destination',
+                field: 'package_dest',
+                placeholder: 'Search Kashmir, Kerala, Europe, Dubai...',
+              })}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="beach-access" size={26} color="#005cab" style={styles.tileIcon} />
+              <View style={styles.tileCol}>
+                <Text style={styles.tileLabel}>Holiday Destination / Region</Text>
+                <Text style={styles.tileMainText} numberOfLines={1}>{packageDest.name}</Text>
+                <Text style={styles.tileSubText} numberOfLines={1}>{packageDest.secondaryText || packageDest.displayName}</Text>
+              </View>
+              <MaterialIcons name="edit-location" size={20} color="#64748B" />
+            </TouchableOpacity>
+
+            <View style={styles.datesRow}>
+              <TouchableOpacity
+                style={styles.dateTile}
+                onPress={() => {
+                  setPackageMonth(packageMonth === 'October 2026' ? 'November 2026' : 'October 2026');
+                }}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="calendar-month" size={22} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Departure Month</Text>
+                  <Text style={styles.tileDateMainText}>{packageMonth}</Text>
+                </View>
+              </TouchableOpacity>
+
+              <View style={styles.dateTile}>
+                <MaterialIcons name="timer" size={22} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Duration</Text>
+                  <Text style={styles.tileDateMainText}>5D / 4N</Text>
+                  <Text style={styles.tileSubText}>Customizable</Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.travellersTile}
+              activeOpacity={0.8}
+            >
+              <View style={styles.travellersLeft}>
+                <MaterialIcons name="people-outline" size={26} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Travellers</Text>
+                  <Text style={styles.tileMainText}>2 Travellers</Text>
+                  <Text style={styles.tileSubText}>Flights + Hotels + Transfers Included</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.searchFlightsBtn}
+              onPress={handleSearchPress}
+              activeOpacity={0.88}
+            >
+              <MaterialIcons name="search" size={22} color="#ffffff" style={styles.searchBtnIcon} />
+              <Text style={styles.searchFlightsBtnText}>Search Holiday Packages</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── SERVICE 5: TRAINS (Railway Station Only) ── */}
+        {activeCategory === 'trains' && (
+          <View>
+            <View style={styles.routeRowWrapper}>
+              <TouchableOpacity
+                style={styles.routeTile}
+                onPress={() => setLocationModalState({
+                  visible: true,
+                  service: 'trains',
+                  title: 'Select Origin Railway Station',
+                  field: 'train_origin',
+                  placeholder: 'Search station code or name (e.g. NDLS)...',
+                })}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="train" size={24} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>From Station</Text>
+                  <Text style={styles.tileMainText} numberOfLines={1}>{trainOrigin.name}</Text>
+                  <Text style={styles.tileSubText}>{trainOrigin.code || 'IRCTC Station'}</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.centerSwapFab}
+                onPress={handleSwapRoutes}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="sync-alt" size={18} color="#0F172A" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.routeTile}
+                onPress={() => setLocationModalState({
+                  visible: true,
+                  service: 'trains',
+                  title: 'Select Destination Railway Station',
+                  field: 'train_dest',
+                  placeholder: 'Search station code or name (e.g. MMCT)...',
+                })}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="train" size={24} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>To Station</Text>
+                  <Text style={styles.tileMainText} numberOfLines={1}>{trainDest.name}</Text>
+                  <Text style={styles.tileSubText}>{trainDest.code || 'IRCTC Station'}</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.datesRow}>
+              <TouchableOpacity
+                style={styles.dateTile}
+                onPress={() => setCalendarModalState({
+                  visible: true,
+                  type: 'train',
+                  title: 'Select Journey Date',
+                  initialDate: trainDate,
+                })}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="calendar-today" size={22} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Journey Date</Text>
+                  <Text style={styles.tileDateMainText}>{trainDate}</Text>
+                </View>
+              </TouchableOpacity>
+
+              <View style={styles.dateTile}>
+                <MaterialIcons name="confirmation-number" size={22} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Quota</Text>
+                  <Text style={styles.tileDateMainText}>General</Text>
+                  <Text style={styles.tileSubText}>Tatkal / Ladies</Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.travellersTile}
+              onPress={() => {
+                setTrainClassQuota(trainClassQuota.includes('General') ? 'AC Classes (1A/2A/3A/CC)' : 'All Classes • General Quota');
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.travellersLeft}>
+                <MaterialIcons name="airline-seat-recline-extra" size={26} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Class Preference</Text>
+                  <Text style={styles.tileMainText}>{trainClassQuota}</Text>
+                  <Text style={styles.tileSubText}>Vande Bharat, Rajdhani & Shatabdi</Text>
+                </View>
+              </View>
+              <MaterialIcons name="keyboard-arrow-down" size={24} color="#0F172A" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.searchFlightsBtn}
+              onPress={handleSearchPress}
+              activeOpacity={0.88}
+            >
+              <MaterialIcons name="search" size={22} color="#ffffff" style={styles.searchBtnIcon} />
+              <Text style={styles.searchFlightsBtnText}>Search IRCTC Trains & Berths</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── SERVICE 6: BUSES (Bus Terminals & Stops) ── */}
+        {activeCategory === 'buses' && (
+          <View>
+            <View style={styles.routeRowWrapper}>
+              <TouchableOpacity
+                style={styles.routeTile}
+                onPress={() => setLocationModalState({
+                  visible: true,
+                  service: 'buses',
+                  title: 'Select Departure Bus Station',
+                  field: 'bus_origin',
+                  placeholder: 'Search ISBT or city (e.g. Delhi ISBT)...',
+                })}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="directions-bus" size={24} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>From Bus Stop</Text>
+                  <Text style={styles.tileMainText} numberOfLines={1}>{busOrigin.name}</Text>
+                  <Text style={styles.tileSubText} numberOfLines={1}>{busOrigin.secondaryText || 'Boarding Point'}</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.centerSwapFab}
+                onPress={handleSwapRoutes}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="sync-alt" size={18} color="#0F172A" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.routeTile}
+                onPress={() => setLocationModalState({
+                  visible: true,
+                  service: 'buses',
+                  title: 'Select Destination Bus Station',
+                  field: 'bus_dest',
+                  placeholder: 'Search dropping point or city...',
+                })}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="directions-bus" size={24} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>To Bus Stop</Text>
+                  <Text style={styles.tileMainText} numberOfLines={1}>{busDest.name}</Text>
+                  <Text style={styles.tileSubText} numberOfLines={1}>{busDest.secondaryText || 'Dropping Point'}</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.datesRow}>
+              <TouchableOpacity
+                style={styles.dateTile}
+                onPress={() => setCalendarModalState({
+                  visible: true,
+                  type: 'bus',
+                  title: 'Select Journey Date',
+                  initialDate: busDate,
+                })}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="calendar-today" size={22} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Travel Date</Text>
+                  <Text style={styles.tileDateMainText}>{busDate}</Text>
+                </View>
+              </TouchableOpacity>
+
+              <View style={[styles.dateTile, styles.dateTileDimmed]}>
+                <MaterialIcons name="event-repeat" size={22} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Return (Optional)</Text>
+                  <Text style={styles.tileDateMainText}>{busReturnDate}</Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.travellersTile}
+              onPress={() => {
+                setBusSeats(busSeats.includes('1 Seat') ? '2 Seats • Volvo AC Sleeper' : '1 Seat • Volvo AC Sleeper');
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.travellersLeft}>
+                <MaterialIcons name="airline-seat-recline-normal" size={26} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Seats & Bus Category</Text>
+                  <Text style={styles.tileMainText}>{busSeats}</Text>
+                  <Text style={styles.tileSubText}>Primo Assured • Live GPS Tracking</Text>
+                </View>
+              </View>
+              <MaterialIcons name="keyboard-arrow-down" size={24} color="#0F172A" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.searchFlightsBtn}
+              onPress={handleSearchPress}
+              activeOpacity={0.88}
+            >
+              <MaterialIcons name="search" size={22} color="#ffffff" style={styles.searchBtnIcon} />
+              <Text style={styles.searchFlightsBtnText}>Search Intercity Buses</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── SERVICE 7: CABS (Address / Place Search) ── */}
+        {activeCategory === 'cabs' && (
+          <View>
+            <View style={styles.radioRow}>
+              {([
+                { id: 'AIRPORT' as const, label: 'Airport Transfer' },
+                { id: 'OUTSTATION' as const, label: 'Outstation' },
+                { id: 'HOURLY' as const, label: 'Hourly Rental' },
+              ]).map((tab) => {
+                const isSelected = cabTripType === tab.id;
+                return (
+                  <TouchableOpacity
+                    key={tab.id}
+                    style={styles.radioOption}
+                    onPress={() => setCabTripType(tab.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
+                      {isSelected && <View style={styles.radioCircleDot} />}
+                    </View>
+                    <Text style={[styles.radioOptionText, isSelected && styles.radioOptionTextActive]}>
+                      {tab.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity
+              style={styles.fullWidthTile}
+              onPress={() => setLocationModalState({
+                visible: true,
+                service: 'cabs',
+                title: 'Enter Pickup Location / Address',
+                field: 'cab_pickup',
+                placeholder: 'Enter airport terminal, address or landmark...',
+              })}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="my-location" size={24} color="#1A7F37" style={styles.tileIcon} />
+              <View style={styles.tileCol}>
+                <Text style={styles.tileLabel}>Pickup Location / Address</Text>
+                <Text style={styles.tileMainText} numberOfLines={1}>{cabPickup.name}</Text>
+                <Text style={styles.tileSubText} numberOfLines={1}>{cabPickup.secondaryText || cabPickup.displayName}</Text>
+              </View>
+              <MaterialIcons name="edit" size={18} color="#64748B" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.fullWidthTile, { marginTop: 8 }]}
+              onPress={() => setLocationModalState({
+                visible: true,
+                service: 'cabs',
+                title: 'Enter Drop Location / Address',
+                field: 'cab_drop',
+                placeholder: 'Enter drop destination or landmark...',
+              })}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="location-on" size={24} color="#DC2626" style={styles.tileIcon} />
+              <View style={styles.tileCol}>
+                <Text style={styles.tileLabel}>Drop Location / Address</Text>
+                <Text style={styles.tileMainText} numberOfLines={1}>{cabDrop.name}</Text>
+                <Text style={styles.tileSubText} numberOfLines={1}>{cabDrop.secondaryText || cabDrop.displayName}</Text>
+              </View>
+              <MaterialIcons name="edit" size={18} color="#64748B" />
+            </TouchableOpacity>
+
+            <View style={styles.datesRow}>
+              <View style={styles.dateTile}>
+                <MaterialIcons name="schedule" size={22} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Pickup Time</Text>
+                  <Text style={styles.tileDateMainText}>{cabTime}</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.dateTile}
+                onPress={() => {
+                  setCabType(cabType.includes('Sedan') ? 'SUV (Innova / Ertiga)' : 'Sedan (Dzire / Etios)');
+                }}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="directions-car" size={22} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Cab Type</Text>
+                  <Text style={styles.tileDateMainText}>{cabType.split(' ')[0]}</Text>
+                  <Text style={styles.tileSubText}>{cabType.split('(')[1]?.replace(')', '') || 'Sedan'}</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.searchFlightsBtn}
+              onPress={handleSearchPress}
+              activeOpacity={0.88}
+            >
+              <MaterialIcons name="search" size={22} color="#ffffff" style={styles.searchBtnIcon} />
+              <Text style={styles.searchFlightsBtnText}>Search Cabs & Chauffeurs</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── SERVICE 8: TOURS & ATTRACTIONS ── */}
+        {activeCategory === 'tours' && (
+          <View>
+            <TouchableOpacity
+              style={styles.fullWidthTile}
+              onPress={() => setLocationModalState({
+                visible: true,
+                service: 'tours',
+                title: 'Select Tour, Monument or Attraction',
+                field: 'tour_dest',
+                placeholder: 'Search Burj Khalifa, Eiffel Tower, Louvre...',
+              })}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="attractions" size={26} color="#005cab" style={styles.tileIcon} />
+              <View style={styles.tileCol}>
+                <Text style={styles.tileLabel}>Attraction / Monument / City</Text>
+                <Text style={styles.tileMainText} numberOfLines={1}>{tourDest.name}</Text>
+                <Text style={styles.tileSubText} numberOfLines={1}>{tourDest.secondaryText || tourDest.displayName}</Text>
+              </View>
+              <MaterialIcons name="edit-location" size={20} color="#64748B" />
+            </TouchableOpacity>
+
+            <View style={styles.datesRow}>
+              <TouchableOpacity
+                style={styles.dateTile}
+                onPress={() => setCalendarModalState({
+                  visible: true,
+                  type: 'tour',
+                  title: 'Select Visit Date',
+                  initialDate: tourDate,
+                })}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="calendar-today" size={22} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Visit Date</Text>
+                  <Text style={styles.tileDateMainText}>{tourDate}</Text>
+                </View>
+              </TouchableOpacity>
+
+              <View style={styles.dateTile}>
+                <MaterialIcons name="groups" size={22} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Participants</Text>
+                  <Text style={styles.tileDateMainText}>2 Adults</Text>
+                  <Text style={styles.tileSubText}>Skip-the-line</Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.searchFlightsBtn}
+              onPress={handleSearchPress}
+              activeOpacity={0.88}
+            >
+              <MaterialIcons name="search" size={22} color="#ffffff" style={styles.searchBtnIcon} />
+              <Text style={styles.searchFlightsBtnText}>Search Tours & Experiences</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── SERVICE 9: VISA (Sovereign Country Only) ── */}
+        {activeCategory === 'visa' && (
+          <View>
+            <TouchableOpacity
+              style={styles.fullWidthTile}
+              onPress={() => setLocationModalState({
+                visible: true,
+                service: 'visa',
+                title: 'Select Destination Sovereign Country',
+                field: 'visa_dest',
+                placeholder: 'Search sovereign country (e.g. UAE, UK, France)...',
+              })}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="card-membership" size={26} color="#005cab" style={styles.tileIcon} />
+              <View style={styles.tileCol}>
+                <Text style={styles.tileLabel}>Destination Country (Sovereign Only)</Text>
+                <Text style={styles.tileMainText} numberOfLines={1}>{visaCountry.name}</Text>
+                <Text style={styles.tileSubText} numberOfLines={1}>{visaCountry.secondaryText || 'Sovereign Country'}</Text>
+              </View>
+              <MaterialIcons name="public" size={20} color="#005cab" />
+            </TouchableOpacity>
+
+            <View style={styles.datesRow}>
+              <View style={styles.dateTile}>
+                <MaterialIcons name="verified" size={22} color="#1A7F37" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Visa Category</Text>
+                  <Text style={styles.tileDateMainText}>Tourist Visa</Text>
+                  <Text style={styles.tileSubText}>30 / 60 Days</Text>
+                </View>
+              </View>
+
+              <View style={styles.dateTile}>
+                <MaterialIcons name="speed" size={22} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Fast-Track</Text>
+                  <Text style={styles.tileDateMainText}>99.4% Approval</Text>
+                  <Text style={styles.tileSubText}>Express Available</Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.searchFlightsBtn}
+              onPress={handleSearchPress}
+              activeOpacity={0.88}
+            >
+              <MaterialIcons name="search" size={22} color="#ffffff" style={styles.searchBtnIcon} />
+              <Text style={styles.searchFlightsBtnText}>Explore Visa Requirements</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── SERVICE 10: TRAVEL INSURANCE ── */}
+        {activeCategory === 'insurance' && (
+          <View>
+            <TouchableOpacity
+              style={styles.fullWidthTile}
+              onPress={() => setLocationModalState({
+                visible: true,
+                service: 'insurance',
+                title: 'Select Destination Country or Zone',
+                field: 'insurance_dest',
+                placeholder: 'Search Schengen, USA, Worldwide...',
+              })}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="security" size={26} color="#005cab" style={styles.tileIcon} />
+              <View style={styles.tileCol}>
+                <Text style={styles.tileLabel}>Travel Shield Zone / Country</Text>
+                <Text style={styles.tileMainText} numberOfLines={1}>{insuranceCountry.name}</Text>
+                <Text style={styles.tileSubText} numberOfLines={1}>{insuranceCountry.secondaryText || 'Comprehensive Shield'}</Text>
+              </View>
+              <MaterialIcons name="shield" size={20} color="#005cab" />
+            </TouchableOpacity>
+
+            <View style={styles.datesRow}>
+              <View style={styles.dateTile}>
+                <MaterialIcons name="date-range" size={22} color="#005cab" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Trip Duration</Text>
+                  <Text style={styles.tileDateMainText}>10 Days Plan</Text>
+                  <Text style={styles.tileSubText}>Extendable</Text>
+                </View>
+              </View>
+
+              <View style={styles.dateTile}>
+                <MaterialIcons name="medical-services" size={22} color="#1A7F37" style={styles.tileIcon} />
+                <View style={styles.tileCol}>
+                  <Text style={styles.tileLabel}>Medical Limit</Text>
+                  <Text style={styles.tileDateMainText}>€30,000+</Text>
+                  <Text style={styles.tileSubText}>Schengen Compliant</Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.searchFlightsBtn}
+              onPress={handleSearchPress}
+              activeOpacity={0.88}
+            >
+              <MaterialIcons name="search" size={22} color="#ffffff" style={styles.searchBtnIcon} />
+              <Text style={styles.searchFlightsBtnText}>View Travel Insurance Plans</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* ── 4. FIRST BOOKING WELCOME BANNER ── */}
@@ -1020,11 +1960,33 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
       minDate={calendarModalState?.minDate}
       onSelectDate={handleMobileDateSelected}
     />
+
+    {/* ── SERVICE-SPECIFIC LOCATION AUTOCOMPLETE MODAL ── */}
+    <LocationSearchModal
+      visible={locationModalState?.visible ?? false}
+      onClose={() => setLocationModalState(null)}
+      service={locationModalState?.service ?? activeCategory}
+      title={locationModalState?.title ?? 'Search Location'}
+      placeholder={locationModalState?.placeholder}
+      onSelect={handleLocationSelected}
+    />
   </View>
   );
 };
 
 const styles = StyleSheet.create({
+  fullWidthTile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: '#ffffff',
+    minHeight: 68,
+  },
   container: {
     flex: 1,
     backgroundColor: '#fbf9f8',

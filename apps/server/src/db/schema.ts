@@ -4,6 +4,48 @@ export async function initDbSchema() {
   await query(`
     CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+    -- Ensure default gen_random_uuid() for id columns on legacy tables
+    DO $$ BEGIN
+      ALTER TABLE flights ALTER COLUMN id SET DEFAULT gen_random_uuid();
+      ALTER TABLE hotels ALTER COLUMN id SET DEFAULT gen_random_uuid();
+      ALTER TABLE hotel_rooms ALTER COLUMN id SET DEFAULT gen_random_uuid();
+      ALTER TABLE trains ALTER COLUMN id SET DEFAULT gen_random_uuid();
+      ALTER TABLE buses ALTER COLUMN id SET DEFAULT gen_random_uuid();
+      ALTER TABLE cabs ALTER COLUMN id SET DEFAULT gen_random_uuid();
+      ALTER TABLE holiday_packages ALTER COLUMN id SET DEFAULT gen_random_uuid();
+      ALTER TABLE users ALTER COLUMN id SET DEFAULT gen_random_uuid();
+      ALTER TABLE partner_profiles ALTER COLUMN id SET DEFAULT gen_random_uuid();
+      ALTER TABLE bookings ALTER COLUMN id SET DEFAULT gen_random_uuid();
+      ALTER TABLE booking_items ALTER COLUMN id SET DEFAULT gen_random_uuid();
+      ALTER TABLE coupons ALTER COLUMN id SET DEFAULT gen_random_uuid();
+      ALTER TABLE wishlist_items ALTER COLUMN id SET DEFAULT gen_random_uuid();
+    EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
+    -- Ensure default TRUE for is_simulated across legacy tables
+    DO $$ BEGIN
+      ALTER TABLE flights ALTER COLUMN is_simulated SET DEFAULT TRUE;
+    EXCEPTION WHEN undefined_table THEN NULL; WHEN undefined_column THEN NULL; END $$;
+
+    DO $$ BEGIN
+      ALTER TABLE hotels ALTER COLUMN is_simulated SET DEFAULT TRUE;
+    EXCEPTION WHEN undefined_table THEN NULL; WHEN undefined_column THEN NULL; END $$;
+
+    DO $$ BEGIN
+      ALTER TABLE trains ALTER COLUMN is_simulated SET DEFAULT TRUE;
+    EXCEPTION WHEN undefined_table THEN NULL; WHEN undefined_column THEN NULL; END $$;
+
+    DO $$ BEGIN
+      ALTER TABLE buses ALTER COLUMN is_simulated SET DEFAULT TRUE;
+    EXCEPTION WHEN undefined_table THEN NULL; WHEN undefined_column THEN NULL; END $$;
+
+    DO $$ BEGIN
+      ALTER TABLE cabs ALTER COLUMN is_simulated SET DEFAULT TRUE;
+    EXCEPTION WHEN undefined_table THEN NULL; WHEN undefined_column THEN NULL; END $$;
+
+    DO $$ BEGIN
+      ALTER TABLE holiday_packages ALTER COLUMN is_simulated SET DEFAULT TRUE;
+    EXCEPTION WHEN undefined_table THEN NULL; WHEN undefined_column THEN NULL; END $$;
+
     CREATE TABLE IF NOT EXISTS users (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       email VARCHAR(255) UNIQUE NOT NULL,
@@ -468,6 +510,210 @@ export async function initDbSchema() {
       reason TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    -- ============================================================
+    -- PHASE 1: MASTER LOCATION DISCOVERY & REFERENCE TABLES
+    -- ============================================================
+
+    -- 1. COUNTRIES MASTER TABLE
+    CREATE TABLE IF NOT EXISTS countries (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      code VARCHAR(10) UNIQUE NOT NULL, -- ISO-3166-1 alpha-2 (e.g. 'IN', 'AE', 'US')
+      iso3 VARCHAR(10) UNIQUE NOT NULL, -- ISO-3166-1 alpha-3 (e.g. 'IND', 'ARE', 'USA')
+      name VARCHAR(200) NOT NULL,
+      official_name VARCHAR(255),
+      continent VARCHAR(100) NOT NULL,
+      flag_emoji VARCHAR(20) NOT NULL DEFAULT '🌐',
+      currency_code VARCHAR(10) DEFAULT 'INR',
+      requires_visa_for_indian_passports BOOLEAN NOT NULL DEFAULT FALSE,
+      visa_types_available JSONB DEFAULT '[]'::jsonb,
+      aliases JSONB DEFAULT '[]'::jsonb,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      source VARCHAR(100) NOT NULL DEFAULT 'ISO-3166',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- 2. DESTINATIONS & CITIES MASTER TABLE
+    CREATE TABLE IF NOT EXISTS destinations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      slug VARCHAR(150) UNIQUE NOT NULL,
+      name VARCHAR(200) NOT NULL,
+      city VARCHAR(150),
+      display_name VARCHAR(300) NOT NULL,
+      state VARCHAR(150),
+      country VARCHAR(150) NOT NULL DEFAULT 'India',
+      country_code VARCHAR(10),
+      destination_type VARCHAR(50) NOT NULL DEFAULT 'CITY', -- 'CITY', 'HILL_STATION', 'BEACH', 'HERITAGE', 'METRO', 'ISLAND'
+      latitude FLOAT,
+      longitude FLOAT,
+      timezone VARCHAR(100) DEFAULT 'Asia/Kolkata',
+      popular_services JSONB DEFAULT '["hotels", "cabs"]'::jsonb,
+      aliases JSONB DEFAULT '[]'::jsonb,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      source VARCHAR(100) NOT NULL DEFAULT 'GEO_MASTER',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    ALTER TABLE destinations ADD COLUMN IF NOT EXISTS city VARCHAR(150);
+
+    -- 3. AIRPORTS MASTER TABLE
+    CREATE TABLE IF NOT EXISTS airports (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      iata_code VARCHAR(10),
+      icao_code VARCHAR(10),
+      name VARCHAR(255) NOT NULL,
+      city VARCHAR(150) NOT NULL,
+      state VARCHAR(150),
+      country VARCHAR(150) NOT NULL,
+      country_code VARCHAR(10),
+      latitude FLOAT,
+      longitude FLOAT,
+      elevation_ft INT,
+      airport_type VARCHAR(50) NOT NULL DEFAULT 'large_airport',
+      is_commercial BOOLEAN NOT NULL DEFAULT TRUE,
+      aliases JSONB DEFAULT '[]'::jsonb,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      source VARCHAR(100) NOT NULL DEFAULT 'OurAirports',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_airports_iata ON airports(iata_code) WHERE iata_code IS NOT NULL;
+
+    -- 4. RAILWAY STATIONS MASTER TABLE
+    CREATE TABLE IF NOT EXISTS railway_stations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      station_code VARCHAR(20) UNIQUE NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      city VARCHAR(150) NOT NULL,
+      state VARCHAR(150) NOT NULL,
+      country VARCHAR(150) NOT NULL DEFAULT 'India',
+      zone VARCHAR(50),
+      division VARCHAR(50),
+      latitude FLOAT,
+      longitude FLOAT,
+      station_category VARCHAR(50) DEFAULT 'NSG-1',
+      aliases JSONB DEFAULT '[]'::jsonb,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      source VARCHAR(100) NOT NULL DEFAULT 'IndianRailways-OpenData',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- 5. BUS TERMINALS AND STOPS MASTER TABLE
+    CREATE TABLE IF NOT EXISTS bus_terminals (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      terminal_code VARCHAR(50) UNIQUE NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      city VARCHAR(150) NOT NULL,
+      state VARCHAR(150) NOT NULL,
+      country VARCHAR(150) NOT NULL DEFAULT 'India',
+      terminal_type VARCHAR(50) NOT NULL DEFAULT 'ISBT',
+      address VARCHAR(300),
+      latitude FLOAT,
+      longitude FLOAT,
+      aliases JSONB DEFAULT '[]'::jsonb,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      source VARCHAR(100) NOT NULL DEFAULT 'OpenStreetMap-Transport',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- 6. TOURS MASTER TABLE
+    CREATE TABLE IF NOT EXISTS tours (
+      id VARCHAR(100) PRIMARY KEY,
+      slug VARCHAR(200) UNIQUE NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      city VARCHAR(150) NOT NULL,
+      country VARCHAR(150) NOT NULL,
+      duration VARCHAR(100) NOT NULL,
+      category VARCHAR(150) NOT NULL,
+      rating FLOAT NOT NULL DEFAULT 4.8,
+      review_count INT NOT NULL DEFAULT 100,
+      price_per_person NUMERIC(12, 2) NOT NULL,
+      currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+      featured_image VARCHAR(500) NOT NULL,
+      highlights JSONB DEFAULT '[]'::jsonb,
+      cancellation_policy TEXT NOT NULL DEFAULT 'Free cancellation up to 24 hours',
+      instant_confirmation BOOLEAN NOT NULL DEFAULT TRUE,
+      overview TEXT,
+      itinerary JSONB DEFAULT '[]'::jsonb,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      source VARCHAR(100) NOT NULL DEFAULT 'SS_JOURNEY_CURATED',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- 7. VISA REQUIREMENTS MASTER TABLE
+    CREATE TABLE IF NOT EXISTS visa_requirements (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      country_code VARCHAR(10) NOT NULL,
+      country_name VARCHAR(150) NOT NULL,
+      visa_slug VARCHAR(150) UNIQUE NOT NULL,
+      visa_name VARCHAR(255) NOT NULL,
+      flag_emoji VARCHAR(20) NOT NULL DEFAULT '🌐',
+      validity VARCHAR(100) NOT NULL,
+      stay_period VARCHAR(100) NOT NULL,
+      processing_time VARCHAR(100) NOT NULL,
+      express_available BOOLEAN NOT NULL DEFAULT FALSE,
+      base_fee NUMERIC(12, 2) NOT NULL,
+      embassy_fee NUMERIC(12, 2) NOT NULL DEFAULT 0.0,
+      service_fee NUMERIC(12, 2) NOT NULL DEFAULT 0.0,
+      total_price NUMERIC(12, 2) NOT NULL,
+      currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+      requirements JSONB DEFAULT '[]'::jsonb,
+      approval_rate VARCHAR(20) DEFAULT '99%',
+      aliases JSONB DEFAULT '[]'::jsonb,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      source VARCHAR(100) NOT NULL DEFAULT 'EMBASSY_RULES',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- ============================================================
+    -- PERFORMANCE INDEXES (REFERENCE & INVENTORY)
+    -- ============================================================
+    CREATE INDEX IF NOT EXISTS idx_airports_iata ON airports(iata_code);
+    CREATE INDEX IF NOT EXISTS idx_airports_city ON airports(LOWER(city));
+    CREATE INDEX IF NOT EXISTS idx_airports_name ON airports(LOWER(name));
+    CREATE INDEX IF NOT EXISTS idx_airports_country ON airports(LOWER(country));
+    CREATE INDEX IF NOT EXISTS idx_airports_active ON airports(is_active, is_commercial);
+
+    CREATE INDEX IF NOT EXISTS idx_stations_code ON railway_stations(station_code);
+    CREATE INDEX IF NOT EXISTS idx_stations_city ON railway_stations(LOWER(city));
+    CREATE INDEX IF NOT EXISTS idx_stations_name ON railway_stations(LOWER(name));
+    CREATE INDEX IF NOT EXISTS idx_stations_state ON railway_stations(LOWER(state));
+    CREATE INDEX IF NOT EXISTS idx_stations_active ON railway_stations(is_active);
+
+    CREATE INDEX IF NOT EXISTS idx_bus_terminals_city ON bus_terminals(LOWER(city));
+    CREATE INDEX IF NOT EXISTS idx_bus_terminals_name ON bus_terminals(LOWER(name));
+    CREATE INDEX IF NOT EXISTS idx_bus_terminals_active ON bus_terminals(is_active);
+
+    CREATE INDEX IF NOT EXISTS idx_countries_code ON countries(code);
+    CREATE INDEX IF NOT EXISTS idx_countries_iso3 ON countries(iso3);
+    CREATE INDEX IF NOT EXISTS idx_countries_name ON countries(LOWER(name));
+    CREATE INDEX IF NOT EXISTS idx_countries_active ON countries(is_active);
+
+    CREATE INDEX IF NOT EXISTS idx_destinations_city ON destinations(LOWER(city));
+    CREATE INDEX IF NOT EXISTS idx_destinations_name ON destinations(LOWER(name));
+    CREATE INDEX IF NOT EXISTS idx_destinations_country ON destinations(LOWER(country));
+    CREATE INDEX IF NOT EXISTS idx_destinations_active ON destinations(is_active);
+
+    CREATE INDEX IF NOT EXISTS idx_tours_city ON tours(LOWER(city));
+    CREATE INDEX IF NOT EXISTS idx_tours_country ON tours(LOWER(country));
+    CREATE INDEX IF NOT EXISTS idx_tours_category ON tours(LOWER(category));
+    CREATE INDEX IF NOT EXISTS idx_tours_active ON tours(is_active);
+
+    CREATE INDEX IF NOT EXISTS idx_visa_country_code ON visa_requirements(country_code);
+    CREATE INDEX IF NOT EXISTS idx_visa_country_name ON visa_requirements(LOWER(country_name));
+    CREATE INDEX IF NOT EXISTS idx_visa_active ON visa_requirements(is_active);
+
+    -- Search indexes on live inventory tables
+    CREATE INDEX IF NOT EXISTS idx_flights_route ON flights(origin_code, destination_code, is_active);
+    CREATE INDEX IF NOT EXISTS idx_hotels_city ON hotels(LOWER(city), is_active);
+    CREATE INDEX IF NOT EXISTS idx_trains_route ON trains(from_station_code, to_station_code, is_active);
+    CREATE INDEX IF NOT EXISTS idx_buses_route ON buses(LOWER(from_city), LOWER(to_city), is_active);
+    CREATE INDEX IF NOT EXISTS idx_packages_dest ON holiday_packages(LOWER(destination), is_active);
 
     -- Seed initial base rules if none exist
     INSERT INTO pricing_rules (name, channel, service_type, calculation_type, value, priority, description)

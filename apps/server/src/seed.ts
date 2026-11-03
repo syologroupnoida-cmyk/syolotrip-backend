@@ -1,10 +1,14 @@
 import bcrypt from 'bcrypt';
 import { query } from './db/index.js';
 import { initDbSchema } from './db/schema.js';
+import { ingestAllReferenceData } from './db/ingestReferenceData.js';
 
 async function seed() {
   console.log('[SEED] Initializing database schema...');
   await initDbSchema();
+
+  console.log('[SEED] Ingesting master reference datasets...');
+  await ingestAllReferenceData();
 
   console.log('[SEED] Starting database seed...');
 

@@ -5,6 +5,7 @@ import path from 'path';
 
 import { initDbSchema } from './db/schema.js';
 import { query } from './db/index.js';
+import { ingestAllReferenceData } from './db/ingestReferenceData.js';
 
 import authRouter from './routes/auth.js';
 import flightsRouter from './routes/flights.js';
@@ -111,6 +112,14 @@ async function startServer() {
     console.log('[NODE-BACKEND] Initializing database schema...');
     await initDbSchema();
     console.log('[NODE-BACKEND] Database schema initialized successfully.');
+
+    // Auto-ingest master reference datasets if empty
+    const airportCountRes = await query('SELECT count(*) FROM airports');
+    if (parseInt(airportCountRes.rows[0]?.count || '0', 10) === 0) {
+      console.log('[NODE-BACKEND] Seeding reference datasets...');
+      await ingestAllReferenceData();
+      console.log('[NODE-BACKEND] Reference datasets seeded successfully.');
+    }
   } catch (err: any) {
     console.warn('[NODE-BACKEND] Database warning on startup:', err.message);
   }

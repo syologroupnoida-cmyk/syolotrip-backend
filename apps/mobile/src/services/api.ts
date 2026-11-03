@@ -814,6 +814,41 @@ export async function syncWishlistMobileApi(items: any[]): Promise<any[]> {
   return json.data?.items || [];
 }
 
+export interface ServiceLocationSuggestion {
+  id: string;
+  display_name: string;
+  secondary_text: string;
+  city: string;
+  state?: string;
+  country: string;
+  type: string;
+  iata_code?: string;
+  station_code?: string;
+  code?: string;
+  latitude?: number;
+  longitude?: number;
+  provider: string;
+}
+
+export async function getServiceLocationsSuggestMobileApi(
+  service: string,
+  query: string,
+  limit: number = 10
+): Promise<ServiceLocationSuggestion[]> {
+  try {
+    const q = encodeURIComponent(query.trim());
+    const res = await fetch(`${API_BASE_URL}/locations/suggest?service=${service}&q=${q}&limit=${limit}`);
+    if (!res.ok) {
+      return [];
+    }
+    const json = await res.json();
+    return json.data || [];
+  } catch (err) {
+    console.warn('[MobileAPI] Error fetching location suggestions:', err);
+    return [];
+  }
+}
+
 // ================= Mobile Locations API =================
 export async function getLocationsMobileApi(query?: string): Promise<any> {
   const q = query ? `?query=${encodeURIComponent(query)}` : '';
