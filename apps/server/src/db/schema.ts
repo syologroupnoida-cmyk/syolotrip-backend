@@ -435,9 +435,16 @@ export async function initDbSchema() {
       nationality VARCHAR(50) DEFAULT 'Indian',
       meal_preference VARCHAR(50),
       seat_preference VARCHAR(50),
+      relationship VARCHAR(50),
+      berth_preference VARCHAR(50),
+      passport_issuing_country VARCHAR(100) DEFAULT 'India',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    ALTER TABLE saved_travellers ADD COLUMN IF NOT EXISTS relationship VARCHAR(50);
+    ALTER TABLE saved_travellers ADD COLUMN IF NOT EXISTS berth_preference VARCHAR(50);
+    ALTER TABLE saved_travellers ADD COLUMN IF NOT EXISTS passport_issuing_country VARCHAR(100) DEFAULT 'India';
 
     CREATE INDEX IF NOT EXISTS idx_saved_travellers_user_id ON saved_travellers(user_id);
 

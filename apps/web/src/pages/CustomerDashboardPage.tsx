@@ -7,20 +7,25 @@ import {
   createSavedTravellerApi,
   updateSavedTravellerApi,
   deleteSavedTravellerApi,
-  getCustomerPaymentsApi,
   getMyTripsApi,
   cancelBookingApi,
   CustomerDashboardSummary,
   CustomerProfileData,
   SavedTraveller,
-  CustomerPaymentItem,
   UserProfile,
 } from '../services/api';
 import { useCurrency } from '../context/CurrencyContext';
-import { useWishlist, WishlistItem } from '../context/WishlistContext';
 import { WebCheckoutItem } from './BookingCheckoutPage';
 
-export type DashboardSubTab = 'overview' | 'trips' | 'wishlist' | 'travellers' | 'payments' | 'profile' | 'support';
+export type DashboardSubTab =
+  | 'overview'
+  | 'trips'
+  | 'wishlist'
+  | 'travellers'
+  | 'payments'
+  | 'profile'
+  | 'devices'
+  | 'support';
 
 interface CustomerDashboardPageProps {
   onNavigate: (screen: any) => void;
@@ -33,20 +38,17 @@ interface CustomerDashboardPageProps {
 
 export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
   onNavigate,
-  onInitiateCheckout,
-  initialTab = 'overview',
+  initialTab = 'profile',
   currentUser,
   onLogout,
 }) => {
   const { formatPrice } = useCurrency();
-  const { wishlist: wishlistItems, removeFromWishlist } = useWishlist();
 
   const [activeTab, setActiveTab] = useState<DashboardSubTab>(initialTab);
   const [isLoading, setIsLoading] = useState(true);
   const [summary, setSummary] = useState<CustomerDashboardSummary | null>(null);
   const [profile, setProfile] = useState<CustomerProfileData | null>(null);
   const [travellers, setTravellers] = useState<SavedTraveller[]>([]);
-  const [payments, setPayments] = useState<CustomerPaymentItem[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
 
   // Trips filter & cancellation state
@@ -58,24 +60,60 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Profile edit state
-  const [profileForm, setProfileForm] = useState<Partial<CustomerProfileData>>({});
+  const [profileForm, setProfileForm] = useState<Partial<CustomerProfileData>>({
+    fullName: '',
+    phone: '',
+    email: '',
+    gender: 'MALE',
+    dateOfBirth: '',
+    maritalStatus: 'SINGLE',
+    state: 'Delhi',
+    passportNumber: '',
+    passportExpiry: '',
+    passportIssuingCountry: 'India',
+    panCardNumber: '',
+    autoInsurancePreferences: {
+      domestic_hotel: false,
+      domestic_flight: false,
+      international_hotel: false,
+      international_flight: false,
+    },
+    frequentFlyerDetails: [],
+  });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
+  // Frequent Flyer Add State
+  const [isAddingFlyer, setIsAddingFlyer] = useState(false);
+  const [newFlyerAirline, setNewFlyerAirline] = useState('Air India');
+  const [newFlyerNumber, setNewFlyerNumber] = useState('');
+
+  // Password Reset Modal State
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [pwdCurrent, setPwdCurrent] = useState('');
+  const [pwdNew, setPwdNew] = useState('');
+  const [pwdConfirm, setPwdConfirm] = useState('');
+
   // Traveller edit/modal state
-  const [isTravellerModalOpen, setIsTravellerModalOpen] = useState(false);
+  const [isEditingCoTraveller, setIsEditingCoTraveller] = useState(false);
+  const [isSavingTraveller, setIsSavingTraveller] = useState(false);
   const [editingTraveller, setEditingTraveller] = useState<SavedTraveller | null>(null);
   const [travellerForm, setTravellerForm] = useState<Partial<SavedTraveller>>({
     title: 'Mr',
     firstName: '',
     lastName: '',
     gender: 'MALE',
+    dateOfBirth: '',
     passengerType: 'ADULT',
     phone: '',
     email: '',
     passportNumber: '',
-    nationality: 'Indian',
-    mealPreference: '',
+    passportExpiry: '',
+    nationality: 'India',
+    mealPreference: 'No Preference',
     seatPreference: '',
+    relationship: 'Spouse',
+    berthPreference: 'No Preference',
+    passportIssuingCountry: 'India',
   });
 
   // Load initial data
@@ -83,21 +121,31 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
     setIsLoading(true);
     setActionMessage(null);
     try {
-      const [sumData, profData, travData, payData, tripsData] = await Promise.allSettled([
+      const [sumData, profData, travData, tripsData] = await Promise.allSettled([
         getCustomerDashboardSummaryApi(),
         getCustomerProfileApi(),
         getSavedTravellersApi(),
-        getCustomerPaymentsApi(),
         getMyTripsApi(),
       ]);
 
       if (sumData.status === 'fulfilled') setSummary(sumData.value);
       if (profData.status === 'fulfilled') {
-        setProfile(profData.value);
-        setProfileForm({ ...profData.value });
+        const p = profData.value;
+        setProfile(p);
+        setProfileForm({
+          ...p,
+          maritalStatus: p.maritalStatus || 'SINGLE',
+          passportIssuingCountry: p.passportIssuingCountry || 'India',
+          autoInsurancePreferences: p.autoInsurancePreferences || {
+            domestic_hotel: false,
+            domestic_flight: false,
+            international_hotel: false,
+            international_flight: false,
+          },
+          frequentFlyerDetails: p.frequentFlyerDetails || [],
+        });
       }
       if (travData.status === 'fulfilled') setTravellers(travData.value);
-      if (payData.status === 'fulfilled') setPayments(payData.value);
       if (tripsData.status === 'fulfilled') setTrips(tripsData.value);
     } catch (err: any) {
       console.warn('Failed to load customer dashboard data:', err);
@@ -117,16 +165,26 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
   }, [initialTab]);
 
   // Handle profile save
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveProfile = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setIsSavingProfile(true);
     setActionMessage(null);
     try {
       const updated = await updateCustomerProfileApi(profileForm);
       setProfile(updated);
-      setProfileForm({ ...updated });
-      setActionMessage({ type: 'success', text: 'Profile updated successfully!' });
-      // Refresh summary to update completion score
+      setProfileForm({
+        ...updated,
+        maritalStatus: updated.maritalStatus || 'SINGLE',
+        passportIssuingCountry: updated.passportIssuingCountry || 'India',
+        autoInsurancePreferences: updated.autoInsurancePreferences || {
+          domestic_hotel: false,
+          domestic_flight: false,
+          international_hotel: false,
+          international_flight: false,
+        },
+        frequentFlyerDetails: updated.frequentFlyerDetails || [],
+      });
+      setActionMessage({ type: 'success', text: 'Profile saved successfully!' });
       getCustomerDashboardSummaryApi().then((s) => setSummary(s));
     } catch (err: any) {
       setActionMessage({
@@ -138,60 +196,121 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
     }
   };
 
-  // Handle Traveller Add / Update
-  const handleOpenTravellerModal = (traveller?: SavedTraveller) => {
-    if (traveller) {
-      setEditingTraveller(traveller);
-      setTravellerForm({ ...traveller });
-    } else {
-      setEditingTraveller(null);
-      setTravellerForm({
-        title: 'Mr',
-        firstName: '',
-        lastName: '',
-        gender: 'MALE',
-        passengerType: 'ADULT',
-        phone: '',
-        email: '',
-        passportNumber: '',
-        nationality: 'Indian',
-        mealPreference: '',
-        seatPreference: '',
-      });
-    }
-    setIsTravellerModalOpen(true);
+  // Insurance checkbox toggle
+  const toggleInsurancePref = (key: 'domestic_hotel' | 'domestic_flight' | 'international_hotel' | 'international_flight') => {
+    setProfileForm((prev) => {
+      const current = prev.autoInsurancePreferences || {
+        domestic_hotel: false,
+        domestic_flight: false,
+        international_hotel: false,
+        international_flight: false,
+      };
+      return {
+        ...prev,
+        autoInsurancePreferences: {
+          ...current,
+          [key]: !current[key],
+        },
+      };
+    });
   };
 
-  const handleSaveTraveller = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!travellerForm.firstName || !travellerForm.lastName) {
+  // Frequent Flyer Add & Remove
+  const handleAddFrequentFlyer = () => {
+    if (!newFlyerNumber.trim()) {
+      alert('Please enter your frequent flyer number');
+      return;
+    }
+    const current = profileForm.frequentFlyerDetails || [];
+    setProfileForm({
+      ...profileForm,
+      frequentFlyerDetails: [...current, { airline: newFlyerAirline, number: newFlyerNumber.trim().toUpperCase() }],
+    });
+    setNewFlyerNumber('');
+    setIsAddingFlyer(false);
+  };
+
+  const handleRemoveFrequentFlyer = (index: number) => {
+    const current = profileForm.frequentFlyerDetails || [];
+    setProfileForm({
+      ...profileForm,
+      frequentFlyerDetails: current.filter((_, idx) => idx !== index),
+    });
+  };
+
+  // Handle Traveller Add / Update
+  const handleOpenAddTraveller = () => {
+    setEditingTraveller(null);
+    setTravellerForm({
+      title: 'Mr',
+      firstName: '',
+      lastName: '',
+      gender: 'MALE',
+      dateOfBirth: '',
+      passengerType: 'ADULT',
+      phone: '',
+      email: '',
+      passportNumber: '',
+      passportExpiry: '',
+      nationality: 'India',
+      mealPreference: 'No Preference',
+      seatPreference: '',
+      relationship: 'Spouse',
+      berthPreference: 'No Preference',
+      passportIssuingCountry: 'India',
+    });
+    setIsEditingCoTraveller(true);
+  };
+
+  const handleOpenEditTraveller = (t: SavedTraveller) => {
+    setEditingTraveller(t);
+    setTravellerForm({
+      ...t,
+      dateOfBirth: t.dateOfBirth ? String(t.dateOfBirth).slice(0, 10) : '',
+      passportExpiry: t.passportExpiry ? String(t.passportExpiry).slice(0, 10) : '',
+      nationality: t.nationality || 'India',
+      relationship: t.relationship || 'Spouse',
+      mealPreference: t.mealPreference || 'No Preference',
+      berthPreference: t.berthPreference || 'No Preference',
+      passportIssuingCountry: t.passportIssuingCountry || 'India',
+    });
+    setIsEditingCoTraveller(true);
+  };
+
+  const handleSaveTraveller = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!travellerForm.firstName?.trim() || !travellerForm.lastName?.trim()) {
       alert('First name and Last name are required');
       return;
     }
+    setIsSavingTraveller(true);
     try {
       if (editingTraveller) {
         await updateSavedTravellerApi(editingTraveller.id, travellerForm);
       } else {
         await createSavedTravellerApi(travellerForm);
       }
-      setIsTravellerModalOpen(false);
+      setIsEditingCoTraveller(false);
+      setEditingTraveller(null);
       const updatedTravellers = await getSavedTravellersApi();
       setTravellers(updatedTravellers);
       setActionMessage({
         type: 'success',
-        text: editingTraveller ? 'Traveller updated successfully!' : 'Traveller added successfully!',
+        text: editingTraveller ? 'Co-traveller updated successfully!' : 'Co-traveller added successfully!',
       });
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to save traveller');
+      alert(err.response?.data?.message || 'Failed to save co-traveller');
+    } finally {
+      setIsSavingTraveller(false);
     }
   };
 
   const handleDeleteTraveller = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to remove ${name} from saved travellers?`)) return;
+    if (!window.confirm(`Are you sure you want to remove ${name} from co-travellers?`)) return;
     try {
       await deleteSavedTravellerApi(id);
       setTravellers((prev) => prev.filter((t) => t.id !== id));
-      setActionMessage({ type: 'success', text: 'Traveller removed.' });
+      setActionMessage({ type: 'success', text: 'Co-traveller removed.' });
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to delete traveller');
     }
@@ -223,14 +342,6 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
     return true;
   });
 
-  // Calculate greeting
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  };
-
   const userDisplayName =
     profile?.fullName || currentUser?.fullName || profile?.email?.split('@')[0] || 'Traveler';
 
@@ -239,15 +350,15 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
       <div className="w-full bg-[#f8fafc] min-h-[70vh] flex items-center justify-center py-20">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-[#008cff]/20 border-t-[#008cff] rounded-full animate-spin" />
-          <p className="text-xs font-bold text-gray-500">Loading your SS Journey travel portal...</p>
+          <p className="text-xs font-bold text-gray-500">Loading your profile details...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full bg-[#f8fafc] min-h-[85vh] py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-[1300px] mx-auto">
+    <div className="w-full bg-slate-100/80 min-h-[85vh] py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1240px] mx-auto">
         {/* Toast / Action Banner */}
         {actionMessage && (
           <div
@@ -265,336 +376,1042 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
             </div>
             <button
               onClick={() => setActionMessage(null)}
-              className="p-1 hover:bg-black/5 rounded-full transition"
+              className="p-1 hover:bg-black/5 rounded-full transition cursor-pointer"
             >
               <span className="material-symbols-outlined text-[18px]">close</span>
             </button>
           </div>
         )}
 
-        {/* Main Grid: Sidebar (3 cols) + Content (9 cols) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-          {/* ── LEFT SIDEBAR ── */}
-          <aside className="lg:col-span-3 bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden sticky top-24">
-            {/* User Profile Mini Badge */}
-            <div className="p-5 bg-gradient-to-br from-[#1a2035] to-[#252e4b] text-white">
-              <div className="flex items-center gap-3.5">
-                <div className="w-13 h-13 rounded-full bg-gradient-to-tr from-[#00c988] to-teal-400 flex items-center justify-center text-lg font-black text-white shadow-md shrink-0">
+        {/* ── CARD WRAPPER: EXACT MAKEMYTRIP ACCOUNT LAYOUT ── */}
+        <div className="bg-white rounded-3xl border border-gray-200/80 shadow-xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[640px]">
+          {/* ── LEFT SIDEBAR (MY ACCOUNT) ── */}
+          <aside className="lg:col-span-3 border-r border-gray-100 p-6 flex flex-col justify-between bg-white select-none">
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 px-1 pb-3 border-b border-gray-100">
+                <div className="w-10 h-10 rounded-full bg-[#008cff] text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">
                   {userDisplayName.charAt(0).toUpperCase()}
                 </div>
                 <div className="overflow-hidden">
-                  <h3 className="font-bold text-sm text-white truncate">{userDisplayName}</h3>
-                  <p className="text-xs text-gray-300 truncate mt-0.5">{profile?.email || currentUser?.email}</p>
-                  <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Verified Customer
-                  </span>
+                  <p className="text-xs font-bold text-gray-900 truncate">{userDisplayName}</p>
+                  <p className="text-[10px] text-gray-400 truncate">{profile?.phone || profile?.email}</p>
                 </div>
               </div>
+
+              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block px-2">
+                MY ACCOUNT
+              </span>
+
+              <nav className="space-y-1">
+                {/* 1. My Profile */}
+                <button
+                  onClick={() => setActiveTab('profile')}
+                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === 'profile'
+                      ? 'bg-[#eaf5ff] text-[#008cff]'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-[20px]">account_circle</span>
+                    <span>My Profile</span>
+                  </div>
+                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                </button>
+
+                {/* 2. Co-Travellers */}
+                <button
+                  onClick={() => setActiveTab('travellers')}
+                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === 'travellers'
+                      ? 'bg-[#eaf5ff] text-[#008cff]'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-[20px]">group</span>
+                    <span>Co-Travellers</span>
+                  </div>
+                  {travellers.length > 0 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                      {travellers.length}
+                    </span>
+                  )}
+                </button>
+
+                {/* 3. Logged In Devices */}
+                <button
+                  onClick={() => setActiveTab('devices')}
+                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === 'devices'
+                      ? 'bg-[#eaf5ff] text-[#008cff]'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[20px]">devices</span>
+                  <span>Logged In Devices</span>
+                </button>
+
+                {/* 4. Trips & Bookings */}
+                <button
+                  onClick={() => setActiveTab('trips')}
+                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === 'trips'
+                      ? 'bg-[#eaf5ff] text-[#008cff]'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-[20px]">luggage</span>
+                    <span>My Trips</span>
+                  </div>
+                  {trips.length > 0 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                      {trips.length}
+                    </span>
+                  )}
+                </button>
+
+                {/* 5. Logout */}
+                <button
+                  onClick={onLogout}
+                  className="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold text-gray-700 hover:text-rose-600 hover:bg-rose-50/50 transition-all cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[20px]">logout</span>
+                  <span>Logout</span>
+                </button>
+              </nav>
             </div>
 
-            {/* Nav Menu */}
-            <nav className="p-3 space-y-1">
-              {[
-                { id: 'overview' as const, label: 'Overview', icon: 'dashboard', badge: null },
-                { id: 'trips' as const, label: 'My Trips & Bookings', icon: 'luggage', badge: trips.length },
-                { id: 'wishlist' as const, label: 'My Wishlist', icon: 'favorite', badge: wishlistItems.length },
-                { id: 'travellers' as const, label: 'Saved Travellers', icon: 'group', badge: travellers.length },
-                { id: 'payments' as const, label: 'Payment History', icon: 'credit_card', badge: payments.length },
-                { id: 'profile' as const, label: 'Profile Settings', icon: 'manage_accounts', badge: null },
-                { id: 'support' as const, label: 'Help & Support', icon: 'contact_support', badge: null },
-              ].map((item) => {
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                      isActive
-                        ? 'bg-[#008cff] text-white shadow-sm'
-                        : 'text-gray-700 hover:bg-gray-100/80 hover:text-gray-900'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`material-symbols-outlined text-[20px] ${
-                          isActive ? 'text-white' : 'text-gray-500'
-                        }`}
-                        style={item.id === 'wishlist' ? { fontVariationSettings: "'FILL' 1" } : {}}
-                      >
-                        {item.icon}
-                      </span>
-                      <span>{item.label}</span>
-                    </div>
-                    {item.badge !== null && item.badge > 0 && (
-                      <span
-                        className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
-                          isActive ? 'bg-white/25 text-white' : 'bg-gray-100 text-gray-700'
-                        }`}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-
-              <div className="my-2 border-t border-gray-100" />
-
+            {/* Bottom: Reset Password */}
+            <div className="pt-6 border-t border-gray-100">
               <button
-                onClick={onLogout}
-                className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition"
+                onClick={() => setIsPasswordModalOpen(true)}
+                className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[20px]">logout</span>
-                <span>Sign Out</span>
+                <span className="material-symbols-outlined text-[19px] text-gray-400">key</span>
+                <span>Reset Password</span>
               </button>
-            </nav>
+            </div>
           </aside>
 
-          {/* ── RIGHT MAIN CONTENT ── */}
-          <main className="lg:col-span-9 space-y-6">
+          {/* ── RIGHT MAIN CONTENT AREA ── */}
+          <main className="lg:col-span-9 p-6 sm:p-8 lg:p-10 overflow-y-auto">
             {/* ==================================================== */}
-            {/* TAB 1: OVERVIEW */}
+            {/* 1. EXACT "MY PROFILE" VIEW FROM SCREENSHOTS */}
             {/* ==================================================== */}
-            {activeTab === 'overview' && (
-              <div className="space-y-6">
-                {/* Welcome Card & Profile Meter */}
-                <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-[#1a2035] text-white p-6 sm:p-8 rounded-2xl shadow-md relative overflow-hidden">
-                  <div className="relative z-10 max-w-xl">
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-blue-200">
-                      Customer Portal
-                    </span>
-                    <h2 className="text-2xl sm:text-3xl font-black mt-1">
-                      {getGreeting()}, {userDisplayName}!
-                    </h2>
-                    <p className="text-xs sm:text-sm text-blue-100/90 mt-2 leading-relaxed">
-                      Manage all your travel bookings, download confirmed e-tickets, organize saved co-travellers, and
-                      review your transactions across SS Journey.
+            {activeTab === 'profile' && (
+              <form onSubmit={handleSaveProfile} className="space-y-8 animate-fade-in">
+                {/* Header Bar: "My Profile" + Top-Right "SAVE" Button */}
+                <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                  <h2 className="text-2xl font-black text-gray-900 tracking-tight">My Profile</h2>
+                  <button
+                    type="submit"
+                    disabled={isSavingProfile}
+                    className="bg-[#008cff] hover:bg-blue-600 disabled:opacity-50 text-white font-extrabold text-xs px-6 py-2.5 rounded-xl shadow-xs transition cursor-pointer uppercase tracking-wider"
+                  >
+                    {isSavingProfile ? 'SAVING...' : 'SAVE'}
+                  </button>
+                </div>
+
+                {/* ── BASIC DETAILS & GST SECTION ── */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <div className="sm:col-span-2">
+                      <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        FULL NAME
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={profileForm.fullName || ''}
+                        onChange={(e) => setProfileForm({ ...profileForm, fullName: e.target.value })}
+                        className="w-full text-xs font-bold px-3.5 py-3 rounded-xl border border-gray-200 bg-white focus:outline-hidden focus:border-[#008cff] focus:ring-1 focus:ring-[#008cff]"
+                        placeholder="e.g. Rahul Sharma"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-1">
+                      <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        BIRTHDAY
+                      </label>
+                      <input
+                        type="date"
+                        value={profileForm.dateOfBirth ? String(profileForm.dateOfBirth).slice(0, 10) : ''}
+                        onChange={(e) => setProfileForm({ ...profileForm, dateOfBirth: e.target.value })}
+                        className="w-full text-xs font-bold px-3 py-3 rounded-xl border border-gray-200 bg-white focus:outline-hidden focus:border-[#008cff]"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-1">
+                      <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        GENDER
+                      </label>
+                      <select
+                        value={profileForm.gender || 'MALE'}
+                        onChange={(e) => setProfileForm({ ...profileForm, gender: e.target.value })}
+                        className="w-full text-xs font-bold px-3 py-3 rounded-xl border border-gray-200 bg-white focus:outline-hidden focus:border-[#008cff]"
+                      >
+                        <option value="MALE">MALE</option>
+                        <option value="FEMALE">FEMALE</option>
+                        <option value="OTHER">OTHER</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        MARITAL STATUS
+                      </label>
+                      <select
+                        value={profileForm.maritalStatus || 'SINGLE'}
+                        onChange={(e) => setProfileForm({ ...profileForm, maritalStatus: e.target.value })}
+                        className="w-full text-xs font-bold px-3.5 py-3 rounded-xl border border-gray-200 bg-white focus:outline-hidden focus:border-[#008cff]"
+                      >
+                        <option value="SINGLE">Single</option>
+                        <option value="MARRIED">Married</option>
+                        <option value="OTHER">Other</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        STATE OF RESIDENCE
+                      </label>
+                      <input
+                        type="text"
+                        value={profileForm.state || ''}
+                        onChange={(e) => setProfileForm({ ...profileForm, state: e.target.value })}
+                        className="w-full text-xs font-bold px-3.5 py-3 rounded-xl border border-gray-200 bg-white focus:outline-hidden focus:border-[#008cff]"
+                        placeholder="e.g. Maharashtra, Delhi, Karnataka"
+                      />
+                      <span className="text-[10px] text-gray-400 mt-1 block">
+                        Required for GST purpose on your tax invoice
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── CONTACT DETAILS SECTION ── */}
+                <div className="space-y-3 pt-6 border-t border-gray-100">
+                  <div>
+                    <h3 className="text-sm font-black text-gray-900">Contact Details</h3>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Add contact information to receive booking details &amp; other alerts
                     </p>
+                  </div>
 
-                    {/* Profile Meter */}
-                    <div className="mt-5 pt-4 border-t border-white/20">
-                      <div className="flex items-center justify-between text-xs font-bold mb-1.5">
-                        <span className="text-blue-100">Profile Completion</span>
-                        <span className="text-emerald-300">
-                          {summary?.metrics.profileCompletionPercent || 65}%
-                        </span>
-                      </div>
-                      <div className="w-full h-2 rounded-full bg-white/20 overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-emerald-400 to-teal-300 rounded-full transition-all duration-500"
-                          style={{
-                            width: `${summary?.metrics.profileCompletionPercent || 65}%`,
-                          }}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Mobile Number Box */}
+                    <div className="relative">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        MOBILE NUMBER
+                      </label>
+                      <div className="relative flex items-center">
+                        <input
+                          type="text"
+                          value={profileForm.phone || ''}
+                          onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                          className="w-full text-xs font-black text-gray-900 px-3.5 py-3 pr-10 rounded-xl border border-gray-200 bg-white focus:outline-hidden focus:border-[#008cff]"
+                          placeholder="+91-9876543210"
                         />
+                        <span className="absolute right-3 material-symbols-outlined text-[18px] text-emerald-500 font-bold">
+                          check
+                        </span>
                       </div>
-                      {(summary?.metrics.profileCompletionPercent || 65) < 100 && (
-                        <button
-                          onClick={() => setActiveTab('profile')}
-                          className="mt-3 text-xs font-bold text-white bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition inline-flex items-center gap-1"
-                        >
-                          Complete Profile details →
-                        </button>
-                      )}
+                    </div>
+
+                    {/* Email ID Box */}
+                    <div className="relative">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        EMAIL ID
+                      </label>
+                      <div className="relative flex items-center">
+                        <input
+                          type="email"
+                          disabled
+                          value={profile?.email || profileForm.email || ''}
+                          className="w-full text-xs font-bold text-gray-800 px-3.5 py-3 pr-10 rounded-xl border border-gray-200 bg-gray-50/70 cursor-not-allowed"
+                        />
+                        <span className="absolute right-3 material-symbols-outlined text-[18px] text-emerald-500 font-bold">
+                          verified
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Metric Summary Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {[
-                    {
-                      label: 'Upcoming Trips',
-                      value: summary?.metrics.upcomingTrips || 0,
-                      icon: 'flight_takeoff',
-                      color: 'text-blue-600',
-                      bg: 'bg-blue-50',
-                      onClick: () => {
-                        setActiveTab('trips');
-                        setTripFilter('UPCOMING');
+                {/* ── DOCUMENTS DETAILS SECTION ── */}
+                <div className="space-y-3 pt-6 border-t border-gray-100">
+                  <h3 className="text-sm font-black text-gray-900">Documents Details</h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Passport No */}
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        PASSPORT NO.
+                      </label>
+                      <input
+                        type="text"
+                        value={profileForm.passportNumber || ''}
+                        onChange={(e) => setProfileForm({ ...profileForm, passportNumber: e.target.value.toUpperCase() })}
+                        className="w-full text-xs font-mono font-bold text-gray-900 px-3.5 py-3 rounded-xl border border-gray-200 bg-white focus:outline-hidden focus:border-[#008cff] uppercase placeholder:font-sans placeholder:normal-case"
+                        placeholder="Enter Passport Number"
+                      />
+                    </div>
+
+                    {/* Expiry Date */}
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        EXPIRY DATE
+                      </label>
+                      <input
+                        type="date"
+                        value={profileForm.passportExpiry ? String(profileForm.passportExpiry).slice(0, 10) : ''}
+                        onChange={(e) => setProfileForm({ ...profileForm, passportExpiry: e.target.value })}
+                        className="w-full text-xs font-bold px-3.5 py-3 rounded-xl border border-gray-200 bg-white focus:outline-hidden focus:border-[#008cff]"
+                      />
+                    </div>
+
+                    {/* Issuing Country */}
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        ISSUING COUNTRY
+                      </label>
+                      <select
+                        value={profileForm.passportIssuingCountry || 'India'}
+                        onChange={(e) => setProfileForm({ ...profileForm, passportIssuingCountry: e.target.value })}
+                        className="w-full text-xs font-bold text-gray-800 px-3.5 py-3 rounded-xl border border-gray-200 bg-white focus:outline-hidden focus:border-[#008cff]"
+                      >
+                        <option value="India">India</option>
+                        <option value="United States">United States</option>
+                        <option value="United Kingdom">United Kingdom</option>
+                        <option value="United Arab Emirates">United Arab Emirates</option>
+                        <option value="Singapore">Singapore</option>
+                        <option value="Canada">Canada</option>
+                        <option value="Australia">Australia</option>
+                        <option value="Germany">Germany</option>
+                        <option value="France">France</option>
+                      </select>
+                    </div>
+
+                    {/* Pan Card Number */}
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        PAN CARD NUMBER
+                      </label>
+                      <input
+                        type="text"
+                        value={profileForm.panCardNumber || ''}
+                        onChange={(e) => setProfileForm({ ...profileForm, panCardNumber: e.target.value.toUpperCase() })}
+                        className="w-full text-xs font-mono font-bold text-gray-900 px-3.5 py-3 rounded-xl border border-gray-200 bg-white focus:outline-hidden focus:border-[#008cff] uppercase placeholder:font-sans placeholder:normal-case"
+                        placeholder="Enter 10-Digit PAN (e.g. ABCDE1234F)"
+                        maxLength={10}
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] font-semibold text-amber-800 bg-amber-50/70 border border-amber-200/60 p-2.5 rounded-xl">
+                    <span className="font-bold text-amber-900">NOTE:</span> Your PAN No. will only be used for international bookings as per RBI Guidelines
+                  </p>
+                </div>
+
+                {/* ── AUTO-ADD TRAVEL INSURANCE / TRIP SECURE SECTION ── */}
+                <div className="space-y-3 pt-6 border-t border-gray-100">
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-sm font-black text-gray-900">Auto-Add Travel Insurance/Trip Secure</h3>
+                    <span className="material-symbols-outlined text-[16px] text-gray-400" title="Information">
+                      info
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500">
+                    Set your default choice for travel insurance/trip secure to be added automatically on your future flights and hotel bookings.
+                  </p>
+
+                  <div className="border border-gray-200 rounded-2xl divide-y divide-gray-100 overflow-hidden bg-white">
+                    {[
+                      {
+                        key: 'domestic_hotel' as const,
+                        label: 'On booking a Domestic Hotel:',
+                        desc: 'Add Trip Secure (Hotels)',
                       },
-                    },
-                    {
-                      label: 'Total Bookings',
-                      value: summary?.metrics.totalBookings || trips.length,
-                      icon: 'confirmation_number',
-                      color: 'text-indigo-600',
-                      bg: 'bg-indigo-50',
-                      onClick: () => setActiveTab('trips'),
-                    },
-                    {
-                      label: 'Saved in Wishlist',
-                      value: summary?.metrics.wishlistCount || wishlistItems.length,
-                      icon: 'favorite',
-                      color: 'text-rose-600',
-                      bg: 'bg-rose-50',
-                      onClick: () => setActiveTab('wishlist'),
-                    },
-                    {
-                      label: 'Saved Travellers',
-                      value: summary?.metrics.savedTravellersCount || travellers.length,
-                      icon: 'badge',
-                      color: 'text-emerald-600',
-                      bg: 'bg-emerald-50',
-                      onClick: () => setActiveTab('travellers'),
-                    },
-                  ].map((m, idx) => (
-                    <div
-                      key={idx}
-                      onClick={m.onClick}
-                      className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200/80 shadow-xs hover:shadow-md transition cursor-pointer group"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <span className={`w-10 h-10 rounded-xl ${m.bg} ${m.color} flex items-center justify-center`}>
-                          <span className="material-symbols-outlined text-[22px]">{m.icon}</span>
-                        </span>
-                        <span className="material-symbols-outlined text-gray-300 group-hover:text-gray-500 transition text-[18px]">
-                          arrow_forward
-                        </span>
-                      </div>
-                      <div className="text-2xl font-black text-gray-900 leading-none">{m.value}</div>
-                      <p className="text-xs font-semibold text-gray-500 mt-1">{m.label}</p>
-                    </div>
-                  ))}
+                      {
+                        key: 'domestic_flight' as const,
+                        label: 'On booking a Domestic Flight:',
+                        desc: 'Add Trip Secure (Flights)',
+                      },
+                      {
+                        key: 'international_hotel' as const,
+                        label: 'On booking an International Hotel:',
+                        desc: 'Add International Travel & Medical Insurance (Hotels)',
+                      },
+                      {
+                        key: 'international_flight' as const,
+                        label: 'On booking an International Flight:',
+                        desc: 'Add International Travel & Medical Insurance (Flights)',
+                      },
+                    ].map((row) => {
+                      const isChecked = Boolean(profileForm.autoInsurancePreferences?.[row.key]);
+                      return (
+                        <div
+                          key={row.key}
+                          onClick={() => toggleInsurancePref(row.key)}
+                          className="flex items-center justify-between p-3.5 hover:bg-gray-50 transition cursor-pointer"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-6 text-xs">
+                            <span className="text-gray-500 italic min-w-[200px]">{row.label}</span>
+                            <span className="font-bold text-gray-900">{row.desc}</span>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {}} // handled by parent onClick
+                            className="w-4 h-4 rounded text-[#008cff] focus:ring-[#008cff] cursor-pointer"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                {/* Upcoming Trip Spotlight Card */}
-                <div className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-xs">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-[#008cff]">event_upcoming</span>
-                      <span>Next Upcoming Journey</span>
-                    </h3>
-                    <button
-                      onClick={() => setActiveTab('trips')}
-                      className="text-xs font-bold text-[#008cff] hover:underline"
-                    >
-                      View All Trips →
-                    </button>
+                {/* ── FREQUENT FLYER DETAILS SECTION ── */}
+                <div className="space-y-3 pt-6 border-t border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-black text-gray-900">Frequent Flyer Details</h3>
+                    {!isAddingFlyer && (
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingFlyer(true)}
+                        className="text-xs font-bold text-[#008cff] hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>+ Add</span>
+                      </button>
+                    )}
                   </div>
 
-                  {summary?.upcomingTrip ? (
-                    <div className="bg-gradient-to-r from-blue-50/70 to-slate-50 border border-blue-100 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black uppercase tracking-wider bg-[#008cff] text-white px-2.5 py-0.5 rounded-full">
-                            {summary.upcomingTrip.serviceType}
-                          </span>
-                          <span className="text-xs font-mono font-bold text-gray-600">
-                            Ref: #{summary.upcomingTrip.bookingReference}
-                          </span>
-                        </div>
-                        <h4 className="text-lg font-bold text-gray-900">
-                          {summary.upcomingTrip.items?.[0]?.title ||
-                            `${summary.upcomingTrip.serviceType} Booking`}
-                        </h4>
-                        <p className="text-xs text-gray-600 flex items-center gap-2">
-                          <span className="material-symbols-outlined text-[16px] text-gray-400">calendar_month</span>
-                          <span>
-                            {summary.upcomingTrip.checkInDate ||
-                              new Date(summary.upcomingTrip.createdAt).toLocaleDateString()}
-                          </span>
-                          {summary.upcomingTrip.guestName && (
-                            <>
-                              <span>•</span>
-                              <span>Traveler: {summary.upcomingTrip.guestName}</span>
-                            </>
-                          )}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0">
-                        <div className="text-right">
-                          <div className="text-lg font-black text-gray-900">
-                            {formatPrice(summary.upcomingTrip.totalAmount)}
-                          </div>
-                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                            {summary.upcomingTrip.status}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            const match = trips.find((t) => t.id === summary.upcomingTrip?.id);
-                            if (match) setSelectedTicket(match);
-                            else setActiveTab('trips');
-                          }}
-                          className="bg-[#008cff] hover:bg-blue-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition flex items-center gap-1.5"
+                  {/* Active List */}
+                  {profileForm.frequentFlyerDetails && profileForm.frequentFlyerDetails.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {profileForm.frequentFlyerDetails.map((ff, idx) => (
+                        <div
+                          key={idx}
+                          className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between"
                         >
-                          <span className="material-symbols-outlined text-[16px]">receipt_long</span>
-                          <span>View Ticket</span>
-                        </button>
-                      </div>
+                          <div>
+                            <span className="text-xs font-bold text-gray-900 block">{ff.airline}</span>
+                            <span className="text-xs font-mono text-gray-600 font-semibold">{ff.number}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFrequentFlyer(idx)}
+                            className="text-gray-400 hover:text-rose-600 transition"
+                            title="Remove"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   ) : (
-                    <div className="text-center py-8 bg-gray-50/60 rounded-2xl border border-dashed border-gray-200">
-                      <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-500 mx-auto flex items-center justify-center mb-2">
-                        <span className="material-symbols-outlined text-[24px]">flight_takeoff</span>
+                    !isAddingFlyer && (
+                      <p className="text-xs text-gray-400 italic">No frequent flyer numbers added yet.</p>
+                    )
+                  )}
+
+                  {/* Add New Flyer Input Row */}
+                  {isAddingFlyer && (
+                    <div className="p-4 bg-blue-50/60 border border-blue-200 rounded-2xl space-y-3">
+                      <span className="text-xs font-bold text-gray-800 block">Add Frequent Flyer Number</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Airline</label>
+                          <select
+                            value={newFlyerAirline}
+                            onChange={(e) => setNewFlyerAirline(e.target.value)}
+                            className="w-full text-xs font-bold px-3 py-2 rounded-xl border border-gray-300 bg-white"
+                          >
+                            <option value="Air India">Air India (Flying Returns)</option>
+                            <option value="IndiGo">IndiGo (6E Rewards)</option>
+                            <option value="Emirates">Emirates (Skywards)</option>
+                            <option value="Singapore Airlines">Singapore Airlines (KrisFlyer)</option>
+                            <option value="Qatar Airways">Qatar Airways (Privilege Club)</option>
+                            <option value="British Airways">British Airways (Executive Club)</option>
+                            <option value="Lufthansa">Lufthansa (Miles & More)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">
+                            Membership Number
+                          </label>
+                          <input
+                            type="text"
+                            value={newFlyerNumber}
+                            onChange={(e) => setNewFlyerNumber(e.target.value)}
+                            className="w-full text-xs font-mono font-bold px-3 py-2 rounded-xl border border-gray-300 bg-white"
+                            placeholder="e.g. AI987654321"
+                          />
+                        </div>
                       </div>
-                      <p className="text-sm font-bold text-gray-800">No upcoming trips scheduled</p>
-                      <p className="text-xs text-gray-500 mt-1">Ready for your next adventure?</p>
-                      <div className="flex items-center justify-center gap-3 mt-4">
+                      <div className="flex items-center justify-end gap-2 pt-2">
                         <button
-                          onClick={() => onNavigate('flights')}
-                          className="bg-[#008cff] hover:bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition"
+                          type="button"
+                          onClick={() => setIsAddingFlyer(false)}
+                          className="px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-lg transition"
                         >
-                          Search Flights
+                          Cancel
                         </button>
                         <button
-                          onClick={() => onNavigate('hotels')}
-                          className="bg-white border border-gray-300 hover:border-gray-400 text-gray-800 text-xs font-bold px-4 py-2 rounded-xl transition"
+                          type="button"
+                          onClick={handleAddFrequentFlyer}
+                          className="px-4 py-1.5 text-xs font-bold bg-[#008cff] text-white rounded-lg transition shadow-xs"
                         >
-                          Explore Hotels
-                        </button>
-                        <button
-                          onClick={() => onNavigate('packages')}
-                          className="bg-white border border-gray-300 hover:border-gray-400 text-gray-800 text-xs font-bold px-4 py-2 rounded-xl transition"
-                        >
-                          Holiday Packages
+                          Save Flyer
                         </button>
                       </div>
                     </div>
                   )}
                 </div>
+              </form>
+            )}
 
-                {/* Quick Service Links Grid */}
-                <div className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-xs">
-                  <h3 className="text-base font-bold text-gray-900 mb-4">Explore SS Journey Travel Services</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                    {[
-                      { label: 'Flights', icon: 'flight', screen: 'flights', color: 'text-sky-500' },
-                      { label: 'Hotels', icon: 'hotel', screen: 'hotels', color: 'text-indigo-500' },
-                      { label: 'Villas', icon: 'villa', screen: 'explore', color: 'text-teal-500' },
-                      { label: 'Packages', icon: 'beach_access', screen: 'packages', color: 'text-rose-500' },
-                      { label: 'Trains', icon: 'train', screen: 'trains', color: 'text-emerald-500' },
-                      { label: 'Buses', icon: 'directions_bus', screen: 'buses', color: 'text-purple-500' },
-                      { label: 'Cabs', icon: 'local_taxi', screen: 'cabs', color: 'text-amber-500' },
-                      { label: 'Tours', icon: 'tour', screen: 'explore', color: 'text-cyan-500' },
-                      { label: 'Visa', icon: 'badge', screen: 'explore', color: 'text-violet-500' },
-                      { label: 'Insurance', icon: 'health_and_safety', screen: 'explore', color: 'text-emerald-600' },
-                    ].map((s, idx) => (
+            {/* ==================================================== */}
+            {/* 2. CO-TRAVELLERS TAB */}
+            {/* ==================================================== */}
+            {activeTab === 'travellers' && (
+              isEditingCoTraveller ? (
+                /* ── EXACT "ADD NEW CO-TRAVELLER" VIEW FROM USER SCREENSHOT ── */
+                <form onSubmit={handleSaveTraveller} className="space-y-7 animate-fade-in">
+                  {/* Top Header: ← Add New Co-Traveller | CANCEL | SAVE */}
+                  <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
                       <button
-                        key={idx}
-                        onClick={() => onNavigate(s.screen)}
-                        className="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-100 hover:border-[#008cff]/30 hover:bg-blue-50/40 transition group"
+                        type="button"
+                        onClick={() => {
+                          setIsEditingCoTraveller(false);
+                          setEditingTraveller(null);
+                        }}
+                        className="p-1 -ml-1 text-gray-700 hover:text-[#008cff] hover:bg-gray-100 rounded-full transition cursor-pointer"
+                        title="Back to Co-Travellers"
                       >
-                        <span className={`material-symbols-outlined text-[24px] ${s.color} group-hover:scale-110 transition-transform`}>
-                          {s.icon}
-                        </span>
-                        <span className="text-xs font-semibold text-gray-700 mt-1.5">{s.label}</span>
+                        <span className="material-symbols-outlined text-[24px]">arrow_back</span>
                       </button>
-                    ))}
+                      <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+                        {editingTraveller ? 'Edit Co-Traveller' : 'Add New Co-Traveller'}
+                      </h2>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEditingCoTraveller(false);
+                          setEditingTraveller(null);
+                        }}
+                        className="bg-[#dcdfe4] hover:bg-gray-300 text-gray-800 font-extrabold text-xs px-5 py-2.5 rounded-xl transition cursor-pointer uppercase tracking-wider"
+                      >
+                        CANCEL
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSavingTraveller}
+                        className="bg-[#008cff] hover:bg-blue-600 disabled:opacity-50 text-white font-extrabold text-xs px-6 py-2.5 rounded-xl transition shadow-xs cursor-pointer uppercase tracking-wider"
+                      >
+                        {isSavingTraveller ? 'SAVING...' : 'SAVE'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ── Section 1: General Information ── */}
+                  <div className="space-y-4">
+                    <h3 className="text-base font-black text-gray-900">General Information</h3>
+
+                    {/* Row 1: FIRST & MIDDLE NAME | LAST NAME */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="border border-gray-200/90 rounded-xl px-4 py-2.5 bg-white focus-within:border-[#008cff] focus-within:ring-1 focus-within:ring-[#008cff] transition">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                          FIRST &amp; MIDDLE NAME
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={travellerForm.firstName || ''}
+                          onChange={(e) => setTravellerForm({ ...travellerForm, firstName: e.target.value })}
+                          className="w-full text-xs font-bold text-gray-900 bg-transparent focus:outline-hidden"
+                          placeholder="First & Middle Name"
+                        />
+                      </div>
+
+                      <div className="border border-gray-200/90 rounded-xl px-4 py-2.5 bg-white focus-within:border-[#008cff] focus-within:ring-1 focus-within:ring-[#008cff] transition">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                          LAST NAME
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={travellerForm.lastName || ''}
+                          onChange={(e) => setTravellerForm({ ...travellerForm, lastName: e.target.value })}
+                          className="w-full text-xs font-bold text-gray-900 bg-transparent focus:outline-hidden"
+                          placeholder="Last Name"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Row 2: GENDER | DATE OF BIRTH | NATIONALITY */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {/* Gender */}
+                      <div className="border border-gray-200/90 rounded-xl px-4 py-2.5 bg-white relative focus-within:border-[#008cff] transition">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                          GENDER
+                        </label>
+                        <select
+                          value={travellerForm.gender || 'MALE'}
+                          onChange={(e) => setTravellerForm({ ...travellerForm, gender: e.target.value as any })}
+                          className="w-full text-xs font-bold text-gray-900 bg-transparent focus:outline-hidden appearance-none cursor-pointer pr-6"
+                        >
+                          <option value="MALE">Male</option>
+                          <option value="FEMALE">Female</option>
+                          <option value="OTHER">Other</option>
+                        </select>
+                        <span className="material-symbols-outlined absolute right-3.5 bottom-2.5 text-[18px] text-gray-400 pointer-events-none">
+                          expand_more
+                        </span>
+                      </div>
+
+                      {/* Date of Birth (highlighted with blue border per screenshot) */}
+                      <div className="border-2 border-[#008cff] rounded-xl px-4 py-2 bg-white relative focus-within:border-[#008cff] transition">
+                        <label className="text-[10px] font-bold text-[#008cff] uppercase tracking-wider block mb-0.5">
+                          DATE OF BIRTH
+                        </label>
+                        <input
+                          type="date"
+                          value={travellerForm.dateOfBirth ? String(travellerForm.dateOfBirth).slice(0, 10) : ''}
+                          onChange={(e) => setTravellerForm({ ...travellerForm, dateOfBirth: e.target.value })}
+                          className="w-full text-xs font-bold text-gray-900 bg-transparent focus:outline-hidden cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Nationality */}
+                      <div className="border border-gray-200/90 rounded-xl px-4 py-2.5 bg-white relative focus-within:border-[#008cff] transition">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                          NATIONALITY
+                        </label>
+                        <select
+                          value={travellerForm.nationality || 'India'}
+                          onChange={(e) => setTravellerForm({ ...travellerForm, nationality: e.target.value })}
+                          className="w-full text-xs font-bold text-gray-900 bg-transparent focus:outline-hidden appearance-none cursor-pointer pr-6"
+                        >
+                          <option value="India">India</option>
+                          <option value="United States">United States</option>
+                          <option value="United Kingdom">United Kingdom</option>
+                          <option value="United Arab Emirates">United Arab Emirates</option>
+                          <option value="Singapore">Singapore</option>
+                          <option value="Canada">Canada</option>
+                          <option value="Australia">Australia</option>
+                          <option value="Germany">Germany</option>
+                          <option value="France">France</option>
+                          <option value="Thailand">Thailand</option>
+                          <option value="Malaysia">Malaysia</option>
+                          <option value="Indonesia">Indonesia</option>
+                          <option value="Japan">Japan</option>
+                          <option value="Italy">Italy</option>
+                          <option value="Spain">Spain</option>
+                          <option value="Switzerland">Switzerland</option>
+                        </select>
+                        <span className="material-symbols-outlined absolute right-3.5 bottom-2.5 text-[18px] text-gray-400 pointer-events-none">
+                          expand_more
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Row 3: RELATIONSHIP WITH TRAVELLER */}
+                    <div className="border border-gray-200/90 rounded-2xl p-4 bg-white space-y-3">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                        RELATIONSHIP WITH TRAVELLER
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          'Spouse',
+                          'Child',
+                          'Sibling',
+                          'GrandParent',
+                          'Friend',
+                          'Parent',
+                          'Colleague',
+                          'Relative',
+                          'Parent In law',
+                          'Other',
+                        ].map((rel) => {
+                          const isSelected = travellerForm.relationship === rel;
+                          return (
+                            <button
+                              key={rel}
+                              type="button"
+                              onClick={() => setTravellerForm({ ...travellerForm, relationship: rel })}
+                              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                                isSelected
+                                  ? 'bg-[#eaf5ff] border-[#008cff] text-[#008cff] shadow-xs'
+                                  : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              {rel}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[11px] text-gray-500">
+                        This helps to give us personalised travel recommendations when travelling
+                      </p>
+                    </div>
+
+                    {/* Row 4: MEAL PREFERENCE | TRAIN BERTH PREFERENCE */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Meal Preference */}
+                      <div className="border border-gray-200/90 rounded-xl px-4 py-2.5 bg-white relative focus-within:border-[#008cff] transition">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                          MEAL PREFERENCE
+                        </label>
+                        <select
+                          value={travellerForm.mealPreference || 'No Preference'}
+                          onChange={(e) => setTravellerForm({ ...travellerForm, mealPreference: e.target.value })}
+                          className="w-full text-xs font-bold text-gray-900 bg-transparent focus:outline-hidden appearance-none cursor-pointer pr-6"
+                        >
+                          <option value="No Preference">No Preference</option>
+                          <option value="Vegetarian">Vegetarian</option>
+                          <option value="Non-Vegetarian">Non-Vegetarian</option>
+                          <option value="Jain Meal">Jain Meal</option>
+                          <option value="Vegan">Vegan</option>
+                          <option value="Diabetic Meal">Diabetic Meal</option>
+                          <option value="Gluten-Free">Gluten-Free</option>
+                          <option value="Kosher">Kosher</option>
+                          <option value="Halal">Halal</option>
+                        </select>
+                        <span className="material-symbols-outlined absolute right-3.5 bottom-2.5 text-[18px] text-gray-400 pointer-events-none">
+                          expand_more
+                        </span>
+                      </div>
+
+                      {/* Train Berth Preference */}
+                      <div className="border border-gray-200/90 rounded-xl px-4 py-2.5 bg-white relative focus-within:border-[#008cff] transition">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                          TRAIN BERTH PREFERENCE
+                        </label>
+                        <select
+                          value={travellerForm.berthPreference || 'No Preference'}
+                          onChange={(e) => setTravellerForm({ ...travellerForm, berthPreference: e.target.value })}
+                          className="w-full text-xs font-bold text-gray-900 bg-transparent focus:outline-hidden appearance-none cursor-pointer pr-6"
+                        >
+                          <option value="No Preference">No Preference</option>
+                          <option value="Lower">Lower Berth</option>
+                          <option value="Middle">Middle Berth</option>
+                          <option value="Upper">Upper Berth</option>
+                          <option value="Side Lower">Side Lower</option>
+                          <option value="Side Upper">Side Upper</option>
+                          <option value="Window Seat">Window Seat</option>
+                        </select>
+                        <span className="material-symbols-outlined absolute right-3.5 bottom-2.5 text-[18px] text-gray-400 pointer-events-none">
+                          expand_more
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Section 2: Passport Details ── */}
+                  <div className="space-y-4 pt-4 border-t border-gray-100">
+                    <h3 className="text-base font-black text-gray-900">Passport Details</h3>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Passport No */}
+                      <div className="border border-gray-200/90 rounded-xl px-4 py-2.5 bg-white focus-within:border-[#008cff] transition">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                          PASSPORT NO.
+                        </label>
+                        <input
+                          type="text"
+                          value={travellerForm.passportNumber || ''}
+                          onChange={(e) =>
+                            setTravellerForm({ ...travellerForm, passportNumber: e.target.value.toUpperCase() })
+                          }
+                          className="w-full text-xs font-mono font-bold text-gray-900 uppercase bg-transparent focus:outline-hidden placeholder:font-sans placeholder:normal-case"
+                          placeholder="Enter Passport Number"
+                        />
+                      </div>
+
+                      {/* Expiry Date */}
+                      <div className="border border-gray-200/90 rounded-xl px-4 py-2 bg-white relative focus-within:border-[#008cff] transition">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">
+                          EXPIRY DATE
+                        </label>
+                        <input
+                          type="date"
+                          value={travellerForm.passportExpiry ? String(travellerForm.passportExpiry).slice(0, 10) : ''}
+                          onChange={(e) => setTravellerForm({ ...travellerForm, passportExpiry: e.target.value })}
+                          className="w-full text-xs font-bold text-gray-900 bg-transparent focus:outline-hidden cursor-pointer"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Issuing Country */}
+                      <div className="border border-gray-200/90 rounded-xl px-4 py-2.5 bg-white relative focus-within:border-[#008cff] transition">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                          ISSUING COUNTRY
+                        </label>
+                        <select
+                          value={travellerForm.passportIssuingCountry || 'India'}
+                          onChange={(e) =>
+                            setTravellerForm({ ...travellerForm, passportIssuingCountry: e.target.value })
+                          }
+                          className="w-full text-xs font-bold text-gray-900 bg-transparent focus:outline-hidden appearance-none cursor-pointer pr-6"
+                        >
+                          <option value="India">India</option>
+                          <option value="United States">United States</option>
+                          <option value="United Kingdom">United Kingdom</option>
+                          <option value="United Arab Emirates">United Arab Emirates</option>
+                          <option value="Singapore">Singapore</option>
+                          <option value="Canada">Canada</option>
+                          <option value="Australia">Australia</option>
+                          <option value="Germany">Germany</option>
+                          <option value="France">France</option>
+                          <option value="Thailand">Thailand</option>
+                          <option value="Malaysia">Malaysia</option>
+                          <option value="Saudi Arabia">Saudi Arabia</option>
+                        </select>
+                        <span className="material-symbols-outlined absolute right-3.5 bottom-2.5 text-[18px] text-gray-400 pointer-events-none">
+                          expand_more
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Section 3: Add contact information to receive booking details & other alerts ── */}
+                  <div className="space-y-4 pt-4 border-t border-gray-100">
+                    <h3 className="text-base font-black text-gray-900">
+                      Add contact information to receive booking details &amp; other alerts
+                    </h3>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Mobile Number with country prefix */}
+                      <div className="border border-gray-200/90 rounded-xl px-3 py-2 bg-white flex items-center gap-2.5 focus-within:border-[#008cff] transition">
+                        <div className="flex items-center gap-1.5 pr-2.5 border-r border-gray-200 shrink-0 text-xs font-bold text-gray-800">
+                          <span>🇮🇳</span>
+                          <span>+91</span>
+                          <span className="material-symbols-outlined text-[16px] text-gray-400">expand_more</span>
+                        </div>
+                        <div className="w-full">
+                          <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
+                            MOBILE NUMBER
+                          </label>
+                          <input
+                            type="tel"
+                            value={travellerForm.phone || ''}
+                            onChange={(e) => setTravellerForm({ ...travellerForm, phone: e.target.value })}
+                            className="w-full text-xs font-bold text-gray-900 bg-transparent focus:outline-hidden"
+                            placeholder="Mobile Number"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Email ID */}
+                      <div className="border border-gray-200/90 rounded-xl px-4 py-2.5 bg-white focus-within:border-[#008cff] transition">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                          EMAIL ID
+                        </label>
+                        <input
+                          type="email"
+                          value={travellerForm.email || ''}
+                          onChange={(e) => setTravellerForm({ ...travellerForm, email: e.target.value })}
+                          className="w-full text-xs font-bold text-gray-900 bg-transparent focus:outline-hidden"
+                          placeholder="Email ID"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </form>
+              ) : (
+                /* ── CO-TRAVELLERS LIST VIEW ── */
+                <div className="space-y-6 animate-fade-in">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-gray-100 gap-3">
+                    <div>
+                      <h2 className="text-2xl font-black text-gray-900 tracking-tight">Co-Travellers</h2>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Save family and friends' information for 1-click auto-fill during booking checkout.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleOpenAddTraveller}
+                      className="bg-[#008cff] hover:bg-blue-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">person_add</span>
+                      <span>Add New Co-Traveller</span>
+                    </button>
+                  </div>
+
+                  {travellers.length === 0 ? (
+                    <div className="text-center py-16 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                      <span className="material-symbols-outlined text-[48px] text-gray-400">group</span>
+                      <h4 className="text-base font-bold text-gray-800 mt-2">No co-travellers saved yet</h4>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Add profiles once and seamlessly select them during checkout.
+                      </p>
+                      <button
+                        onClick={handleOpenAddTraveller}
+                        className="mt-4 bg-[#008cff] text-white text-xs font-bold px-5 py-2.5 rounded-xl transition cursor-pointer"
+                      >
+                        + Add First Co-Traveller
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {travellers.map((t) => (
+                        <div
+                          key={t.id}
+                          className="border border-gray-200 rounded-2xl p-4.5 bg-white hover:border-gray-300 transition shadow-xs space-y-3"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-blue-50 text-[#008cff] font-bold flex items-center justify-center text-sm shrink-0">
+                                {t.firstName.charAt(0)}
+                                {t.lastName.charAt(0)}
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-sm text-gray-900">{t.fullName}</h4>
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                  {t.relationship && (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-[#008cff] border border-blue-100">
+                                      {t.relationship}
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+                                    {t.gender}
+                                  </span>
+                                  {t.nationality && (
+                                    <span className="text-[10px] font-semibold text-gray-500">
+                                      {t.nationality}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleOpenEditTraveller(t)}
+                                className="p-1.5 text-gray-500 hover:text-[#008cff] hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                                title="Edit Traveller"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">edit</span>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTraveller(t.id, t.fullName)}
+                                className="p-1.5 text-gray-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                                title="Delete Traveller"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">delete</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="text-xs text-gray-600 space-y-1.5 pt-2 border-t border-gray-100">
+                            {t.phone && (
+                              <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[15px] text-gray-400">call</span>
+                                <span>{t.phone}</span>
+                              </div>
+                            )}
+                            {t.email && (
+                              <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[15px] text-gray-400">mail</span>
+                                <span>{t.email}</span>
+                              </div>
+                            )}
+                            {t.passportNumber && (
+                              <div className="flex items-center gap-2 font-mono text-[11px]">
+                                <span className="material-symbols-outlined text-[15px] text-gray-400">badge</span>
+                                <span>Passport: {t.passportNumber} ({t.passportIssuingCountry || 'India'})</span>
+                              </div>
+                            )}
+                            {(t.mealPreference || t.berthPreference) && (
+                              <div className="flex items-center gap-3 text-[11px] text-gray-500 pt-1">
+                                {t.mealPreference && t.mealPreference !== 'No Preference' && (
+                                  <span>Meal: <strong className="text-gray-700">{t.mealPreference}</strong></span>
+                                )}
+                                {t.berthPreference && t.berthPreference !== 'No Preference' && (
+                                  <span>Berth: <strong className="text-gray-700">{t.berthPreference}</strong></span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            )}
+
+            {/* ==================================================== */}
+            {/* 3. LOGGED IN DEVICES TAB */}
+            {/* ==================================================== */}
+            {activeTab === 'devices' && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="pb-4 border-b border-gray-100">
+                  <h2 className="text-2xl font-black text-gray-900 tracking-tight">Logged In Devices</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Manage all browsers and mobile sessions actively authenticated with your SS Journey account.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/40 flex items-center justify-between">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-[24px]">laptop_mac</span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-xs font-bold text-gray-900">Current Web Session (Windows / Chrome)</h4>
+                          <span className="text-[10px] font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-full">
+                            Active Now
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-gray-500 mt-0.5">
+                          IP: 127.0.0.1 • Location: New Delhi, India
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-white flex items-center justify-between">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-11 h-11 rounded-xl bg-gray-100 text-gray-600 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-[24px]">smartphone</span>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-900">SS Journey Mobile App (iOS / Safari)</h4>
+                        <p className="text-[11px] text-gray-500 mt-0.5">
+                          Last active 2 days ago • Mumbai, India
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => alert('Session logged out.')}
+                      className="text-xs font-bold text-rose-600 hover:bg-rose-50 px-3 py-1.5 rounded-lg transition cursor-pointer"
+                    >
+                      Log out
+                    </button>
                   </div>
                 </div>
               </div>
             )}
 
             {/* ==================================================== */}
-            {/* TAB 2: MY TRIPS & BOOKINGS */}
+            {/* 4. MY TRIPS TAB */}
             {/* ==================================================== */}
             {activeTab === 'trips' && (
-              <div className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-xs space-y-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-6 animate-fade-in">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-gray-100 gap-4">
                   <div>
-                    <h3 className="text-xl font-black text-gray-900">My Trips & Bookings</h3>
+                    <h2 className="text-2xl font-black text-gray-900 tracking-tight">My Trips &amp; Bookings</h2>
                     <p className="text-xs text-gray-500 mt-0.5">
                       Review confirmed itineraries, download e-tickets, and manage reservations.
                     </p>
@@ -606,7 +1423,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                       <button
                         key={f}
                         onClick={() => setTripFilter(f)}
-                        className={`px-3 py-1.5 rounded-lg transition ${
+                        className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
                           tripFilter === f
                             ? 'bg-white text-gray-900 shadow-xs'
                             : 'text-gray-600 hover:text-gray-900'
@@ -618,7 +1435,6 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                   </div>
                 </div>
 
-                {/* Trips List */}
                 {filteredTrips.length === 0 ? (
                   <div className="text-center py-16 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
                     <span className="material-symbols-outlined text-[48px] text-gray-400">luggage</span>
@@ -630,7 +1446,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                     </p>
                     <button
                       onClick={() => onNavigate('explore')}
-                      className="mt-4 bg-[#008cff] hover:bg-blue-600 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition"
+                      className="mt-4 bg-[#008cff] hover:bg-blue-600 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition cursor-pointer"
                     >
                       Explore Destinations
                     </button>
@@ -671,46 +1487,6 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                             </div>
                           </div>
 
-                          {/* Items Details */}
-                          <div className="space-y-2">
-                            {(trip.items || []).map((item: any, iIdx: number) => (
-                              <div key={iIdx} className="flex items-start justify-between gap-4">
-                                <div>
-                                  <h4 className="text-sm font-bold text-gray-900">{item.title}</h4>
-                                  <p className="text-xs text-gray-500 mt-0.5">
-                                    {item.check_in_date && (
-                                      <span>Dates: {item.check_in_date} {item.check_out_date ? `to ${item.check_out_date}` : ''}</span>
-                                    )}
-                                  </p>
-                                </div>
-                                <span className="text-xs font-bold text-gray-700">
-                                  Qty: {item.quantity || 1}
-                                </span>
-                              </div>
-                            ))}
-                            {(!trip.items || trip.items.length === 0) && (
-                              <p className="text-sm font-bold text-gray-800">
-                                {trip.service_type || trip.serviceType} Reservation
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Passengers Summary */}
-                          {trip.passengers && trip.passengers.length > 0 && (
-                            <div className="bg-gray-50 p-3 rounded-xl text-xs text-gray-700 flex flex-wrap items-center gap-2">
-                              <span className="font-bold text-gray-500">Travelers:</span>
-                              {trip.passengers.map((p: any, pIdx: number) => (
-                                <span
-                                  key={pIdx}
-                                  className="bg-white px-2 py-0.5 rounded border border-gray-200 font-medium"
-                                >
-                                  {p.title} {p.first_name} {p.last_name} ({p.passenger_type})
-                                </span>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Total & Action Bar */}
                           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-3 border-t border-gray-100 gap-3">
                             <div>
                               <span className="text-xs text-gray-500">Total Paid</span>
@@ -722,7 +1498,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                             <div className="flex items-center gap-2.5">
                               <button
                                 onClick={() => setSelectedTicket(trip)}
-                                className="bg-[#008cff] hover:bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5"
+                                className="bg-[#008cff] hover:bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
                               >
                                 <span className="material-symbols-outlined text-[16px]">receipt_long</span>
                                 <span>E-Ticket / Receipt</span>
@@ -734,7 +1510,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                                     setCancellingBookingId(trip.id);
                                     setIsCancelModalOpen(true);
                                   }}
-                                  className="bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold px-3.5 py-2 rounded-xl transition border border-rose-200"
+                                  className="bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold px-3.5 py-2 rounded-xl transition border border-rose-200 cursor-pointer"
                                 >
                                   Cancel Booking
                                 </button>
@@ -748,759 +1524,92 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                 )}
               </div>
             )}
-
-            {/* ==================================================== */}
-            {/* TAB 3: WISHLIST */}
-            {/* ==================================================== */}
-            {activeTab === 'wishlist' && (
-              <div className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-xs space-y-6">
-                <div>
-                  <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-rose-500" style={{ fontVariationSettings: "'FILL' 1" }}>
-                      favorite
-                    </span>
-                    <span>My Saved Wishlist</span>
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Your shortlisted luxury hotels, holiday packages, and handpicked villas.
-                  </p>
-                </div>
-
-                {wishlistItems.length === 0 ? (
-                  <div className="text-center py-16 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-                    <span className="material-symbols-outlined text-[48px] text-rose-300">favorite_border</span>
-                    <h4 className="text-base font-bold text-gray-800 mt-2">Your wishlist is empty</h4>
-                    <p className="text-xs text-gray-500 mt-1">Explore stays and tap the heart icon to save them.</p>
-                    <button
-                      onClick={() => onNavigate('hotels')}
-                      className="mt-4 bg-[#008cff] hover:bg-blue-600 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition"
-                    >
-                      Browse Hotels
-                    </button>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {wishlistItems.map((item: WishlistItem) => (
-                      <div
-                        key={item.id}
-                        className="border border-gray-200 rounded-2xl overflow-hidden hover:shadow-md transition bg-white flex flex-col justify-between"
-                      >
-                        <div className="relative h-44 overflow-hidden bg-gray-100">
-                          <img
-                            src={item.image}
-                            alt={item.title}
-                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                          />
-                          <span className="absolute top-3 left-3 bg-black/70 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                            {item.category}
-                          </span>
-                          <button
-                            onClick={() => removeFromWishlist(item.id)}
-                            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-rose-600 flex items-center justify-center shadow-xs transition"
-                            title="Remove from wishlist"
-                          >
-                            <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                              favorite
-                            </span>
-                          </button>
-                        </div>
-
-                        <div className="p-4 space-y-2 flex-1 flex flex-col justify-between">
-                          <div>
-                            <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                              <span>{item.location || 'India'}</span>
-                              {item.rating && (
-                                <span className="font-bold text-amber-600 flex items-center gap-0.5">
-                                  ★ {item.rating}
-                                </span>
-                              )}
-                            </div>
-                            <h4 className="font-bold text-sm text-gray-900 line-clamp-1">{item.title}</h4>
-                            {item.badge && <p className="text-xs text-blue-600 font-semibold">{item.badge}</p>}
-                          </div>
-
-                          <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                            <div>
-                              <span className="text-[10px] text-gray-400 block leading-none">Starting from</span>
-                              <span className="text-base font-black text-gray-900 leading-tight">
-                                {formatPrice(item.price)}
-                              </span>
-                            </div>
-
-                            <button
-                              onClick={() => {
-                                if (onInitiateCheckout) {
-                                  onInitiateCheckout({
-                                    serviceType: (item.category as any) || 'HOTEL',
-                                    itemId: item.id,
-                                    title: item.title,
-                                    subtitle: item.location || '',
-                                    pricing: {
-                                      baseAmount: item.price,
-                                      taxes: Math.round(item.price * 0.12),
-                                    },
-                                  });
-                                }
-                              }}
-                              className="bg-[#008cff] hover:bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-xs"
-                            >
-                              Book Now
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ==================================================== */}
-            {/* TAB 4: SAVED TRAVELLERS */}
-            {/* ==================================================== */}
-            {activeTab === 'travellers' && (
-              <div className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-xs space-y-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-xl font-black text-gray-900">Saved Travellers</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Save family and friends' information for 1-click auto-fill during flight, hotel, and train checkout.
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => handleOpenTravellerModal()}
-                    className="bg-[#008cff] hover:bg-blue-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-xs flex items-center gap-1.5"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">person_add</span>
-                    <span>Add New Traveller</span>
-                  </button>
-                </div>
-
-                {travellers.length === 0 ? (
-                  <div className="text-center py-16 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-                    <span className="material-symbols-outlined text-[48px] text-gray-400">group</span>
-                    <h4 className="text-base font-bold text-gray-800 mt-2">No saved travellers yet</h4>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Add profiles once and seamlessly select them during checkout.
-                    </p>
-                    <button
-                      onClick={() => handleOpenTravellerModal()}
-                      className="mt-4 bg-[#008cff] text-white text-xs font-bold px-5 py-2.5 rounded-xl transition"
-                    >
-                      + Add First Traveller
-                    </button>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {travellers.map((t) => (
-                      <div
-                        key={t.id}
-                        className="border border-gray-200 rounded-2xl p-4.5 bg-white hover:border-gray-300 transition shadow-xs space-y-3"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-blue-50 text-[#008cff] font-bold flex items-center justify-center text-sm">
-                              {t.firstName.charAt(0)}
-                              {t.lastName.charAt(0)}
-                            </div>
-                            <div>
-                              <h4 className="font-bold text-sm text-gray-900">{t.fullName}</h4>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
-                                  {t.passengerType}
-                                </span>
-                                <span className="text-xs text-gray-500">{t.gender}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleOpenTravellerModal(t)}
-                              className="p-1.5 text-gray-500 hover:text-[#008cff] hover:bg-blue-50 rounded-lg transition"
-                              title="Edit Traveller"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">edit</span>
-                            </button>
-                            <button
-                              onClick={() => handleDeleteTraveller(t.id, t.fullName)}
-                              className="p-1.5 text-gray-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                              title="Delete Traveller"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">delete</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="text-xs text-gray-600 space-y-1 pt-2 border-t border-gray-100">
-                          {t.phone && (
-                            <div className="flex items-center gap-2">
-                              <span className="material-symbols-outlined text-[15px] text-gray-400">call</span>
-                              <span>{t.phone}</span>
-                            </div>
-                          )}
-                          {t.email && (
-                            <div className="flex items-center gap-2">
-                              <span className="material-symbols-outlined text-[15px] text-gray-400">mail</span>
-                              <span>{t.email}</span>
-                            </div>
-                          )}
-                          {t.passportNumber && (
-                            <div className="flex items-center gap-2">
-                              <span className="material-symbols-outlined text-[15px] text-gray-400">badge</span>
-                              <span>Passport: {t.passportNumber}</span>
-                            </div>
-                          )}
-                          {t.seatPreference && (
-                            <div className="flex items-center gap-2 text-[11px] text-gray-500">
-                              <span>Seat: {t.seatPreference}</span>
-                              {t.mealPreference && <span>• Meal: {t.mealPreference}</span>}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ==================================================== */}
-            {/* TAB 5: PAYMENT HISTORY */}
-            {/* ==================================================== */}
-            {activeTab === 'payments' && (
-              <div className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-xs space-y-6">
-                <div>
-                  <h3 className="text-xl font-black text-gray-900">Payment & Transaction History</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Real transactions recorded for your account via cards, UPI, and simulated gateways.
-                  </p>
-                </div>
-
-                {payments.length === 0 ? (
-                  <div className="text-center py-16 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-                    <span className="material-symbols-outlined text-[48px] text-gray-400">receipt</span>
-                    <h4 className="text-base font-bold text-gray-800 mt-2">No payment transactions found</h4>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Payments made on confirmed bookings will automatically appear here.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-gray-200 text-gray-500 font-bold uppercase tracking-wider text-[10px] bg-gray-50/80">
-                          <th className="p-3.5">Payment Reference</th>
-                          <th className="p-3.5">Booking Details</th>
-                          <th className="p-3.5">Method</th>
-                          <th className="p-3.5">Date</th>
-                          <th className="p-3.5">Amount</th>
-                          <th className="p-3.5">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {payments.map((p) => (
-                          <tr key={p.id} className="hover:bg-gray-50/60 transition">
-                            <td className="p-3.5 font-mono font-bold text-gray-900">
-                              {p.paymentReference}
-                              {p.isDemo && (
-                                <span className="ml-1.5 text-[9px] bg-amber-50 text-amber-700 font-sans px-1.5 py-0.5 rounded font-semibold border border-amber-200">
-                                  Demo
-                                </span>
-                              )}
-                            </td>
-                            <td className="p-3.5">
-                              <span className="font-bold text-gray-900 block">
-                                #{p.booking?.bookingReference}
-                              </span>
-                              <span className="text-gray-500 text-[11px]">
-                                {p.booking?.serviceType}
-                              </span>
-                            </td>
-                            <td className="p-3.5 text-gray-700 font-medium">{p.paymentMethod}</td>
-                            <td className="p-3.5 text-gray-500">
-                              {new Date(p.createdAt).toLocaleDateString()}
-                            </td>
-                            <td className="p-3.5 font-black text-gray-900 text-sm">
-                              {formatPrice(p.amount)}
-                            </td>
-                            <td className="p-3.5">
-                              <span
-                                className={`px-2 py-0.5 rounded-full font-bold text-[10px] border ${
-                                  p.status === 'SUCCESS' || p.status === 'PAID'
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                    : 'bg-amber-50 text-amber-700 border-amber-200'
-                                }`}
-                              >
-                                {p.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ==================================================== */}
-            {/* TAB 6: PROFILE SETTINGS */}
-            {/* ==================================================== */}
-            {activeTab === 'profile' && (
-              <div className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-xs space-y-6">
-                <div>
-                  <h3 className="text-xl font-black text-gray-900">Profile Settings</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Update personal contact information, billing address, and emergency details.
-                  </p>
-                </div>
-
-                <form onSubmit={handleSaveProfile} className="space-y-6">
-                  {/* Basic Personal Info */}
-                  <div className="space-y-4">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                      Personal Information
-                    </h4>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1">Full Name *</label>
-                        <input
-                          type="text"
-                          required
-                          value={profileForm.fullName || ''}
-                          onChange={(e) => setProfileForm({ ...profileForm, fullName: e.target.value })}
-                          className="w-full text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-hidden focus:border-[#008cff] focus:ring-1 focus:ring-[#008cff]"
-                          placeholder="e.g. Rahul Sharma"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1">Email Address</label>
-                        <input
-                          type="email"
-                          disabled
-                          value={profile?.email || ''}
-                          className="w-full text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed"
-                        />
-                        <span className="text-[10px] text-gray-400 mt-0.5 block">Email cannot be changed directly</span>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1">Phone Number</label>
-                        <input
-                          type="text"
-                          value={profileForm.phone || ''}
-                          onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                          className="w-full text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-hidden focus:border-[#008cff] focus:ring-1 focus:ring-[#008cff]"
-                          placeholder="+91 98765 43210"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-xs font-bold text-gray-700 mb-1">Gender</label>
-                          <select
-                            value={profileForm.gender || 'MALE'}
-                            onChange={(e) => setProfileForm({ ...profileForm, gender: e.target.value })}
-                            className="w-full text-xs font-semibold px-3 py-2.5 rounded-xl border border-gray-300 focus:outline-hidden focus:border-[#008cff]"
-                          >
-                            <option value="MALE">Male</option>
-                            <option value="FEMALE">Female</option>
-                            <option value="OTHER">Other</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-gray-700 mb-1">Date of Birth</label>
-                          <input
-                            type="date"
-                            value={profileForm.dateOfBirth ? String(profileForm.dateOfBirth).slice(0, 10) : ''}
-                            onChange={(e) => setProfileForm({ ...profileForm, dateOfBirth: e.target.value })}
-                            className="w-full text-xs font-semibold px-2 py-2.5 rounded-xl border border-gray-300 focus:outline-hidden focus:border-[#008cff]"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Address Info */}
-                  <div className="space-y-4 pt-4 border-t border-gray-100">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                      Residential / Billing Address
-                    </h4>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="sm:col-span-2">
-                        <label className="block text-xs font-bold text-gray-700 mb-1">Street Address</label>
-                        <input
-                          type="text"
-                          value={profileForm.address || ''}
-                          onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
-                          className="w-full text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-hidden focus:border-[#008cff]"
-                          placeholder="e.g. 402 Palm Grove Enclave, Sector 45"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1">City</label>
-                        <input
-                          type="text"
-                          value={profileForm.city || ''}
-                          onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
-                          className="w-full text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-hidden focus:border-[#008cff]"
-                          placeholder="e.g. Gurugram"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-xs font-bold text-gray-700 mb-1">State</label>
-                          <input
-                            type="text"
-                            value={profileForm.state || ''}
-                            onChange={(e) => setProfileForm({ ...profileForm, state: e.target.value })}
-                            className="w-full text-xs font-semibold px-3 py-2.5 rounded-xl border border-gray-300 focus:outline-hidden focus:border-[#008cff]"
-                            placeholder="Haryana"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-gray-700 mb-1">Pincode</label>
-                          <input
-                            type="text"
-                            value={profileForm.pincode || ''}
-                            onChange={(e) => setProfileForm({ ...profileForm, pincode: e.target.value })}
-                            className="w-full text-xs font-semibold px-3 py-2.5 rounded-xl border border-gray-300 focus:outline-hidden focus:border-[#008cff]"
-                            placeholder="122003"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Emergency Contact */}
-                  <div className="space-y-4 pt-4 border-t border-gray-100">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                      Emergency Contact Information
-                    </h4>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1">Contact Name</label>
-                        <input
-                          type="text"
-                          value={profileForm.emergencyContactName || ''}
-                          onChange={(e) =>
-                            setProfileForm({ ...profileForm, emergencyContactName: e.target.value })
-                          }
-                          className="w-full text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-hidden focus:border-[#008cff]"
-                          placeholder="e.g. Priya Sharma (Spouse)"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1">Contact Phone</label>
-                        <input
-                          type="text"
-                          value={profileForm.emergencyContactPhone || ''}
-                          onChange={(e) =>
-                            setProfileForm({ ...profileForm, emergencyContactPhone: e.target.value })
-                          }
-                          className="w-full text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-gray-300 focus:outline-hidden focus:border-[#008cff]"
-                          placeholder="+91 98111 22334"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-gray-100 flex items-center justify-end">
-                    <button
-                      type="submit"
-                      disabled={isSavingProfile}
-                      className="bg-[#008cff] hover:bg-blue-600 disabled:opacity-50 text-white font-bold text-xs px-6 py-3 rounded-xl transition shadow-md flex items-center gap-2"
-                    >
-                      {isSavingProfile ? (
-                        <>
-                          <span className="material-symbols-outlined text-[16px] animate-spin">refresh</span>
-                          <span>Saving Profile...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="material-symbols-outlined text-[16px]">save</span>
-                          <span>Save Changes</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
-
-            {/* ==================================================== */}
-            {/* TAB 7: HELP & SUPPORT */}
-            {/* ==================================================== */}
-            {activeTab === 'support' && (
-              <div className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-xs space-y-6">
-                <div>
-                  <h3 className="text-xl font-black text-gray-900">SS Journey Help & Customer Support</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    We are here 24 hours a day, 7 days a week to ensure your journeys are seamless.
-                  </p>
-                </div>
-
-                {/* 24x7 Help Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-xl bg-blue-50/70 border border-blue-100 flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#008cff] text-white flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-[20px]">call</span>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-xs text-gray-900">24x7 Toll Free Helpline</h4>
-                      <p className="text-xs font-mono font-bold text-[#008cff] mt-0.5">1800-102-8747</p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">+91 124 462 8747 (Direct)</p>
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-100 flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-[20px]">mail</span>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-xs text-gray-900">Email Customer Desk</h4>
-                      <p className="text-xs font-semibold text-emerald-700 mt-0.5">support@ssjourney.com</p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">Avg response time: &lt; 15 mins</p>
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-xl bg-indigo-50/70 border border-indigo-100 flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-[20px]">chat</span>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-xs text-gray-900">Live Concierge Support</h4>
-                      <p className="text-xs font-semibold text-indigo-700 mt-0.5">Instant Chat Help</p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">Available for active bookings</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* FAQ Accordions */}
-                <div className="space-y-3 pt-2">
-                  <h4 className="text-sm font-bold text-gray-900">Frequently Asked Questions</h4>
-                  {[
-                    {
-                      q: 'How do I cancel my booking and get a refund?',
-                      a: 'You can cancel any confirmed booking directly from the "My Trips" tab. Simply click "Cancel Booking" next to your reservation. Eligible refunds are automatically processed back to your original payment method within 3 to 5 business days.',
-                    },
-                    {
-                      q: 'Can I change my travel dates or flight times?',
-                      a: 'Yes, date changes depend on airline and hotel supplier policies. For immediate modifications, contact our 24x7 support desk with your Booking Reference number.',
-                    },
-                    {
-                      q: 'What documents are required during hotel check-in?',
-                      a: 'All Indian citizens must present a valid government-issued photo ID (Aadhaar Card, Passport, Voter ID, or Driving License). Foreign nationals must present their original Passport and valid Indian Visa.',
-                    },
-                    {
-                      q: 'How do saved travellers work?',
-                      a: 'Saving traveler details in your SS Journey account lets you pre-fill passenger forms during checkout in just one click, without having to type passport numbers or date of birth repeatedly.',
-                    },
-                  ].map((faq, idx) => (
-                    <details
-                      key={idx}
-                      className="group border border-gray-200 rounded-xl p-4 [&_summary::-webkit-details-marker]:hidden bg-white"
-                    >
-                      <summary className="flex items-center justify-between cursor-pointer font-bold text-xs text-gray-800">
-                        <span>{faq.q}</span>
-                        <span className="material-symbols-outlined text-[18px] text-gray-400 group-open:rotate-180 transition-transform">
-                          expand_more
-                        </span>
-                      </summary>
-                      <p className="text-xs text-gray-600 mt-3 leading-relaxed pt-2 border-t border-gray-100">
-                        {faq.a}
-                      </p>
-                    </details>
-                  ))}
-                </div>
-              </div>
-            )}
           </main>
         </div>
       </div>
 
-      {/* ── ADD/EDIT TRAVELLER MODAL ── */}
-      {isTravellerModalOpen && (
+      {/* ── RESET PASSWORD MODAL ── */}
+      {isPasswordModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <h3 className="text-base font-bold text-gray-900">
-                {editingTraveller ? 'Edit Traveller' : 'Add New Traveller'}
-              </h3>
+              <h3 className="text-base font-bold text-gray-900">Reset Account Password</h3>
               <button
-                onClick={() => setIsTravellerModalOpen(false)}
-                className="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"
+                onClick={() => setIsPasswordModalOpen(false)}
+                className="p-1 rounded-full text-gray-400 hover:text-gray-700 transition cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
-
-            <form onSubmit={handleSaveTraveller} className="space-y-4">
-              <div className="grid grid-cols-4 gap-2">
-                <div className="col-span-1">
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Title</label>
-                  <select
-                    value={travellerForm.title || 'Mr'}
-                    onChange={(e) => setTravellerForm({ ...travellerForm, title: e.target.value })}
-                    className="w-full text-xs font-semibold px-2.5 py-2 rounded-xl border border-gray-300"
-                  >
-                    <option value="Mr">Mr</option>
-                    <option value="Mrs">Mrs</option>
-                    <option value="Ms">Ms</option>
-                    <option value="Dr">Dr</option>
-                  </select>
-                </div>
-                <div className="col-span-3">
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Passenger Type</label>
-                  <select
-                    value={travellerForm.passengerType || 'ADULT'}
-                    onChange={(e) =>
-                      setTravellerForm({ ...travellerForm, passengerType: e.target.value as any })
-                    }
-                    className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-gray-300"
-                  >
-                    <option value="ADULT">Adult (12+ yrs)</option>
-                    <option value="CHILD">Child (2 - 12 yrs)</option>
-                    <option value="INFANT">Infant (Under 2 yrs)</option>
-                  </select>
-                </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                  CURRENT PASSWORD
+                </label>
+                <input
+                  type="password"
+                  value={pwdCurrent}
+                  onChange={(e) => setPwdCurrent(e.target.value)}
+                  className="w-full text-xs font-bold px-3.5 py-2.5 rounded-xl border border-gray-200"
+                  placeholder="••••••••"
+                />
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">First Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={travellerForm.firstName || ''}
-                    onChange={(e) => setTravellerForm({ ...travellerForm, firstName: e.target.value })}
-                    className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-gray-300 focus:outline-hidden focus:border-[#008cff]"
-                    placeholder="First name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Last Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={travellerForm.lastName || ''}
-                    onChange={(e) => setTravellerForm({ ...travellerForm, lastName: e.target.value })}
-                    className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-gray-300 focus:outline-hidden focus:border-[#008cff]"
-                    placeholder="Last name"
-                  />
-                </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                  NEW PASSWORD
+                </label>
+                <input
+                  type="password"
+                  value={pwdNew}
+                  onChange={(e) => setPwdNew(e.target.value)}
+                  className="w-full text-xs font-bold px-3.5 py-2.5 rounded-xl border border-gray-200"
+                  placeholder="••••••••"
+                />
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Gender</label>
-                  <select
-                    value={travellerForm.gender || 'MALE'}
-                    onChange={(e) =>
-                      setTravellerForm({ ...travellerForm, gender: e.target.value as any })
-                    }
-                    className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-gray-300"
-                  >
-                    <option value="MALE">Male</option>
-                    <option value="FEMALE">Female</option>
-                    <option value="OTHER">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Date of Birth</label>
-                  <input
-                    type="date"
-                    value={
-                      travellerForm.dateOfBirth ? String(travellerForm.dateOfBirth).slice(0, 10) : ''
-                    }
-                    onChange={(e) => setTravellerForm({ ...travellerForm, dateOfBirth: e.target.value })}
-                    className="w-full text-xs font-semibold px-2 py-2 rounded-xl border border-gray-300"
-                  />
-                </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                  CONFIRM NEW PASSWORD
+                </label>
+                <input
+                  type="password"
+                  value={pwdConfirm}
+                  onChange={(e) => setPwdConfirm(e.target.value)}
+                  className="w-full text-xs font-bold px-3.5 py-2.5 rounded-xl border border-gray-200"
+                  placeholder="••••••••"
+                />
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Phone Number</label>
-                  <input
-                    type="text"
-                    value={travellerForm.phone || ''}
-                    onChange={(e) => setTravellerForm({ ...travellerForm, phone: e.target.value })}
-                    className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-gray-300"
-                    placeholder="+91..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={travellerForm.email || ''}
-                    onChange={(e) => setTravellerForm({ ...travellerForm, email: e.target.value })}
-                    className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-gray-300"
-                    placeholder="traveler@example.com"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Passport Number</label>
-                  <input
-                    type="text"
-                    value={travellerForm.passportNumber || ''}
-                    onChange={(e) =>
-                      setTravellerForm({ ...travellerForm, passportNumber: e.target.value })
-                    }
-                    className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-gray-300"
-                    placeholder="A1234567"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Nationality</label>
-                  <input
-                    type="text"
-                    value={travellerForm.nationality || 'Indian'}
-                    onChange={(e) =>
-                      setTravellerForm({ ...travellerForm, nationality: e.target.value })
-                    }
-                    className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-gray-300"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setIsTravellerModalOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-[#008cff] hover:bg-blue-600 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-xs"
-                >
-                  {editingTraveller ? 'Update Traveller' : 'Save Traveller'}
-                </button>
-              </div>
-            </form>
+            </div>
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100">
+              <button
+                onClick={() => setIsPasswordModalOpen(false)}
+                className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (!pwdNew || pwdNew !== pwdConfirm) {
+                    alert('Passwords do not match or cannot be empty.');
+                    return;
+                  }
+                  setIsPasswordModalOpen(false);
+                  setActionMessage({ type: 'success', text: 'Password updated successfully!' });
+                }}
+                className="bg-[#008cff] hover:bg-blue-600 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-xs cursor-pointer"
+              >
+                Update Password
+              </button>
+            </div>
           </div>
         </div>
       )}
 
+
+
       {/* ── CANCELLATION CONFIRMATION MODAL ── */}
       {isCancelModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4">
             <div className="flex items-center gap-3 text-rose-600">
               <span className="material-symbols-outlined text-[28px]">warning</span>
               <h3 className="text-base font-bold text-gray-900">Confirm Booking Cancellation</h3>
@@ -1528,13 +1637,13 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                   setIsCancelModalOpen(false);
                   setCancellingBookingId(null);
                 }}
-                className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition"
+                className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition cursor-pointer"
               >
                 Keep Booking
               </button>
               <button
                 onClick={handleConfirmCancel}
-                className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-xs"
+                className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-xs cursor-pointer"
               >
                 Confirm Cancellation
               </button>
@@ -1546,7 +1655,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
       {/* ── PRINTABLE E-TICKET / RECEIPT MODAL ── */}
       {selectedTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-gray-100 space-y-5 max-h-[92vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-gray-100 space-y-5 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-gray-200">
               <div className="flex items-center space-x-2">
                 <span className="text-lg font-black tracking-tight">
@@ -1554,19 +1663,18 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                 </span>
                 <span className="text-gray-300">|</span>
                 <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">
-                  Official E-Ticket & Receipt
+                  Official E-Ticket &amp; Receipt
                 </span>
               </div>
               <button
                 onClick={() => setSelectedTicket(null)}
-                className="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"
+                className="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
 
-            {/* Ticket Header */}
-            <div className="bg-slate-900 text-white p-5 rounded-xl flex items-center justify-between">
+            <div className="bg-slate-900 text-white p-5 rounded-2xl flex items-center justify-between">
               <div>
                 <span className="text-[10px] uppercase font-bold text-blue-300 tracking-wider">Booking Reference</span>
                 <h3 className="text-xl font-mono font-black mt-0.5">
@@ -1595,69 +1703,17 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
               </div>
             </div>
 
-            {/* Itinerary Items */}
-            <div className="border border-gray-200 rounded-xl p-4 space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">Trip Breakdown</h4>
-              {(selectedTicket.items || []).map((it: any, idx: number) => (
-                <div key={idx} className="flex justify-between items-center text-xs">
-                  <div>
-                    <span className="font-bold text-gray-900 block">{it.title}</span>
-                    <span className="text-gray-500">
-                      {it.check_in_date ? `Check-in: ${it.check_in_date}` : ''}
-                      {it.check_out_date ? ` • Check-out: ${it.check_out_date}` : ''}
-                    </span>
-                  </div>
-                  <span className="font-bold text-gray-900">{formatPrice(it.total_price || it.unit_price || 0)}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Travelers on Ticket */}
-            {selectedTicket.passengers && selectedTicket.passengers.length > 0 && (
-              <div className="border border-gray-200 rounded-xl p-4 space-y-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">Passenger Manifest</h4>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  {selectedTicket.passengers.map((p: any, idx: number) => (
-                    <div key={idx} className="bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-                      <span className="font-bold text-gray-900 block">
-                        {p.title} {p.first_name} {p.last_name}
-                      </span>
-                      <span className="text-gray-500 text-[11px]">
-                        Type: {p.passenger_type} {p.passport_number ? `• Passport: ${p.passport_number}` : ''}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Pricing Summary */}
-            <div className="bg-gray-50 rounded-xl p-4 space-y-1.5 text-xs">
-              <div className="flex justify-between text-gray-600">
-                <span>Base Fare & Platform Fees</span>
-                <span>{formatPrice(selectedTicket.total_amount)}</span>
-              </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Taxes & Government Surcharges</span>
-                <span>Included</span>
-              </div>
-              <div className="pt-2 border-t border-gray-200 flex justify-between font-black text-sm text-gray-900">
-                <span>Total Amount Paid</span>
-                <span className="text-emerald-700">{formatPrice(selectedTicket.total_amount)}</span>
-              </div>
-            </div>
-
             <div className="flex items-center justify-between pt-3 border-t border-gray-200">
               <button
                 onClick={() => window.print()}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5"
+                className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">print</span>
                 <span>Print Receipt</span>
               </button>
               <button
                 onClick={() => setSelectedTicket(null)}
-                className="bg-[#008cff] hover:bg-blue-600 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition"
+                className="bg-[#008cff] hover:bg-blue-600 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition cursor-pointer"
               >
                 Done
               </button>

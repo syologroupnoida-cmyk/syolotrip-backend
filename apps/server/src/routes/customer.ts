@@ -342,7 +342,8 @@ router.get('/travellers', async (req: AuthenticatedRequest, res) => {
     const result = await query(
       `SELECT id, title, first_name, last_name, gender, date_of_birth, passenger_type,
               phone, email, passport_number, passport_expiry, nationality,
-              meal_preference, seat_preference, created_at, updated_at
+              meal_preference, seat_preference, relationship, berth_preference, passport_issuing_country,
+              created_at, updated_at
        FROM saved_travellers
        WHERE user_id = $1
        ORDER BY created_at ASC`,
@@ -364,9 +365,12 @@ router.get('/travellers', async (req: AuthenticatedRequest, res) => {
         email: r.email,
         passportNumber: r.passport_number,
         passportExpiry: r.passport_expiry,
-        nationality: r.nationality,
+        nationality: r.nationality || 'Indian',
         mealPreference: r.meal_preference,
         seatPreference: r.seat_preference,
+        relationship: r.relationship,
+        berthPreference: r.berth_preference,
+        passportIssuingCountry: r.passport_issuing_country || 'India',
         createdAt: r.created_at,
         updatedAt: r.updated_at,
       })),
@@ -393,6 +397,9 @@ router.post('/travellers', async (req: AuthenticatedRequest, res) => {
       nationality,
       mealPreference,
       seatPreference,
+      relationship,
+      berthPreference,
+      passportIssuingCountry,
     } = req.body;
 
     if (!firstName || !lastName) {
@@ -406,8 +413,8 @@ router.post('/travellers', async (req: AuthenticatedRequest, res) => {
       `INSERT INTO saved_travellers (
         user_id, title, first_name, last_name, gender, date_of_birth, passenger_type,
         phone, email, passport_number, passport_expiry, nationality,
-        meal_preference, seat_preference
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        meal_preference, seat_preference, relationship, berth_preference, passport_issuing_country
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *`,
       [
         userId,
@@ -424,6 +431,9 @@ router.post('/travellers', async (req: AuthenticatedRequest, res) => {
         nationality?.trim() || 'Indian',
         mealPreference?.trim() || null,
         seatPreference?.trim() || null,
+        relationship?.trim() || null,
+        berthPreference?.trim() || null,
+        passportIssuingCountry?.trim() || 'India',
       ]
     );
 
@@ -447,6 +457,9 @@ router.post('/travellers', async (req: AuthenticatedRequest, res) => {
         nationality: r.nationality,
         mealPreference: r.meal_preference,
         seatPreference: r.seat_preference,
+        relationship: r.relationship,
+        berthPreference: r.berth_preference,
+        passportIssuingCountry: r.passport_issuing_country,
         createdAt: r.created_at,
         updatedAt: r.updated_at,
       },
@@ -474,6 +487,9 @@ router.put('/travellers/:id', async (req: AuthenticatedRequest, res) => {
       nationality,
       mealPreference,
       seatPreference,
+      relationship,
+      berthPreference,
+      passportIssuingCountry,
     } = req.body;
 
     const existing = await query(
@@ -499,8 +515,11 @@ router.put('/travellers/:id', async (req: AuthenticatedRequest, res) => {
            nationality = COALESCE($11, nationality),
            meal_preference = COALESCE($12, meal_preference),
            seat_preference = COALESCE($13, seat_preference),
+           relationship = COALESCE($14, relationship),
+           berth_preference = COALESCE($15, berth_preference),
+           passport_issuing_country = COALESCE($16, passport_issuing_country),
            updated_at = NOW()
-       WHERE id = $14 AND user_id = $15
+       WHERE id = $17 AND user_id = $18
        RETURNING *`,
       [
         title,
@@ -516,6 +535,9 @@ router.put('/travellers/:id', async (req: AuthenticatedRequest, res) => {
         nationality?.trim(),
         mealPreference?.trim(),
         seatPreference?.trim(),
+        relationship?.trim(),
+        berthPreference?.trim(),
+        passportIssuingCountry?.trim(),
         travellerId,
         userId,
       ]
@@ -541,6 +563,9 @@ router.put('/travellers/:id', async (req: AuthenticatedRequest, res) => {
         nationality: r.nationality,
         mealPreference: r.meal_preference,
         seatPreference: r.seat_preference,
+        relationship: r.relationship,
+        berthPreference: r.berth_preference,
+        passportIssuingCountry: r.passport_issuing_country,
         createdAt: r.created_at,
         updatedAt: r.updated_at,
       },

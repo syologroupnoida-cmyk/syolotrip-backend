@@ -1049,6 +1049,9 @@ export interface SavedTraveller {
   nationality?: string;
   mealPreference?: string;
   seatPreference?: string;
+  relationship?: string;
+  berthPreference?: string;
+  passportIssuingCountry?: string;
   createdAt?: string;
   updatedAt?: string;
 }

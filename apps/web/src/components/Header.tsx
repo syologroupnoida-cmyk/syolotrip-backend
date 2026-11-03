@@ -407,19 +407,6 @@ export const Header: React.FC<HeaderProps> = ({
                       type="button"
                       onClick={() => {
                         setIsUserMenuOpen(false);
-                        if (onNavigateDashboardTab) onNavigateDashboardTab('trips');
-                        else setActiveScreen('dashboard');
-                      }}
-                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-blue-50 hover:text-[#008cff] transition"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">luggage</span>
-                      <span>My Trips & Bookings</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
                         if (onNavigateDashboardTab) onNavigateDashboardTab('wishlist');
                         else onOpenWishlist?.();
                       }}
@@ -433,19 +420,6 @@ export const Header: React.FC<HeaderProps> = ({
                       type="button"
                       onClick={() => {
                         setIsUserMenuOpen(false);
-                        if (onNavigateDashboardTab) onNavigateDashboardTab('travellers');
-                        else setActiveScreen('dashboard');
-                      }}
-                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-blue-50 hover:text-[#008cff] transition"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">group</span>
-                      <span>Saved Travellers</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
                         if (onNavigateDashboardTab) onNavigateDashboardTab('payments');
                         else setActiveScreen('dashboard');
                       }}
@@ -453,19 +427,6 @@ export const Header: React.FC<HeaderProps> = ({
                     >
                       <span className="material-symbols-outlined text-[18px]">credit_card</span>
                       <span>Payment History</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        if (onNavigateDashboardTab) onNavigateDashboardTab('profile');
-                        else setActiveScreen('dashboard');
-                      }}
-                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-blue-50 hover:text-[#008cff] transition"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">manage_accounts</span>
-                      <span>Profile Settings</span>
                     </button>
 
                     <button
@@ -743,24 +704,6 @@ export const Header: React.FC<HeaderProps> = ({
                         type="button"
                         onClick={() => {
                           setIsMobileMenuOpen(false);
-                          if (onNavigateDashboardTab) onNavigateDashboardTab('trips');
-                          else setActiveScreen('dashboard');
-                        }}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
-                          activeScreen === 'trips' ? 'bg-blue-50 text-[#008cff] font-bold' : 'text-gray-700 hover:bg-gray-50'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <span className="material-symbols-outlined text-[19px] text-[#008cff]">luggage</span>
-                          <span>My Trips &amp; Bookings</span>
-                        </div>
-                        <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsMobileMenuOpen(false);
                           if (onNavigateDashboardTab) onNavigateDashboardTab('wishlist');
                           else if (onOpenWishlist) onOpenWishlist();
                         }}
@@ -783,22 +726,6 @@ export const Header: React.FC<HeaderProps> = ({
                         type="button"
                         onClick={() => {
                           setIsMobileMenuOpen(false);
-                          if (onNavigateDashboardTab) onNavigateDashboardTab('travellers');
-                          else setActiveScreen('dashboard');
-                        }}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <span className="material-symbols-outlined text-[19px] text-emerald-600">group</span>
-                          <span>Saved Travellers</span>
-                        </div>
-                        <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsMobileMenuOpen(false);
                           if (onNavigateDashboardTab) onNavigateDashboardTab('payments');
                           else setActiveScreen('dashboard');
                         }}
@@ -807,22 +734,6 @@ export const Header: React.FC<HeaderProps> = ({
                         <div className="flex items-center space-x-3">
                           <span className="material-symbols-outlined text-[19px] text-indigo-600">credit_card</span>
                           <span>Payment History</span>
-                        </div>
-                        <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsMobileMenuOpen(false);
-                          if (onNavigateDashboardTab) onNavigateDashboardTab('profile');
-                          else setActiveScreen('dashboard');
-                        }}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <span className="material-symbols-outlined text-[19px] text-gray-600">manage_accounts</span>
-                          <span>Profile Settings</span>
                         </div>
                         <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
                       </button>
