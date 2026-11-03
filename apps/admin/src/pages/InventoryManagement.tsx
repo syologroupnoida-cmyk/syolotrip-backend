@@ -10,7 +10,8 @@ import {
   createAdminFlight, createAdminHotel, createAdminBus,
   createAdminTrain, createAdminCab, createAdminPackage,
   deleteAdminInventoryItem, updateAdminInventoryItem,
-  getAdminPendingProperties, approveAdminProperty, rejectAdminProperty
+  getAdminPendingProperties, approveAdminProperty, rejectAdminProperty,
+  updateAdminPackageStatus, bulkUpdateAdminPackageStatus
 } from '../services/api';
 
 
@@ -22,6 +23,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
   const queryClient = useQueryClient();
   const [showAddModal, setShowAddModal] = useState(false);
   const [hotelSubTab, setHotelSubTab] = useState<'published' | 'pending'>('published');
+  const [packageStatusFilter, setPackageStatusFilter] = useState<'ALL' | 'PUBLISHED' | 'DRAFT'>('ALL');
+  const [packageRegionFilter, setPackageRegionFilter] = useState<'ALL' | 'National' | 'International'>('ALL');
+  const [packageSearch, setPackageSearch] = useState('');
+  const [inspectAdminPackage, setInspectAdminPackage] = useState<any | null>(null);
 
   // New Flight state
 
@@ -175,9 +180,28 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
   });
 
   const { data: packages, isLoading: packagesLoading, refetch: refetchPackages } = useQuery({
-    queryKey: ['adminPackages'],
-    queryFn: getAdminPackages,
+    queryKey: ['adminPackages', packageStatusFilter, packageRegionFilter, packageSearch],
+    queryFn: () =>
+      getAdminPackages({
+        status: packageStatusFilter !== 'ALL' ? packageStatusFilter : undefined,
+        region: packageRegionFilter !== 'ALL' ? packageRegionFilter : undefined,
+        search: packageSearch || undefined,
+      }),
     enabled: type === 'packages',
+  });
+
+  const togglePackageStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => updateAdminPackageStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminPackages'] });
+    },
+  });
+
+  const bulkStatusMutation = useMutation({
+    mutationFn: (status: string) => bulkUpdateAdminPackageStatus(status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminPackages'] });
+    },
   });
 
   // Mutations
@@ -404,6 +428,93 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
               </span>
             )}
           </button>
+        </div>
+      )}
+
+      {/* Control Strip for Holiday Packages */}
+      {type === 'packages' && (
+        <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-slate-400 font-semibold">Region:</span>
+              {[
+                { id: 'ALL', label: 'All Regions' },
+                { id: 'National', label: '🇮🇳 National (Domestic)' },
+                { id: 'International', label: '✈️ International' },
+              ].map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => setPackageRegionFilter(r.id as any)}
+                  className={`px-3 py-1.5 rounded-lg font-medium transition cursor-pointer ${
+                    packageRegionFilter === r.id
+                      ? 'bg-brand-600 text-white shadow-sm'
+                      : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+
+              <div className="h-4 w-[1px] bg-slate-800 mx-1 hidden sm:block" />
+
+              <span className="text-slate-400 font-semibold">Status:</span>
+              {[
+                { id: 'ALL', label: 'All' },
+                { id: 'PUBLISHED', label: 'Published' },
+                { id: 'DRAFT', label: 'Draft' },
+              ].map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setPackageStatusFilter(s.id as any)}
+                  className={`px-3 py-1.5 rounded-lg font-medium transition cursor-pointer ${
+                    packageStatusFilter === s.id
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  if (window.confirm('Publish all packages in catalog?')) {
+                    bulkStatusMutation.mutate('PUBLISHED');
+                  }
+                }}
+                disabled={bulkStatusMutation.isPending}
+                className="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs font-semibold transition cursor-pointer"
+              >
+                Approve & Publish All
+              </button>
+              <button
+                onClick={() => {
+                  if (window.confirm('Set all packages to Draft?')) {
+                    bulkStatusMutation.mutate('DRAFT');
+                  }
+                }}
+                disabled={bulkStatusMutation.isPending}
+                className="px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-500/30 text-xs font-semibold transition cursor-pointer"
+              >
+                Revert All to Draft
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 pt-2 border-t border-slate-800/80">
+            <input
+              type="text"
+              value={packageSearch}
+              onChange={(e) => setPackageSearch(e.target.value)}
+              placeholder="Search by package title, destination, or package ID (e.g. TZ-NAT-KERA-01)..."
+              className="w-full sm:max-w-md px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-brand-500"
+            />
+            <span className="text-xs text-slate-400">
+              Showing <strong className="text-white">{packageList.length}</strong> packages
+            </span>
+          </div>
         </div>
       )}
 
@@ -705,37 +816,99 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
 
           {/* PACKAGES */}
           {type === 'packages' &&
-            packageList.map((p: any) => (
-              <div key={p.id} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 hover:border-brand-500/40 transition">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-sm">{p.title}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-brand-500/10 text-brand-400">
-                      {p.duration_days || p.durationDays}D / {p.duration_nights || p.durationNights}N
-                    </span>
-                    <button
-                      onClick={() => handleOpenEdit(p.id, 'packages', p.title, p.price_per_person || p.pricePerPerson, p.available_capacity || 20, p.is_active ?? true)}
-                      title="Edit package"
-                      className="text-slate-500 hover:text-brand-400 p-1 rounded-md hover:bg-slate-900 transition cursor-pointer"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(p.id)}
-                      title="Delete package"
-                      className="text-slate-500 hover:text-rose-400 p-1 rounded-md hover:bg-slate-900 transition"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+            packageList.map((p: any) => {
+              const isPublished = p.publication_status === 'PUBLISHED';
+              return (
+                <div key={p.id} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 hover:border-brand-500/40 transition">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        {p.package_id && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-bold">
+                            {p.package_id}
+                          </span>
+                        )}
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-brand-500/10 text-brand-400 font-semibold">
+                          {p.duration || `${p.duration_days}D / ${p.duration_nights}N`}
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 font-semibold">
+                          {p.region || 'National'}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                            isPublished
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          }`}
+                        >
+                          {p.publication_status || 'DRAFT'}
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-white text-sm leading-snug">{p.title}</h4>
+                      <p className="text-xs text-brand-400 mt-0.5">📍 {p.destination} · {p.theme || 'Explorer'}</p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => setInspectAdminPackage(p)}
+                        title="Inspect Package Details"
+                        className="text-slate-400 hover:text-blue-400 p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 transition cursor-pointer"
+                      >
+                        <Compass className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          togglePackageStatusMutation.mutate({
+                            id: p.id,
+                            status: isPublished ? 'DRAFT' : 'PUBLISHED',
+                          })
+                        }
+                        title={isPublished ? 'Switch to Draft' : 'Publish to Live Catalog'}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                          isPublished
+                            ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        }`}
+                      >
+                        {isPublished ? 'Make Draft' : 'Publish'}
+                      </button>
+
+                      <button
+                        onClick={() => handleOpenEdit(p.id, 'packages', p.title, p.price_per_person || p.pricePerPerson, p.available_capacity || 20, p.is_active ?? true)}
+                        title="Edit price/capacity"
+                        className="text-slate-400 hover:text-brand-400 p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 transition cursor-pointer"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        onClick={() => handleDelete(p.id)}
+                        title="Delete package"
+                        className="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 transition cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {p.route && (
+                    <div className="text-[11px] text-slate-400 bg-slate-900/60 p-2 rounded-lg border border-slate-900">
+                      <strong className="text-slate-300">Route: </strong>
+                      <span>{p.route}</span>
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t border-slate-900 flex items-center justify-between text-xs">
+                    <span className="text-slate-500">Indicative Rate:</span>
+                    <div className="text-right">
+                      <span className="font-bold text-white text-sm">₹{(p.price_per_person || 0).toLocaleString()}</span>
+                      <span className="text-[10px] text-slate-500 block">per person</span>
+                    </div>
                   </div>
                 </div>
-                <p className="text-xs text-slate-400 line-clamp-2">{p.overview}</p>
-                <div className="pt-2 border-t border-slate-900 flex items-center justify-between text-xs">
-                  <span className="text-slate-500">Per person</span>
-                  <span className="font-bold text-white">₹{(p.price_per_person || p.pricePerPerson || 0).toLocaleString()}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
 
         </div>
       )}
@@ -1269,6 +1442,75 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({ type }
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Inspect Package Modal */}
+      {inspectAdminPackage && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-2xl">
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-xs font-mono text-brand-400 font-bold block">{inspectAdminPackage.package_id}</span>
+                <h3 className="text-lg font-bold text-white mt-1">{inspectAdminPackage.title}</h3>
+                <p className="text-xs text-slate-400">Destination: {inspectAdminPackage.destination} · {inspectAdminPackage.region}</p>
+              </div>
+              <button
+                onClick={() => setInspectAdminPackage(null)}
+                className="text-slate-500 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                <span className="text-slate-400 font-semibold block mb-1">Route & Duration:</span>
+                <span className="text-slate-200">{inspectAdminPackage.route || 'Direct'} ({inspectAdminPackage.duration})</span>
+              </div>
+
+              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                <span className="text-slate-400 font-semibold block mb-1">Overview:</span>
+                <p className="text-slate-300 leading-relaxed">{inspectAdminPackage.overview}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                  <span className="text-slate-400 font-semibold block mb-1">Indicative Rate:</span>
+                  <span className="text-lg font-bold text-white">₹{inspectAdminPackage.price_per_person?.toLocaleString()}</span>
+                  <span className="text-slate-500 text-[10px] block">per person</span>
+                </div>
+                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                  <span className="text-slate-400 font-semibold block mb-1">Publication Status:</span>
+                  <span className={`font-bold ${inspectAdminPackage.publication_status === 'PUBLISHED' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {inspectAdminPackage.publication_status || 'DRAFT'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
+              <button
+                onClick={() => {
+                  const newStatus = inspectAdminPackage.publication_status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED';
+                  togglePackageStatusMutation.mutate({ id: inspectAdminPackage.id, status: newStatus });
+                  setInspectAdminPackage(null);
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold text-white transition ${
+                  inspectAdminPackage.publication_status === 'PUBLISHED'
+                    ? 'bg-amber-600 hover:bg-amber-500'
+                    : 'bg-emerald-600 hover:bg-emerald-500'
+                }`}
+              >
+                {inspectAdminPackage.publication_status === 'PUBLISHED' ? 'Revert to Draft' : 'Publish to Catalog'}
+              </button>
+              <button
+                onClick={() => setInspectAdminPackage(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -59,6 +59,7 @@ export interface FlightApiResponse {
   taxes: number;
   total_price: number;
   currency: string;
+  route?: string;
   logo_url?: string;
   baggage_info?: string;
   tags?: string[];
@@ -99,6 +100,7 @@ export interface HotelApiResponse {
   images?: string[];
   starting_price: number;
   currency: string;
+  route?: string;
   featured?: boolean;
   is_simulated?: boolean;
   rooms?: HotelRoomApiResponse[];
@@ -123,6 +125,7 @@ export interface TrainApiResponse {
   base_fare: number;
   rating: number;
   currency: string;
+  route?: string;
   is_simulated?: boolean;
 }
 
@@ -141,6 +144,7 @@ export interface BusApiResponse {
   base_fare: number;
   rating: number;
   currency: string;
+  route?: string;
   is_simulated?: boolean;
 }
 
@@ -156,6 +160,7 @@ export interface CabApiResponse {
   capacity: number;
   base_fare: number;
   currency: string;
+  route?: string;
   eta_minutes: number;
   features?: string[];
   is_simulated?: boolean;
@@ -163,19 +168,46 @@ export interface CabApiResponse {
 
 export interface PackageApiResponse {
   id: string;
+  package_id?: string;
+  slug?: string;
   title: string;
   destination: string;
+  region?: string;
+  theme?: string;
+  package_type?: string;
+  duration?: string;
   duration_days: number;
   duration_nights: number;
   overview: string;
   inclusions?: string[];
   exclusions?: string[];
+  highlights?: string[];
+  places_covered?: string[];
+  activities?: string[];
+  hotel_category?: string;
+  transfers?: string;
+  meals?: string;
+  sightseeing?: string;
+  best_time_to_visit?: string;
+  suitable_for?: string;
+  offer_title?: string;
+  offer_description?: string;
+  cancellation_policy?: string;
+  seo_title?: string;
+  seo_description?: string;
+  seo_keywords?: string;
+  day_wise_itinerary_text?: string;
   itinerary?: Array<{ day?: number; title?: string; description?: string }>;
+  itineraries?: Array<{ day_number: number; destination?: string; title?: string; description?: string }>;
   price_per_person: number;
+  old_price?: number;
+  discount_percent?: number;
   currency: string;
+  route?: string;
   featured_image: string;
   rating: number;
   available_capacity: number;
+  publication_status?: string;
   is_simulated?: boolean;
 }
 
@@ -240,12 +272,26 @@ export const searchCabsApi = async (params?: {
 // ================= Holiday Packages API =================
 export const searchPackagesApi = async (params?: {
   destination?: string;
+  region?: string;
+  theme?: string;
+  package_type?: string;
   max_price?: number;
+  min_price?: number;
   min_days?: number;
   max_days?: number;
+  sort_by?: string;
+  search?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
 }): Promise<PackageApiResponse[]> => {
   const res = await apiClient.get<ApiResponse<{ items: PackageApiResponse[]; pagination: any }>>('/packages', { params });
   return res.data?.data?.items || [];
+};
+
+export const getPackageDetailsApi = async (idOrSlug: string): Promise<PackageApiResponse | null> => {
+  const res = await apiClient.get<ApiResponse<PackageApiResponse>>(`/packages/${idOrSlug}`);
+  return res.data?.data || null;
 };
 
 // ================= Bookings API =================
@@ -299,6 +345,7 @@ export interface RazorpayOrderData {
   order_id: string;
   amount: number;
   currency: string;
+  route?: string;
   booking_id: string;
   booking_reference: string;
   service_type: string;
@@ -316,6 +363,7 @@ export interface RazorpayVerifyData {
   status: string;
   amount: number;
   currency: string;
+  route?: string;
   message: string;
 }
 
@@ -493,6 +541,7 @@ export interface MyBizInvoice {
   tax_amount: number;
   total_amount: number;
   currency: string;
+  route?: string;
   tax_breakdown?: Record<string, any>;
   created_at: string;
 }
@@ -904,6 +953,164 @@ export const getInsurancePlansApi = async (params?: { destination?: string }): P
   const res = await apiClient.get<ApiResponse<{ items: any[] }>>('/insurance', { params });
   return res.data?.data?.items || [];
 };
+
+// ================= CUSTOMER DASHBOARD & ACCOUNT APIS =================
+export interface CustomerDashboardMetrics {
+  totalBookings: number;
+  upcomingTrips: number;
+  completedTrips: number;
+  cancelledTrips: number;
+  totalSpent: number;
+  wishlistCount: number;
+  savedTravellersCount: number;
+  profileCompletionPercent: number;
+}
+
+export interface CustomerProfileData {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  maritalStatus?: string;
+  passportNumber?: string;
+  passportExpiry?: string;
+  passportIssuingCountry?: string;
+  panCardNumber?: string;
+  autoInsurancePreferences?: {
+    domestic_hotel?: boolean;
+    domestic_flight?: boolean;
+    international_hotel?: boolean;
+    international_flight?: boolean;
+  };
+  frequentFlyerDetails?: Array<{
+    airline: string;
+    number: string;
+  }>;
+  isVerified?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CustomerUpcomingTrip {
+  id: string;
+  bookingReference: string;
+  serviceType: string;
+  status: string;
+  totalAmount: number;
+  currency: string;
+  checkInDate?: string;
+  checkOutDate?: string;
+  guestName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  createdAt: string;
+  items?: any[];
+}
+
+export interface CustomerDashboardSummary {
+  metrics: CustomerDashboardMetrics;
+  profile: CustomerProfileData;
+  upcomingTrip: CustomerUpcomingTrip | null;
+  recentBookings: {
+    id: string;
+    bookingReference: string;
+    serviceType: string;
+    status: string;
+    totalAmount: number;
+    currency: string;
+    createdAt: string;
+    checkInDate?: string;
+    checkOutDate?: string;
+    guestName?: string;
+  }[];
+}
+
+export interface SavedTraveller {
+  id: string;
+  title: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  dateOfBirth?: string;
+  passengerType: 'ADULT' | 'CHILD' | 'INFANT';
+  phone?: string;
+  email?: string;
+  passportNumber?: string;
+  passportExpiry?: string;
+  nationality?: string;
+  mealPreference?: string;
+  seatPreference?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CustomerPaymentItem {
+  id: string;
+  paymentReference: string;
+  paymentMethod: string;
+  amount: number;
+  currency: string;
+  status: string;
+  isDemo: boolean;
+  createdAt: string;
+  booking: {
+    id: string;
+    bookingReference: string;
+    serviceType: string;
+    guestName?: string;
+    bookingStatus: string;
+    totalAmount: number;
+  };
+}
+
+export const getCustomerDashboardSummaryApi = async (): Promise<CustomerDashboardSummary> => {
+  const res = await apiClient.get<ApiResponse<CustomerDashboardSummary>>('/customer/dashboard-summary');
+  return res.data.data;
+};
+
+export const getCustomerProfileApi = async (): Promise<CustomerProfileData> => {
+  const res = await apiClient.get<ApiResponse<CustomerProfileData>>('/customer/profile');
+  return res.data.data;
+};
+
+export const updateCustomerProfileApi = async (payload: Partial<CustomerProfileData>): Promise<CustomerProfileData> => {
+  const res = await apiClient.put<ApiResponse<CustomerProfileData>>('/customer/profile', payload);
+  return res.data.data;
+};
+
+export const getSavedTravellersApi = async (): Promise<SavedTraveller[]> => {
+  const res = await apiClient.get<ApiResponse<SavedTraveller[]>>('/customer/travellers');
+  return res.data.data || [];
+};
+
+export const createSavedTravellerApi = async (payload: Partial<SavedTraveller>): Promise<SavedTraveller> => {
+  const res = await apiClient.post<ApiResponse<SavedTraveller>>('/customer/travellers', payload);
+  return res.data.data;
+};
+
+export const updateSavedTravellerApi = async (id: string, payload: Partial<SavedTraveller>): Promise<SavedTraveller> => {
+  const res = await apiClient.put<ApiResponse<SavedTraveller>>(`/customer/travellers/${id}`, payload);
+  return res.data.data;
+};
+
+export const deleteSavedTravellerApi = async (id: string): Promise<void> => {
+  await apiClient.delete(`/customer/travellers/${id}`);
+};
+
+export const getCustomerPaymentsApi = async (): Promise<CustomerPaymentItem[]> => {
+  const res = await apiClient.get<ApiResponse<CustomerPaymentItem[]>>('/customer/payments');
+  return res.data.data || [];
+};
+
 
 
 

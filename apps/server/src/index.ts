@@ -14,10 +14,13 @@ import { trainsRouter, busesRouter, cabsRouter, packagesRouter } from './routes/
 import bookingsRouter from './routes/bookings.js';
 import paymentsRouter from './routes/payments.js';
 import adminRouter from './routes/admin.js';
+import { adminServicesRouter } from './routes/adminServices.js';
+import { adminImportExportRouter } from './routes/adminImportExport.js';
 import pricingRouter from './routes/pricing.js';
 import { couponsRouter, wishlistRouter, locationsRouter } from './routes/misc.js';
 import { mybizRouter, partnerRouter } from './routes/partnerMybiz.js';
 import { villasRouter, toursRouter, visaRouter, insuranceRouter } from './routes/servicesExtra.js';
+import customerRouter from './routes/customer.js';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config();
@@ -92,6 +95,8 @@ apiV1.use('/cabs', cabsRouter);
 apiV1.use('/packages', packagesRouter);
 apiV1.use('/bookings', bookingsRouter);
 apiV1.use('/payments', paymentsRouter);
+apiV1.use('/admin/services', adminServicesRouter);
+apiV1.use('/admin/io', adminImportExportRouter);
 apiV1.use('/admin', adminRouter);
 apiV1.use('/admin/pricing', pricingRouter);
 apiV1.use('/coupons', couponsRouter);
@@ -103,6 +108,7 @@ apiV1.use('/visa', visaRouter);
 apiV1.use('/insurance', insuranceRouter);
 apiV1.use('/mybiz', mybizRouter);
 apiV1.use('/partner', partnerRouter);
+apiV1.use('/customer', customerRouter);
 
 app.use('/api/v1', apiV1);
 

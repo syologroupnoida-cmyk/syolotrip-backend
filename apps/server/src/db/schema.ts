@@ -59,6 +59,22 @@ export async function initDbSchema() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth DATE;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(20);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS address VARCHAR(300);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS state VARCHAR(100);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS pincode VARCHAR(20);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_name VARCHAR(150);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(50);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS marital_status VARCHAR(50);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS passport_number VARCHAR(50);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS passport_expiry DATE;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS passport_issuing_country VARCHAR(100) DEFAULT 'India';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS pan_card_number VARCHAR(20);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_insurance_preferences JSONB DEFAULT '{"domestic_hotel": false, "domestic_flight": false, "international_hotel": false, "international_flight": false}'::jsonb;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS frequent_flyer_details JSONB DEFAULT '[]'::jsonb;
+
     CREATE TABLE IF NOT EXISTS partner_profiles (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE,
@@ -199,17 +215,43 @@ export async function initDbSchema() {
 
     CREATE TABLE IF NOT EXISTS holiday_packages (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      package_id VARCHAR(50) UNIQUE,
+      slug VARCHAR(300) UNIQUE,
       title VARCHAR(250) NOT NULL,
       destination VARCHAR(150) NOT NULL,
-      duration_days INT NOT NULL,
-      duration_nights INT NOT NULL,
+      region VARCHAR(50) NOT NULL DEFAULT 'National',
+      theme VARCHAR(100),
+      package_type VARCHAR(100) DEFAULT 'Holiday',
+      duration VARCHAR(100),
+      duration_days INT NOT NULL DEFAULT 5,
+      duration_nights INT NOT NULL DEFAULT 4,
       overview TEXT NOT NULL,
       inclusions JSONB DEFAULT '[]'::jsonb,
       exclusions JSONB DEFAULT '[]'::jsonb,
       itinerary JSONB DEFAULT '[]'::jsonb,
       price_per_person NUMERIC(12, 2) NOT NULL,
+      old_price NUMERIC(12, 2),
+      discount_percent INT DEFAULT 0,
       currency VARCHAR(10) NOT NULL DEFAULT 'INR',
-      featured_image VARCHAR(500) NOT NULL,
+      route VARCHAR(500),
+      highlights JSONB DEFAULT '[]'::jsonb,
+      places_covered JSONB DEFAULT '[]'::jsonb,
+      activities JSONB DEFAULT '[]'::jsonb,
+      hotel_category VARCHAR(150),
+      transfers VARCHAR(255),
+      meals VARCHAR(255),
+      sightseeing VARCHAR(255),
+      best_time_to_visit VARCHAR(150),
+      suitable_for VARCHAR(150),
+      offer_title VARCHAR(300),
+      offer_description TEXT,
+      cancellation_policy TEXT,
+      seo_title VARCHAR(300),
+      seo_description TEXT,
+      seo_keywords TEXT,
+      day_wise_itinerary_text TEXT,
+      publication_status VARCHAR(50) NOT NULL DEFAULT 'DRAFT',
+      featured_image VARCHAR(500) NOT NULL DEFAULT 'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=600&q=80',
       rating FLOAT NOT NULL DEFAULT 4.8,
       available_capacity INT NOT NULL DEFAULT 20,
       is_simulated BOOLEAN NOT NULL DEFAULT TRUE,
@@ -217,6 +259,62 @@ export async function initDbSchema() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    -- Schema upgrades for existing holiday_packages installations
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS package_id VARCHAR(50);
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS slug VARCHAR(300);
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS region VARCHAR(50) DEFAULT 'National';
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS theme VARCHAR(100);
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS package_type VARCHAR(100) DEFAULT 'Holiday';
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS duration VARCHAR(100);
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS old_price NUMERIC(12, 2);
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS discount_percent INT DEFAULT 0;
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS route VARCHAR(500);
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS highlights JSONB DEFAULT '[]'::jsonb;
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS places_covered JSONB DEFAULT '[]'::jsonb;
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS activities JSONB DEFAULT '[]'::jsonb;
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS hotel_category VARCHAR(150);
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS transfers VARCHAR(255);
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS meals VARCHAR(255);
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS sightseeing VARCHAR(255);
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS best_time_to_visit VARCHAR(150);
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS suitable_for VARCHAR(150);
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS offer_title VARCHAR(300);
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS offer_description TEXT;
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS cancellation_policy TEXT;
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS seo_title VARCHAR(300);
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS seo_description TEXT;
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS seo_keywords TEXT;
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS day_wise_itinerary_text TEXT;
+    ALTER TABLE holiday_packages ADD COLUMN IF NOT EXISTS publication_status VARCHAR(50) DEFAULT 'DRAFT';
+
+    DO $$ BEGIN
+      ALTER TABLE holiday_packages ADD CONSTRAINT uq_holiday_packages_package_id UNIQUE (package_id);
+    EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
+    DO $$ BEGIN
+      ALTER TABLE holiday_packages ADD CONSTRAINT uq_holiday_packages_slug UNIQUE (slug);
+    EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
+    -- Relational Day-Wise Itineraries Table
+    CREATE TABLE IF NOT EXISTS package_itineraries (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      package_id VARCHAR(50) NOT NULL,
+      destination VARCHAR(150),
+      package_title VARCHAR(250),
+      day_number INT NOT NULL,
+      itinerary_description TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT uq_pkg_itin_day UNIQUE (package_id, day_number)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_pkg_region ON holiday_packages(LOWER(region));
+    CREATE INDEX IF NOT EXISTS idx_pkg_theme ON holiday_packages(LOWER(theme));
+    CREATE INDEX IF NOT EXISTS idx_pkg_status ON holiday_packages(publication_status, is_active);
+    CREATE INDEX IF NOT EXISTS idx_pkg_dest ON holiday_packages(LOWER(destination));
+    CREATE INDEX IF NOT EXISTS idx_itin_pkg_id ON package_itineraries(package_id);
+    CREATE INDEX IF NOT EXISTS idx_itin_day ON package_itineraries(package_id, day_number);
 
     CREATE TABLE IF NOT EXISTS trains (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -320,6 +418,28 @@ export async function initDbSchema() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS saved_travellers (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title VARCHAR(10) NOT NULL DEFAULT 'Mr',
+      first_name VARCHAR(100) NOT NULL,
+      last_name VARCHAR(100) NOT NULL,
+      gender VARCHAR(20) NOT NULL DEFAULT 'MALE',
+      date_of_birth DATE,
+      passenger_type VARCHAR(20) NOT NULL DEFAULT 'ADULT',
+      phone VARCHAR(50),
+      email VARCHAR(255),
+      passport_number VARCHAR(50),
+      passport_expiry DATE,
+      nationality VARCHAR(50) DEFAULT 'Indian',
+      meal_preference VARCHAR(50),
+      seat_preference VARCHAR(50),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_saved_travellers_user_id ON saved_travellers(user_id);
 
     CREATE TABLE IF NOT EXISTS payments (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -664,11 +784,100 @@ export async function initDbSchema() {
       requirements JSONB DEFAULT '[]'::jsonb,
       approval_rate VARCHAR(20) DEFAULT '99%',
       aliases JSONB DEFAULT '[]'::jsonb,
+      last_verified_at TIMESTAMPTZ DEFAULT NOW(),
+      review_status VARCHAR(50) DEFAULT 'VERIFIED',
+      description TEXT,
       is_active BOOLEAN NOT NULL DEFAULT TRUE,
       source VARCHAR(100) NOT NULL DEFAULT 'EMBASSY_RULES',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    ALTER TABLE visa_requirements ADD COLUMN IF NOT EXISTS last_verified_at TIMESTAMPTZ DEFAULT NOW();
+    ALTER TABLE visa_requirements ADD COLUMN IF NOT EXISTS review_status VARCHAR(50) DEFAULT 'VERIFIED';
+    ALTER TABLE visa_requirements ADD COLUMN IF NOT EXISTS description TEXT;
+
+    -- 8. TRAVEL INSURANCE PLANS
+    CREATE TABLE IF NOT EXISTS travel_insurance_plans (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      plan_code VARCHAR(50) UNIQUE NOT NULL,
+      plan_name VARCHAR(200) NOT NULL,
+      provider_name VARCHAR(150) NOT NULL,
+      coverage_zone VARCHAR(100) NOT NULL DEFAULT 'Worldwide',
+      max_medical_coverage NUMERIC(12, 2) NOT NULL DEFAULT 5000000.00,
+      baggage_loss_coverage NUMERIC(12, 2) NOT NULL DEFAULT 50000.00,
+      trip_cancellation_coverage NUMERIC(12, 2) NOT NULL DEFAULT 100000.00,
+      daily_premium NUMERIC(12, 2) NOT NULL DEFAULT 99.00,
+      base_premium NUMERIC(12, 2) NOT NULL DEFAULT 499.00,
+      currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+      validity_days INT NOT NULL DEFAULT 30,
+      policy_benefits JSONB DEFAULT '[]'::jsonb,
+      policy_exclusions JSONB DEFAULT '[]'::jsonb,
+      eligibility_min_age INT NOT NULL DEFAULT 1,
+      eligibility_max_age INT NOT NULL DEFAULT 75,
+      has_covid_coverage BOOLEAN NOT NULL DEFAULT TRUE,
+      has_adventure_sports BOOLEAN NOT NULL DEFAULT FALSE,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      source VARCHAR(100) NOT NULL DEFAULT 'SS_INSURE_PARTNERS',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- 9. UNIVERSAL IMPORT JOBS
+    CREATE TABLE IF NOT EXISTS import_jobs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      entity_type VARCHAR(100) NOT NULL,
+      file_name VARCHAR(255) NOT NULL,
+      file_format VARCHAR(20) NOT NULL DEFAULT 'XLSX',
+      total_records INT NOT NULL DEFAULT 0,
+      successful_records INT NOT NULL DEFAULT 0,
+      failed_records INT NOT NULL DEFAULT 0,
+      status VARCHAR(50) NOT NULL DEFAULT 'COMPLETED',
+      error_summary JSONB DEFAULT '[]'::jsonb,
+      imported_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- Schema upgrades for audit_logs & hotels
+    ALTER TABLE audit_logs ALTER COLUMN id SET DEFAULT gen_random_uuid();
+    ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS user_email VARCHAR(255);
+    ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS previous_state JSONB DEFAULT '{}'::jsonb;
+    ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS new_state JSONB DEFAULT '{}'::jsonb;
+    ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS reason TEXT;
+    ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS details JSONB DEFAULT '{}'::jsonb;
+
+    ALTER TABLE hotels ADD COLUMN IF NOT EXISTS description TEXT;
+    ALTER TABLE hotels ADD COLUMN IF NOT EXISTS amenities JSONB DEFAULT '[]'::jsonb;
+    ALTER TABLE hotels ADD COLUMN IF NOT EXISTS check_in_time VARCHAR(20) DEFAULT '14:00';
+    ALTER TABLE hotels ADD COLUMN IF NOT EXISTS check_out_time VARCHAR(20) DEFAULT '11:00';
+    ALTER TABLE hotels ADD COLUMN IF NOT EXISTS house_rules JSONB DEFAULT '[]'::jsonb;
+    ALTER TABLE hotels ADD COLUMN IF NOT EXISTS cancellation_policy TEXT DEFAULT 'Free cancellation up to 48 hours before check-in';
+    ALTER TABLE hotels ALTER COLUMN star_rating SET DEFAULT 4;
+    ALTER TABLE hotels ALTER COLUMN guest_rating SET DEFAULT 8.8;
+    ALTER TABLE hotels ALTER COLUMN rating_label SET DEFAULT 'Excellent';
+    ALTER TABLE hotels ALTER COLUMN review_count SET DEFAULT 120;
+    ALTER TABLE hotels ALTER COLUMN address SET DEFAULT 'Main Central Area';
+    ALTER TABLE hotels ALTER COLUMN country SET DEFAULT 'India';
+    ALTER TABLE hotels ALTER COLUMN overview SET DEFAULT 'Quality travel accommodation with modern amenities.';
+    ALTER TABLE hotels ALTER COLUMN featured_image SET DEFAULT 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80';
+    ALTER TABLE hotels ALTER COLUMN currency SET DEFAULT 'INR';
+    ALTER TABLE hotels ALTER COLUMN is_active SET DEFAULT true;
+    ALTER TABLE hotels ALTER COLUMN featured SET DEFAULT false;
+    ALTER TABLE travel_insurance_plans ALTER COLUMN provider_name SET DEFAULT 'SS Shield Global';
+
+    -- Seed Travel Insurance Plans
+    INSERT INTO travel_insurance_plans (plan_code, plan_name, provider_name, coverage_zone, max_medical_coverage, baggage_loss_coverage, trip_cancellation_coverage, daily_premium, base_premium, policy_benefits, policy_exclusions, is_active)
+    SELECT 'SHIELD-DOM-01', 'SS Shield Domestic Express', 'Tata AIG General Insurance', 'Domestic', 1500000.00, 25000.00, 50000.00, 49.00, 299.00,
+           '["Emergency Medical Hospitalization up to ₹15 Lakh", "Flight Delay Compensation up to ₹10,000", "Lost Baggage Reimbursement", "Personal Accident Protection"]'::jsonb,
+           '["Pre-existing diseases without declaration", "Extreme adventure sports without rider"]'::jsonb, true
+    WHERE NOT EXISTS (SELECT 1 FROM travel_insurance_plans WHERE plan_code = 'SHIELD-DOM-01');
+
+    INSERT INTO travel_insurance_plans (plan_code, plan_name, provider_name, coverage_zone, max_medical_coverage, baggage_loss_coverage, trip_cancellation_coverage, daily_premium, base_premium, policy_benefits, policy_exclusions, is_active)
+    SELECT 'SHIELD-INT-02', 'SS Shield Global World Explorer', 'HDFC ERGO General Insurance', 'Worldwide', 10000000.00, 75000.00, 250000.00, 149.00, 899.00,
+           '["Schengen & Worldwide Visa Compliant $250k Coverage", "Emergency Medical Evacuation", "Trip Cancellation & Interruption", "Loss of Passport & Documents Assistance", "24x7 Global Assistance Helpline"]'::jsonb,
+           '["War zones or unadvised territories", "Non-medical personal expenditures"]'::jsonb, true
+    WHERE NOT EXISTS (SELECT 1 FROM travel_insurance_plans WHERE plan_code = 'SHIELD-INT-02');
 
     -- ============================================================
     -- PERFORMANCE INDEXES (REFERENCE & INVENTORY)

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, MyBizContext } from '../services/api';
 import { useCurrency } from '../context/CurrencyContext';
 
-export type ScreenType = 'explore' | 'flights' | 'hotels' | 'trains' | 'buses' | 'cabs' | 'packages' | 'checkout' | 'trips' | 'list-property' | 'mybiz' | 'mybiz-dashboard';
+export type ScreenType = 'explore' | 'flights' | 'hotels' | 'trains' | 'buses' | 'cabs' | 'packages' | 'checkout' | 'trips' | 'dashboard' | 'list-property' | 'mybiz' | 'mybiz-dashboard';
 
 interface HeaderProps {
   activeScreen: ScreenType;
@@ -13,6 +13,7 @@ interface HeaderProps {
   onLogout: () => void;
   onOpenWishlist?: () => void;
   wishlistCount?: number;
+  onNavigateDashboardTab?: (tab: 'overview' | 'trips' | 'wishlist' | 'travellers' | 'payments' | 'profile' | 'support') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -24,6 +25,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   onOpenWishlist,
   wishlistCount = 0,
+  onNavigateDashboardTab,
 }) => {
   const { currency, setCurrency, currencyInfo, currencies } = useCurrency();
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
@@ -208,62 +210,58 @@ export const Header: React.FC<HeaderProps> = ({
               title="List your hotel or villa property"
             />
 
-            {/* Vertical Divider */}
-            <div className={`hidden md:block w-px h-7 mx-1 sm:mx-1.5 self-center ${
-              isTransparent ? 'bg-white/20' : 'bg-gray-300'
-            }`} />
+            {/* Authenticated Customer Navigation (Strictly hidden for Guest Users) */}
+            {user && (
+              <>
+                {/* Vertical Divider */}
+                <div className={`hidden md:block w-px h-7 mx-1 sm:mx-1.5 self-center ${
+                  isTransparent ? 'bg-white/20' : 'bg-gray-300'
+                }`} />
 
-            {/* My Trips */}
-            <UtilityNavItem
-              icon={
-                <svg className="w-5 h-5 sm:w-[22px] sm:h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2.5" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                  <path d="M8 14h8v4H8z" strokeWidth="1.3" />
-                  <circle cx="8" cy="16" r="0.6" fill="currentColor" />
-                  <circle cx="16" cy="16" r="0.6" fill="currentColor" />
-                </svg>
-              }
-              label="My Trips"
-              onClick={() => setActiveScreen('trips')}
-              isActive={activeScreen === 'trips'}
-              title="View your bookings & trips"
-            />
+                {/* My Trips */}
+                <UtilityNavItem
+                  icon={
+                    <svg className="w-5 h-5 sm:w-[22px] sm:h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2.5" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                      <path d="M8 14h8v4H8z" strokeWidth="1.3" />
+                      <circle cx="8" cy="16" r="0.6" fill="currentColor" />
+                      <circle cx="16" cy="16" r="0.6" fill="currentColor" />
+                    </svg>
+                  }
+                  label="My Trips"
+                  onClick={() => {
+                    if (onNavigateDashboardTab) onNavigateDashboardTab('trips');
+                    else setActiveScreen('dashboard');
+                  }}
+                  isActive={activeScreen === 'trips' || activeScreen === 'dashboard'}
+                  title="View your bookings & trips"
+                />
 
-            {/* Vertical Divider */}
-            <div className={`hidden md:block w-px h-7 mx-1 sm:mx-1.5 self-center ${
-              isTransparent ? 'bg-white/20' : 'bg-gray-300'
-            }`} />
+                {/* Vertical Divider */}
+                <div className={`hidden md:block w-px h-7 mx-1 sm:mx-1.5 self-center ${
+                  isTransparent ? 'bg-white/20' : 'bg-gray-300'
+                }`} />
 
-            {/* Wishlist */}
-            <UtilityNavItem
-              icon={
-                <svg className="w-5 h-5 sm:w-[22px] sm:h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                </svg>
-              }
-              label="Wishlist"
-              onClick={() => onOpenWishlist?.()}
-              badge={wishlistCount !== undefined && wishlistCount > 0 ? wishlistCount : 3}
-              title="Your saved stays & experiences"
-            />
-
-            {/* Checkout */}
-            <UtilityNavItem
-              icon={
-                <svg className="w-5 h-5 sm:w-[22px] sm:h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="9" cy="21" r="1" />
-                  <circle cx="20" cy="21" r="1" />
-                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-                </svg>
-              }
-              label="Checkout"
-              onClick={() => setActiveScreen('checkout')}
-              isActive={activeScreen === 'checkout'}
-              title="Proceed to checkout"
-            />
+                {/* Wishlist */}
+                <UtilityNavItem
+                  icon={
+                    <svg className="w-5 h-5 sm:w-[22px] sm:h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                    </svg>
+                  }
+                  label="Wishlist"
+                  onClick={() => {
+                    if (onNavigateDashboardTab) onNavigateDashboardTab('wishlist');
+                    else onOpenWishlist?.();
+                  }}
+                  badge={wishlistCount > 0 ? wishlistCount : null}
+                  title="Your saved stays & experiences"
+                />
+              </>
+            )}
 
             {/* Currency Selector (Globe + INR v) */}
             <div className="relative hidden md:block" ref={currencyMenuRef}>
@@ -386,43 +384,124 @@ export const Header: React.FC<HeaderProps> = ({
 
                 {/* User Dropdown */}
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-52 bg-white text-gray-800 rounded-xl shadow-2xl border border-gray-200 p-1.5 z-50 animate-fade-in">
-                    <div className="px-3 py-2 border-b border-gray-100 mb-1">
-                      <p className="text-xs font-bold text-gray-900 truncate">{user.fullName || user.email.split('@')[0]}</p>
-                      <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-white text-gray-800 rounded-2xl shadow-2xl border border-gray-200 p-2 z-50 animate-fade-in space-y-0.5">
+                    <div className="px-3 py-2.5 border-b border-gray-100 mb-1 bg-gray-50/60 rounded-xl">
+                      <p className="text-xs font-black text-gray-900 truncate">{user.fullName || user.email.split('@')[0]}</p>
+                      <p className="text-[10px] text-gray-500 truncate mt-0.5">{user.email}</p>
                     </div>
+
                     <button
                       type="button"
-                      onClick={() => { setIsUserMenuOpen(false); setActiveScreen('trips'); }}
-                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        if (onNavigateDashboardTab) onNavigateDashboardTab('overview');
+                        else setActiveScreen('dashboard');
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-blue-50 hover:text-[#008cff] transition"
                     >
-                      <span className="material-symbols-outlined text-[18px] text-[#008cff]">luggage</span>
+                      <span className="material-symbols-outlined text-[18px]">dashboard</span>
+                      <span>My Dashboard</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        if (onNavigateDashboardTab) onNavigateDashboardTab('trips');
+                        else setActiveScreen('dashboard');
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-blue-50 hover:text-[#008cff] transition"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">luggage</span>
                       <span>My Trips & Bookings</span>
                     </button>
+
                     <button
                       type="button"
-                      onClick={() => { setIsUserMenuOpen(false); onOpenWishlist?.(); }}
-                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        if (onNavigateDashboardTab) onNavigateDashboardTab('wishlist');
+                        else onOpenWishlist?.();
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-blue-50 hover:text-[#008cff] transition"
                     >
                       <span className="material-symbols-outlined text-[18px] text-rose-500" style={{ fontVariationSettings: "'FILL' 1" }}>favorite</span>
-                      <span>Wishlist ({wishlistCount || 3})</span>
+                      <span>My Wishlist ({wishlistCount})</span>
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        if (onNavigateDashboardTab) onNavigateDashboardTab('travellers');
+                        else setActiveScreen('dashboard');
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-blue-50 hover:text-[#008cff] transition"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">group</span>
+                      <span>Saved Travellers</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        if (onNavigateDashboardTab) onNavigateDashboardTab('payments');
+                        else setActiveScreen('dashboard');
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-blue-50 hover:text-[#008cff] transition"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">credit_card</span>
+                      <span>Payment History</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        if (onNavigateDashboardTab) onNavigateDashboardTab('profile');
+                        else setActiveScreen('dashboard');
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-blue-50 hover:text-[#008cff] transition"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">manage_accounts</span>
+                      <span>Profile Settings</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        if (onNavigateDashboardTab) onNavigateDashboardTab('support');
+                        else setActiveScreen('dashboard');
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-blue-50 hover:text-[#008cff] transition"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">contact_support</span>
+                      <span>Help & Support</span>
+                    </button>
+
                     {user?.role === 'ADMIN' && (
-                      <a
-                        href="http://localhost:5174/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-indigo-600 hover:bg-indigo-50 transition"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">admin_panel_settings</span>
-                        <span>Admin Console</span>
-                      </a>
+                      <>
+                        <div className="my-1 border-t border-gray-100" />
+                        <a
+                          href="http://localhost:5174/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-indigo-600 hover:bg-indigo-50 transition"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">admin_panel_settings</span>
+                          <span>Admin Console</span>
+                        </a>
+                      </>
                     )}
+
                     <div className="my-1 border-t border-gray-100" />
+
                     <button
                       type="button"
                       onClick={() => { setIsUserMenuOpen(false); onLogout(); }}
-                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 transition"
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition"
                     >
                       <span className="material-symbols-outlined text-[18px]">logout</span>
                       <span>Sign Out</span>
@@ -640,52 +719,131 @@ export const Header: React.FC<HeaderProps> = ({
                   My Travel Desk
                 </span>
                 <nav className="space-y-0.5">
-                  <button
-                    type="button"
-                    onClick={() => handleMobileNav('trips')}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
-                      activeScreen === 'trips' ? 'bg-blue-50 text-[#008cff] font-bold' : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <span className="material-symbols-outlined text-[19px] text-[#008cff]">luggage</span>
-                      <span>My Trips &amp; Bookings</span>
-                    </div>
-                    <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
-                  </button>
+                  {user ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          if (onNavigateDashboardTab) onNavigateDashboardTab('overview');
+                          else setActiveScreen('dashboard');
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                          activeScreen === 'dashboard' ? 'bg-blue-50 text-[#008cff] font-bold' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <span className="material-symbols-outlined text-[19px] text-[#008cff]">dashboard</span>
+                          <span>My Dashboard</span>
+                        </div>
+                        <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      if (onOpenWishlist) onOpenWishlist();
-                    }}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <span className="material-symbols-outlined text-[19px] text-rose-500" style={{ fontVariationSettings: "'FILL' 1" }}>
-                        favorite
-                      </span>
-                      <span>Saved &amp; Wishlist</span>
-                    </div>
-                    <span className="text-xs font-bold bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full">
-                      {wishlistCount}
-                    </span>
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          if (onNavigateDashboardTab) onNavigateDashboardTab('trips');
+                          else setActiveScreen('dashboard');
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                          activeScreen === 'trips' ? 'bg-blue-50 text-[#008cff] font-bold' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <span className="material-symbols-outlined text-[19px] text-[#008cff]">luggage</span>
+                          <span>My Trips &amp; Bookings</span>
+                        </div>
+                        <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleMobileNav('checkout')}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
-                      activeScreen === 'checkout' ? 'bg-blue-50 text-[#008cff] font-bold' : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <span className="material-symbols-outlined text-[19px] text-[#008cff]">shopping_cart</span>
-                      <span>Checkout Cart</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          if (onNavigateDashboardTab) onNavigateDashboardTab('wishlist');
+                          else if (onOpenWishlist) onOpenWishlist();
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <span className="material-symbols-outlined text-[19px] text-rose-500" style={{ fontVariationSettings: "'FILL' 1" }}>
+                            favorite
+                          </span>
+                          <span>Saved Wishlist</span>
+                        </div>
+                        {wishlistCount > 0 && (
+                          <span className="text-xs font-bold bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full">
+                            {wishlistCount}
+                          </span>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          if (onNavigateDashboardTab) onNavigateDashboardTab('travellers');
+                          else setActiveScreen('dashboard');
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <span className="material-symbols-outlined text-[19px] text-emerald-600">group</span>
+                          <span>Saved Travellers</span>
+                        </div>
+                        <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          if (onNavigateDashboardTab) onNavigateDashboardTab('payments');
+                          else setActiveScreen('dashboard');
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <span className="material-symbols-outlined text-[19px] text-indigo-600">credit_card</span>
+                          <span>Payment History</span>
+                        </div>
+                        <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          if (onNavigateDashboardTab) onNavigateDashboardTab('profile');
+                          else setActiveScreen('dashboard');
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <span className="material-symbols-outlined text-[19px] text-gray-600">manage_accounts</span>
+                          <span>Profile Settings</span>
+                        </div>
+                        <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
+                      </button>
+                    </>
+                  ) : (
+                    <div className="p-3 bg-gray-50 rounded-xl border border-gray-200/80 text-center space-y-2">
+                      <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                        Sign in to view your bookings, saved trips, and manage traveller profiles.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          onOpenAuth();
+                        }}
+                        className="w-full py-2 px-3 bg-[#008cff] hover:bg-blue-600 text-white rounded-lg text-xs font-bold transition shadow-xs"
+                      >
+                        Login to View Account
+                      </button>
                     </div>
-                    <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
-                  </button>
+                  )}
 
                   {/* Admin Portal link for admin users */}
                   {user?.role === 'ADMIN' && (

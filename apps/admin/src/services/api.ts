@@ -106,9 +106,26 @@ export const getAdminBuses = async () => {
   return response.data.data;
 };
 
-export const getAdminPackages = async () => {
-  const response = await adminApiClient.get('/packages');
+export const getAdminPackages = async (params?: {
+  status?: string;
+  search?: string;
+  region?: string;
+  theme?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const response = await adminApiClient.get('/admin/packages', { params: { limit: 100, ...params } });
   return response.data.data;
+};
+
+export const updateAdminPackageStatus = async (packageId: string, status: string) => {
+  const response = await adminApiClient.patch(`/admin/packages/${packageId}/status`, { status });
+  return response.data;
+};
+
+export const bulkUpdateAdminPackageStatus = async (status: string, packageIds?: string[]) => {
+  const response = await adminApiClient.post('/admin/packages/bulk-status', { status, package_ids: packageIds });
+  return response.data;
 };
 
 export const getAdminTrains = async () => {
@@ -136,9 +153,13 @@ export const getAdminCoupons = async () => {
   return response.data.data;
 };
 
-export const updateAdminBookingStatus = async (bookingId: string, status: string) => {
-  const response = await adminApiClient.patch(`/admin/bookings/${bookingId}/status`, { status });
-  return response.data.data;
+export const updateAdminBookingStatus = async (
+  bookingId: string,
+  payload: string | { status: string; cancellation_reason?: string }
+) => {
+  const body = typeof payload === 'string' ? { status: payload } : payload;
+  const response = await adminApiClient.patch(`/admin/bookings/${bookingId}/status`, body);
+  return response.data;
 };
 
 export const createAdminFlight = async (payload: any) => {
@@ -381,6 +402,125 @@ export const updateAdminPartnerStatus = async (partnerId: string, payload: { sta
 export const getAdminPayments = async (limit = 100) => {
   const response = await adminApiClient.get('/admin/payments', { params: { limit } });
   return response.data.data;
+};
+
+// ================= Universal Service Management API =================
+export const getAdminServiceItems = async (
+  entity: string,
+  params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    is_active?: boolean | string;
+    publication_status?: string;
+    region?: string;
+    sort?: string;
+  }
+) => {
+  const response = await adminApiClient.get(`/admin/services/${entity}`, { params });
+  return response.data.data;
+};
+
+export const getAdminServiceItemDetails = async (entity: string, id: string) => {
+  const response = await adminApiClient.get(`/admin/services/${entity}/${id}`);
+  return response.data.data;
+};
+
+export const createAdminServiceItem = async (entity: string, payload: Record<string, any>) => {
+  const response = await adminApiClient.post(`/admin/services/${entity}`, payload);
+  return response.data.data;
+};
+
+export const updateAdminServiceItemRecord = async (
+  entity: string,
+  id: string,
+  payload: Record<string, any>
+) => {
+  const response = await adminApiClient.put(`/admin/services/${entity}/${id}`, payload);
+  return response.data.data;
+};
+
+export const patchAdminServiceItemStatus = async (
+  entity: string,
+  id: string,
+  payload: { status?: string; is_active?: boolean }
+) => {
+  const response = await adminApiClient.patch(`/admin/services/${entity}/${id}/status`, payload);
+  return response.data.data;
+};
+
+export const deleteAdminServiceItemRecord = async (entity: string, id: string) => {
+  const response = await adminApiClient.delete(`/admin/services/${entity}/${id}`);
+  return response.data;
+};
+
+export const bulkUpdateAdminServiceStatus = async (
+  entity: string,
+  payload: { status?: string; is_active?: boolean; ids?: string[] }
+) => {
+  const response = await adminApiClient.post(`/admin/services/${entity}/bulk-status`, payload);
+  return response.data;
+};
+
+// ================= Universal Import & Export API =================
+export const previewAdminImport = async (
+  entity: string,
+  payload: { rows?: any[]; file_data?: string; file_name?: string }
+) => {
+  const response = await adminApiClient.post(`/admin/io/${entity}/preview`, payload);
+  return response.data.data;
+};
+
+export const executeAdminImport = async (
+  entity: string,
+  payload: { rows: any[]; file_name?: string }
+) => {
+  const response = await adminApiClient.post(`/admin/io/${entity}/import`, payload);
+  return response.data;
+};
+
+export const getAdminImportHistory = async () => {
+  const response = await adminApiClient.get('/admin/io/history');
+  return response.data.data;
+};
+
+// ================= Extended Admin Operations =================
+export const getAdminDashboardOverview = async (params?: {
+  date_range?: string;
+  channel?: string;
+  service?: string;
+}) => {
+  const response = await adminApiClient.get('/admin/overview', { params });
+  return response.data.data;
+};
+
+export const getAdminCustomers = async (params?: { search?: string; status?: string }) => {
+  const response = await adminApiClient.get('/admin/customers', { params });
+  return response.data.data;
+};
+
+export const updateAdminCustomerStatus = async (
+  customerId: string,
+  payload: { is_active: boolean; reason?: string }
+) => {
+  const response = await adminApiClient.patch(`/admin/customers/${customerId}/status`, payload);
+  return response.data;
+};
+
+export const getAdminBookingDetails = async (bookingId: string) => {
+  const response = await adminApiClient.get(`/admin/bookings/${bookingId}`);
+  return response.data.data;
+};
+
+
+export const getAdminRoles = async () => {
+  const response = await adminApiClient.get('/admin/roles');
+  return response.data.data;
+};
+
+export const updateAdminUserRole = async (userId: string, role: string) => {
+  const response = await adminApiClient.patch(`/admin/users/${userId}/role`, { role });
+  return response.data;
 };
 
 

@@ -14,6 +14,8 @@ import {
   UserProfile,
   validateCouponApi,
   CouponValidateResult,
+  getSavedTravellersApi,
+  SavedTraveller,
 } from '../services/api';
 import { useCurrency } from '../context/CurrencyContext';
 
@@ -173,6 +175,8 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
     phone: '',
   });
 
+  const [savedTravellers, setSavedTravellers] = useState<SavedTraveller[]>([]);
+
   const [confirmedBooking, setConfirmedBooking] = useState<{
     reference: string;
     email: string;
@@ -203,9 +207,13 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
 
     if (currentUser) {
       applyUser(currentUser);
+      getSavedTravellersApi().then((st) => setSavedTravellers(st)).catch(() => {});
     } else {
       getCurrentUserApi().then((u) => {
-        if (u) applyUser(u);
+        if (u) {
+          applyUser(u);
+          getSavedTravellersApi().then((st) => setSavedTravellers(st)).catch(() => {});
+        }
       });
     }
   }, [currentUser]);
@@ -798,6 +806,44 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                     )}
                   </div>
                   <div className="p-space-md">
+                    {/* Quick selection from Saved Travellers */}
+                    {savedTravellers.length > 0 && (
+                      <div className="mb-4 p-3 bg-blue-50/60 border border-blue-200/80 rounded-xl">
+                        <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5 mb-2">
+                          <span className="material-symbols-outlined text-[16px] text-[#008cff]">bolt</span>
+                          <span>Auto-fill from Saved Travellers:</span>
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {savedTravellers.map((st) => (
+                            <button
+                              key={st.id}
+                              type="button"
+                              onClick={() => {
+                                setTraveler((prev) => ({
+                                  ...prev,
+                                  title: st.title || 'Mr',
+                                  firstName: st.firstName,
+                                  lastName: st.lastName,
+                                  gender: st.gender || 'MALE',
+                                  passengerType: st.passengerType || 'ADULT',
+                                  passportNumber: st.passportNumber || prev.passportNumber,
+                                  phone: st.phone || prev.phone,
+                                  email: st.email || prev.email,
+                                }));
+                              }}
+                              className="px-3 py-1.5 bg-white hover:bg-blue-50 text-gray-800 hover:text-[#008cff] border border-gray-300 hover:border-[#008cff] rounded-lg text-xs font-semibold transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[14px] text-[#008cff]">person</span>
+                              <span>{st.title} {st.firstName} {st.lastName}</span>
+                              <span className="text-[10px] text-gray-500 uppercase bg-gray-100 px-1.5 py-0.2 rounded font-bold">
+                                {st.passengerType}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-6 gap-space-md">
                       <div className="sm:col-span-1">
                         <label className="text-label-md text-on-surface-variant block mb-1">Title</label>

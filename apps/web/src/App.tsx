@@ -10,10 +10,10 @@ import { BusSearchPage } from './pages/BusSearchPage';
 import { CabSearchPage } from './pages/CabSearchPage';
 import { PackageSearchPage } from './pages/PackageSearchPage';
 import { BookingCheckoutPage, WebCheckoutItem } from './pages/BookingCheckoutPage';
-import { MyTripsPage } from './pages/MyTripsPage';
 import { ListPropertyPage } from './pages/ListPropertyPage';
 import { MyBizLandingPage } from './pages/MyBizLandingPage';
 import { MyBizDashboardPage } from './pages/MyBizDashboardPage';
+import { CustomerDashboardPage, DashboardSubTab } from './pages/CustomerDashboardPage';
 import { AuthModal } from './components/AuthModal';
 import { WishlistModal } from './components/WishlistModal';
 import { WishlistProvider, useWishlist } from './context/WishlistContext';
@@ -43,6 +43,9 @@ const AppContent: React.FC = () => {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [checkoutItem, setCheckoutItem] = useState<WebCheckoutItem | null>(null);
+  const [pendingCheckoutItem, setPendingCheckoutItem] = useState<WebCheckoutItem | null>(null);
+  const [pendingScreen, setPendingScreen] = useState<ScreenType | null>(null);
+  const [dashboardTab, setDashboardTab] = useState<DashboardSubTab>('overview');
   const { wishlistCount } = useWishlist();
 
   // Search parameters passed from ExplorePage to search pages
@@ -139,8 +142,25 @@ const AppContent: React.FC = () => {
   };
 
   const navigateTo = (screen: ScreenType) => {
+    // Auth Guard for private customer sections
+    if ((screen === 'checkout' || screen === 'trips' || screen === 'dashboard') && !user) {
+      setPendingScreen(screen);
+      setIsAuthOpen(true);
+      return;
+    }
     setActiveScreen(screen);
     syncUrlState(screen, flightSearchParams, hotelSearchParams, false);
+  };
+
+  const handleNavigateDashboardTab = (tab: DashboardSubTab) => {
+    setDashboardTab(tab);
+    if (!user) {
+      setPendingScreen('dashboard');
+      setIsAuthOpen(true);
+      return;
+    }
+    setActiveScreen('dashboard');
+    syncUrlState('dashboard', undefined, undefined, false);
   };
 
   const fetchBizContext = async () => {
@@ -224,6 +244,20 @@ const AppContent: React.FC = () => {
   const handleAuthSuccess = (loggedInUser: UserProfile) => {
     setUser(loggedInUser);
     fetchBizContext();
+
+    // Resume preserved intent after successful login
+    if (pendingCheckoutItem) {
+      const item = pendingCheckoutItem;
+      setPendingCheckoutItem(null);
+      setCheckoutItem(item);
+      setActiveScreen('checkout');
+      syncUrlState('checkout', undefined, undefined, false);
+    } else if (pendingScreen) {
+      const scr = pendingScreen;
+      setPendingScreen(null);
+      setActiveScreen(scr);
+      syncUrlState(scr, undefined, undefined, false);
+    }
   };
 
   const handleBizRegistered = (company: MyBizCompany) => {
@@ -275,6 +309,12 @@ const AppContent: React.FC = () => {
   };
 
   const handleInitiateCheckout = (item: WebCheckoutItem) => {
+    // Auth Guard: Guest user cannot checkout directly; preserve item and prompt auth
+    if (!user) {
+      setPendingCheckoutItem(item);
+      setIsAuthOpen(true);
+      return;
+    }
     setCheckoutItem(item);
     setActiveScreen('checkout');
     syncUrlState('checkout', undefined, undefined, false);
@@ -290,8 +330,17 @@ const AppContent: React.FC = () => {
         bizContext={bizContext}
         onOpenAuth={() => setIsAuthOpen(true)}
         onLogout={handleLogout}
-        onOpenWishlist={() => setIsWishlistOpen(true)}
+        onOpenWishlist={() => {
+          if (!user) {
+            setPendingScreen('dashboard');
+            setDashboardTab('wishlist');
+            setIsAuthOpen(true);
+          } else {
+            handleNavigateDashboardTab('wishlist');
+          }
+        }}
         wishlistCount={wishlistCount}
+        onNavigateDashboardTab={handleNavigateDashboardTab}
       />
 
       {/* Active Screen View */}
@@ -365,10 +414,14 @@ const AppContent: React.FC = () => {
             currentUser={user}
           />
         )}
-        {activeScreen === 'trips' && (
-          <MyTripsPage 
+        {(activeScreen === 'dashboard' || activeScreen === 'trips') && (
+          <CustomerDashboardPage 
             onNavigate={navigateTo} 
+            onInitiateCheckout={handleInitiateCheckout}
             onOpenAuth={() => setIsAuthOpen(true)}
+            initialTab={activeScreen === 'trips' ? 'trips' : dashboardTab}
+            currentUser={user}
+            onLogout={handleLogout}
           />
         )}
         {activeScreen === 'list-property' && (
