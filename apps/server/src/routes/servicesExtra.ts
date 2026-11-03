@@ -285,6 +285,7 @@ interface VisaProduct {
   currency: string;
   requirements: string[];
   approval_rate: string;
+  aliases?: string[];
 }
 
 const VISA_CATALOG: VisaProduct[] = [
@@ -304,6 +305,7 @@ const VISA_CATALOG: VisaProduct[] = [
     currency: 'INR',
     requirements: ['Scanned Passport Front & Back (6 months validity)', 'White Background Passport Photo', 'Confirmed Return Flight Ticket'],
     approval_rate: '99.4%',
+    aliases: ['uae', 'dubai', 'abu dhabi', 'emirates'],
   },
   {
     country_code: 'AE',
@@ -321,6 +323,7 @@ const VISA_CATALOG: VisaProduct[] = [
     currency: 'INR',
     requirements: ['Scanned Passport Front & Back', 'Passport Photo', 'Hotel Reservation & Return Flights'],
     approval_rate: '99.2%',
+    aliases: ['uae', 'dubai', 'abu dhabi', 'emirates'],
   },
   {
     country_code: 'SG',
@@ -338,6 +341,7 @@ const VISA_CATALOG: VisaProduct[] = [
     currency: 'INR',
     requirements: ['Passport copy with 6 months validity', 'ICA Form 14A duly completed', 'Bank statement (past 3 months with healthy balance)', 'Covering letter'],
     approval_rate: '98.8%',
+    aliases: ['singapore', 'changi'],
   },
   {
     country_code: 'TH',
@@ -355,6 +359,7 @@ const VISA_CATALOG: VisaProduct[] = [
     currency: 'INR',
     requirements: ['Passport valid for 30+ days', 'Confirmed return flight within 30 days', 'Proof of accommodation booking'],
     approval_rate: '99.9%',
+    aliases: ['thailand', 'bangkok', 'phuket', 'siam'],
   },
   {
     country_code: 'VN',
@@ -372,6 +377,7 @@ const VISA_CATALOG: VisaProduct[] = [
     currency: 'INR',
     requirements: ['Passport Bio page scan', 'Digital photo without glasses'],
     approval_rate: '99.7%',
+    aliases: ['vietnam', 'hanoi', 'da nang'],
   },
   {
     country_code: 'FR',
@@ -389,6 +395,7 @@ const VISA_CATALOG: VisaProduct[] = [
     currency: 'INR',
     requirements: ['Confirmed roundtrip flights & hotel vouchers', '3 Years ITR filings & 6 months bank statements', 'Day-by-day travel itinerary', 'Travel medical insurance (€30,000 cover)'],
     approval_rate: '96.5%',
+    aliases: ['france', 'paris', 'schengen', 'europe', 'switzerland', 'germany', 'italy'],
   },
   {
     country_code: 'GB',
@@ -406,6 +413,7 @@ const VISA_CATALOG: VisaProduct[] = [
     currency: 'INR',
     requirements: ['Current valid passport', 'Employment letter / Business registration', '6 Months bank statements & salary slips', 'Proof of funds'],
     approval_rate: '95.8%',
+    aliases: ['uk', 'united kingdom', 'london', 'great britain', 'england'],
   },
 ];
 
@@ -419,7 +427,8 @@ visaRouter.get('/', async (req, res) => {
       items = items.filter(
         (v) =>
           v.country_name.toLowerCase().includes(cleanCountry) ||
-          v.country_code.toLowerCase().includes(cleanCountry)
+          v.country_code.toLowerCase().includes(cleanCountry) ||
+          (v.aliases && v.aliases.some(a => a.toLowerCase().includes(cleanCountry) || cleanCountry.includes(a.toLowerCase())))
       );
     }
 

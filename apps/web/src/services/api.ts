@@ -851,5 +851,60 @@ export const getRouteEstimateApi = async (
   return res.data?.data || null;
 };
 
+// ================= SERVICE-SPECIFIC INTELLIGENT AUTOCOMPLETE API =================
+export interface ServiceLocationSuggestion {
+  id: string;
+  name: string;
+  display_name: string;
+  secondary_description: string;
+  city: string;
+  state?: string;
+  country: string;
+  category: 'AIRPORT' | 'STATION' | 'BUS_STOP' | 'HOTEL' | 'LOCALITY' | 'LANDMARK' | 'ADDRESS' | 'COUNTRY' | 'REGION';
+  category_label: string;
+  code?: string;
+  lat?: number;
+  lon?: number;
+  provider?: string;
+}
+
+export const getServiceLocationsSuggestApi = async (
+  service: string,
+  query: string,
+  limit: number = 10
+): Promise<ServiceLocationSuggestion[]> => {
+  try {
+    const res = await apiClient.get<ApiResponse<ServiceLocationSuggestion[]>>('/locations/suggest', {
+      params: { service, q: query.trim(), limit },
+    });
+    return res.data?.data || [];
+  } catch (err) {
+    console.warn(`[LOCATION-API] Failed suggest for ${service}:`, err);
+    return [];
+  }
+};
+
+// ================= TOURS, VISA, VILLAS, INSURANCE APIs =================
+export const searchVillasApi = async (params: { city?: string; max_price?: number }): Promise<any[]> => {
+  const res = await apiClient.get<ApiResponse<{ items: any[] }>>('/villas', { params });
+  return res.data?.data?.items || [];
+};
+
+export const searchToursApi = async (params?: { city?: string; category?: string; max_price?: number }): Promise<any[]> => {
+  const res = await apiClient.get<ApiResponse<{ items: any[] }>>('/tours', { params });
+  return res.data?.data?.items || [];
+};
+
+export const searchVisaApi = async (params?: { country?: string }): Promise<any[]> => {
+  const res = await apiClient.get<ApiResponse<{ items: any[] }>>('/visa', { params });
+  return res.data?.data?.items || [];
+};
+
+export const getInsurancePlansApi = async (params?: { destination?: string }): Promise<any[]> => {
+  const res = await apiClient.get<ApiResponse<{ items: any[] }>>('/insurance', { params });
+  return res.data?.data?.items || [];
+};
+
+
 
 

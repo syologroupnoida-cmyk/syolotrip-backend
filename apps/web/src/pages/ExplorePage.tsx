@@ -18,7 +18,7 @@ import {
 } from '../components/TravelCategoryIcons';
 import { CalendarPickerModal } from '../components/CalendarPickerModal';
 import { MapLocationSearchModal } from '../components/MapLocationSearchModal';
-import { getRouteEstimateApi, RouteEstimateResult } from '../services/api';
+import { getRouteEstimateApi, RouteEstimateResult, getServiceLocationsSuggestApi, ServiceLocationSuggestion } from '../services/api';
 
 export interface AirportOption {
   code: string;
@@ -308,13 +308,30 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
   const [activeDropdown, setActiveDropdown] = useState<
     'origin' | 'destination' | 'hotel' | 'hotelGuests' | 'cabin' | 'passengers' | 
     'trainFrom' | 'trainTo' | 'trainClass' | 'busFrom' | 'busTo' | 'busSeats' | 
-    'cabPickup' | 'cabDrop' | 'holiday' | 'villa' | null
+    'cabPickup' | 'cabDrop' | 'holiday' | 'villa' | 'visaCountry' | 'insuranceCountry' | 'tourCity' | null
   >(null);
   const [cabinClass, setCabinClass] = useState('Economy');
   const [passengerCount, setPassengerCount] = useState('1 Adult');
   const [searchQuery, setSearchQuery] = useState('');
+  const [liveSuggestions, setLiveSuggestions] = useState<ServiceLocationSuggestion[]>([]);
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
   const [routeValidationError, setRouteValidationError] = useState<string | null>(null);
+
+  // Visa & Insurance custom selection states
+  const [selectedVisaCountry, setSelectedVisaCountry] = useState<{ name: string; code: string; flag: string; category: string; price: number }>({
+    name: 'United Arab Emirates',
+    code: 'AE',
+    flag: '🇦🇪',
+    category: '30-Days Express Tourist eVisa',
+    price: 6499,
+  });
+  const [selectedInsuranceZone, setSelectedInsuranceZone] = useState<{ zone: string; maxCover: string; planName: string; price: number }>({
+    zone: 'Worldwide (Includes USA, Schengen & Asia)',
+    maxCover: '$250,000 USD Medical Cover',
+    planName: 'Global Travel Shield Platinum',
+    price: 850,
+  });
 
   // Calendar modal state
   const [calendarModalState, setCalendarModalState] = useState<{
@@ -375,6 +392,46 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Service-specific debounced location suggestion fetcher
+  useEffect(() => {
+    if (!activeDropdown) {
+      setLiveSuggestions([]);
+      return;
+    }
+
+    let service = '';
+    if (activeDropdown === 'origin' || activeDropdown === 'destination') service = 'flights';
+    else if (activeDropdown === 'hotel') service = 'hotels';
+    else if (activeDropdown === 'villa') service = 'villas';
+    else if (activeDropdown === 'holiday') service = 'holidays';
+    else if (activeDropdown === 'trainFrom' || activeDropdown === 'trainTo') service = 'trains';
+    else if (activeDropdown === 'busFrom' || activeDropdown === 'busTo') service = 'buses';
+    else if (activeDropdown === 'visaCountry') service = 'visa';
+    else if (activeDropdown === 'insuranceCountry') service = 'insurance';
+    else if (activeDropdown === 'tourCity') service = 'tours';
+    else return;
+
+    let isMounted = true;
+    setIsSearchingLocation(true);
+    const timer = setTimeout(async () => {
+      try {
+        const results = await getServiceLocationsSuggestApi(service, searchQuery, 15);
+        if (isMounted) {
+          setLiveSuggestions(results);
+        }
+      } catch (err) {
+        console.warn('Suggest error:', err);
+      } finally {
+        if (isMounted) setIsSearchingLocation(false);
+      }
+    }, 150);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [activeDropdown, searchQuery]);
 
   // Auto-advance slideshow timer
   useEffect(() => {
@@ -521,15 +578,15 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
       });
     } else if (searchMode === 'visa') {
       handleApplyVisa({
-        country: 'Dubai (UAE)',
-        type: '30-Days Express Tourist eVisa',
-        price: 6499,
+        country: `${selectedVisaCountry.flag} ${selectedVisaCountry.name}`,
+        type: selectedVisaCountry.category,
+        price: selectedVisaCountry.price,
       });
     } else if (searchMode === 'insurance') {
       handleBuyInsurance({
-        planName: 'Global Travel Shield Platinum ($250,000 Medical Cover)',
-        cover: 'Worldwide Medical & Baggage Protection',
-        price: 850,
+        planName: selectedInsuranceZone.planName,
+        cover: `${selectedInsuranceZone.zone} · ${selectedInsuranceZone.maxCover}`,
+        price: selectedInsuranceZone.price,
       });
     }
   };
@@ -1074,7 +1131,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                 <span className="text-[11px] text-gray-500 truncate block font-normal">{cabinClass}</span>
               </div>
 
-              {/* Airport Search Dropdown Popover */}
+              {/* Airport Search Dropdown Popover (Airports Only) */}
               {activeDropdown && (activeDropdown === 'origin' || activeDropdown === 'destination') && (
                 <div 
                   onClick={(e) => e.stopPropagation()}
@@ -1084,36 +1141,61 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                 >
                   <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
                     <span className="text-xs font-bold text-gray-800">
-                      Select {activeDropdown === 'origin' ? 'Departure City / Airport' : 'Destination City / Airport'}
+                      Select {activeDropdown === 'origin' ? 'Departure Airport' : 'Destination Airport'}
                     </span>
                     <button 
                       type="button" 
                       onClick={() => setActiveDropdown(null)} 
-                      className="text-gray-400 hover:text-gray-700"
+                      className="text-gray-400 hover:text-gray-700 cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-[18px]">close</span>
                     </button>
                   </div>
                   <div className="relative mb-3">
-                    <span className="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-[18px]">search</span>
+                    <span className="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-[18px]">flight_takeoff</span>
                     <input
                       type="text"
                       autoFocus
-                      placeholder="Type city or airport code (e.g. DEL, BOM, SFO)..."
+                      placeholder="Type city or airport code (e.g. DEL, BOM, DXB, LHR)..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#008cff]"
+                      className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-9 pr-8 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#008cff]"
                     />
+                    {isSearchingLocation && (
+                      <span className="material-symbols-outlined absolute right-2.5 top-2.5 text-gray-400 text-[16px] animate-spin">
+                        progress_activity
+                      </span>
+                    )}
                   </div>
                   <div className="max-h-60 overflow-y-auto flex flex-col gap-1">
-                    {filteredAirports.map(apt => (
+                    {(liveSuggestions.length > 0
+                      ? liveSuggestions
+                      : filteredAirports.map(a => ({
+                          id: `apt-${a.code}`,
+                          name: a.name,
+                          display_name: `${a.city} (${a.code}) — ${a.name}`,
+                          secondary_description: `${a.city}, ${a.country}`,
+                          city: a.city,
+                          country: a.country,
+                          category: 'AIRPORT' as const,
+                          category_label: 'Airport',
+                          code: a.code,
+                        }))
+                    ).map(apt => (
                       <div
-                        key={apt.code}
+                        key={apt.id || apt.code}
                         onClick={() => {
                           setRouteValidationError(null);
-                          if (activeDropdown === 'origin') setOriginAirport(apt);
-                          else setDestinationAirport(apt);
+                          const selected: AirportOption = {
+                            code: apt.code || 'DEL',
+                            city: apt.city || apt.name,
+                            name: apt.name,
+                            country: apt.country || 'India',
+                          };
+                          if (activeDropdown === 'origin') setOriginAirport(selected);
+                          else setDestinationAirport(selected);
                           setActiveDropdown(null);
+                          setSearchQuery('');
                         }}
                         className="flex items-center justify-between p-2 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors"
                       >
@@ -1236,22 +1318,96 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                 </span>
               </div>
 
-              {/* Hotel Destination Popover */}
+              {/* Hotel Destination Popover (Worldwide Destinations Allowed) */}
               {activeDropdown === 'hotel' && (
                 <div 
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute top-full left-0 z-50 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 w-full sm:w-96 animate-scaleIn"
+                  className="absolute top-full left-0 z-50 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 w-full sm:w-[420px] max-w-[95vw] animate-scaleIn"
                 >
-                  <span className="text-xs font-bold text-gray-800 block mb-2">Select Destination City / Hotel</span>
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100">
+                    <span className="text-xs font-bold text-gray-800">Select City, Destination or Landmark</span>
+                    <button type="button" onClick={() => setActiveDropdown(null)} className="text-gray-400 hover:text-gray-700 cursor-pointer">
+                      <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                  </div>
+                  <div className="relative mb-3">
+                    <span className="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-[18px]">search</span>
+                    <input 
+                      type="text" 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search any destination worldwide (e.g. Paris, Manali, Tokyo, Zurich)..."
+                      className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-9 pr-8 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#008cff]"
+                      autoFocus
+                    />
+                    {isSearchingLocation && (
+                      <span className="material-symbols-outlined absolute right-2.5 top-2.5 text-gray-400 text-[16px] animate-spin">
+                        progress_activity
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Immediate Custom Destination Option */}
+                  {searchQuery.trim().length > 1 && (
+                    <div 
+                      onClick={() => {
+                        const cleanQ = searchQuery.trim();
+                        setHotelCity({
+                          city: cleanQ,
+                          region: 'Destination Search',
+                          country: 'Worldwide',
+                        });
+                        setActiveDropdown(null);
+                        setSearchQuery('');
+                      }}
+                      className="mb-2 p-2 rounded-lg bg-blue-50/70 hover:bg-blue-100 border border-blue-200 cursor-pointer flex items-center justify-between transition"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span className="material-symbols-outlined text-[#008cff] text-[18px]">travel_explore</span>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold text-[#008cff]">Search all stays in "{searchQuery.trim()}"</span>
+                          <span className="text-[10px] text-gray-500">Query available hotels in this destination</span>
+                        </div>
+                      </div>
+                      <span className="material-symbols-outlined text-gray-400 text-sm">arrow_forward</span>
+                    </div>
+                  )}
+
+                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Verified Destinations</span>
                   <div className="max-h-56 overflow-y-auto flex flex-col gap-1">
-                    {filteredHotelCities.map(c => (
+                    {(liveSuggestions.length > 0
+                      ? liveSuggestions
+                      : filteredHotelCities.map(c => ({
+                          id: `hc-${c.city}`,
+                          name: c.city,
+                          display_name: `${c.city}, ${c.country}`,
+                          secondary_description: c.region,
+                          city: c.city,
+                          country: c.country,
+                          category: 'LOCALITY' as const,
+                          category_label: 'Destination',
+                        }))
+                    ).map(c => (
                       <div
-                        key={c.city}
-                        onClick={() => { setHotelCity(c); setActiveDropdown(null); }}
+                        key={c.id || c.name}
+                        onClick={() => {
+                          setHotelCity({
+                            city: c.city || c.name,
+                            region: c.secondary_description || c.city || c.name,
+                            country: c.country || 'Worldwide',
+                          });
+                          setActiveDropdown(null);
+                          setSearchQuery('');
+                        }}
                         className="p-2 rounded-lg hover:bg-blue-50 cursor-pointer text-xs flex justify-between items-center transition"
                       >
-                        <span className="font-bold text-gray-900">{c.city}, {c.country}</span>
-                        <span className="text-gray-500 text-[11px]">{c.region}</span>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-900">{c.city || c.name}, {c.country}</span>
+                          <span className="text-gray-500 text-[11px] truncate max-w-[240px]">{c.secondary_description}</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                          {c.category_label || 'Destination'}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -1396,44 +1552,76 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                   </div>
                 )}
 
-                {/* Train Station Dropdown Popover */}
+                {/* Train Station Dropdown Popover (Railway Stations Only) */}
                 {activeDropdown && (activeDropdown === 'trainFrom' || activeDropdown === 'trainTo') && (
                   <div 
                     onClick={(e) => e.stopPropagation()}
                     className="absolute top-full left-0 z-50 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 w-full sm:w-96 animate-scaleIn"
                   >
-                    <div className="flex items-center space-x-2 border-b border-gray-100 pb-2 mb-3">
-                      <span className="material-symbols-outlined text-gray-400 text-lg">search</span>
+                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100">
+                      <span className="text-xs font-bold text-gray-800">
+                        Select {activeDropdown === 'trainFrom' ? 'Boarding Railway Station' : 'Destination Railway Station'}
+                      </span>
+                      <button type="button" onClick={() => setActiveDropdown(null)} className="text-gray-400 hover:text-gray-700 cursor-pointer">
+                        <span className="material-symbols-outlined text-[18px]">close</span>
+                      </button>
+                    </div>
+                    <div className="relative mb-3">
+                      <span className="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-[18px]">train</span>
                       <input 
                         type="text" 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search station or city (e.g. Delhi, Mumbai)..."
-                        className="w-full text-xs outline-none bg-transparent"
+                        placeholder="Search station name, city or IRCTC code (e.g. NDLS, MMCT, BSB)..."
+                        className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-9 pr-8 py-2 text-xs text-gray-900 focus:outline-none focus:border-emerald-500"
                         autoFocus
                       />
+                      {isSearchingLocation && (
+                        <span className="material-symbols-outlined absolute right-2.5 top-2.5 text-gray-400 text-[16px] animate-spin">
+                          progress_activity
+                        </span>
+                      )}
                     </div>
-                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Popular Train Stations</span>
+                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Verified Railway Stations</span>
                     <div className="max-h-56 overflow-y-auto flex flex-col gap-1">
-                      {popularTrainStations
-                        .filter(s => s.city.toLowerCase().includes(searchQuery.toLowerCase()) || s.code.toLowerCase().includes(searchQuery.toLowerCase()) || s.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                        .map(s => (
-                          <div 
-                            key={s.code}
-                            onClick={() => {
-                              if (activeDropdown === 'trainFrom') setTrainFromStation(s);
-                              else setTrainToStation(s);
-                              setActiveDropdown(null);
-                            }}
-                            className="p-2 rounded-lg hover:bg-emerald-50 cursor-pointer flex items-center justify-between transition"
-                          >
-                            <div>
-                              <span className="text-xs font-bold text-gray-900 block">{s.city}</span>
-                              <span className="text-[11px] text-gray-500">{s.name}</span>
-                            </div>
-                            <span className="text-xs font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">{s.code}</span>
+                      {(liveSuggestions.length > 0
+                        ? liveSuggestions
+                        : popularTrainStations.map(s => ({
+                            id: `stn-${s.code}`,
+                            name: s.name,
+                            display_name: `${s.name} [${s.code}]`,
+                            secondary_description: s.city,
+                            city: s.city,
+                            country: 'India',
+                            category: 'STATION' as const,
+                            category_label: 'Railway Station',
+                            code: s.code,
+                          }))
+                      ).map(s => (
+                        <div 
+                          key={s.id || s.code}
+                          onClick={() => {
+                            const selected: TrainStationOption = {
+                              code: s.code || s.name.slice(0, 4).toUpperCase(),
+                              name: s.name,
+                              city: s.city || s.name,
+                            };
+                            if (activeDropdown === 'trainFrom') setTrainFromStation(selected);
+                            else setTrainToStation(selected);
+                            setActiveDropdown(null);
+                            setSearchQuery('');
+                          }}
+                          className="p-2 rounded-lg hover:bg-emerald-50 cursor-pointer flex items-center justify-between transition"
+                        >
+                          <div>
+                            <span className="text-xs font-bold text-gray-900 block">{s.name}</span>
+                            <span className="text-[11px] text-gray-500">{s.city}</span>
                           </div>
-                        ))}
+                          <span className="text-xs font-mono font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                            {s.code}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -1654,44 +1842,74 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                   </div>
                 )}
 
-                {/* Bus City Dropdown Popover */}
+                {/* Bus City Dropdown Popover (Bus Terminals & Cities) */}
                 {activeDropdown && (activeDropdown === 'busFrom' || activeDropdown === 'busTo') && (
                   <div 
                     onClick={(e) => e.stopPropagation()}
                     className="absolute top-full left-0 z-50 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 w-full sm:w-96 animate-scaleIn"
                   >
-                    <div className="flex items-center space-x-2 border-b border-gray-100 pb-2 mb-3">
-                      <span className="material-symbols-outlined text-gray-400 text-lg">search</span>
+                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100">
+                      <span className="text-xs font-bold text-gray-800">
+                        Select {activeDropdown === 'busFrom' ? 'Boarding Point / City' : 'Dropping Point / Destination'}
+                      </span>
+                      <button type="button" onClick={() => setActiveDropdown(null)} className="text-gray-400 hover:text-gray-700 cursor-pointer">
+                        <span className="material-symbols-outlined text-[18px]">close</span>
+                      </button>
+                    </div>
+                    <div className="relative mb-3">
+                      <span className="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-[18px]">directions_bus</span>
                       <input 
                         type="text" 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search city or boarding stand..."
-                        className="w-full text-xs outline-none bg-transparent"
+                        placeholder="Search bus terminal, ISBT or city (e.g. Kashmere Gate, Majestic, Borivali)..."
+                        className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-9 pr-8 py-2 text-xs text-gray-900 focus:outline-none focus:border-purple-500"
                         autoFocus
                       />
+                      {isSearchingLocation && (
+                        <span className="material-symbols-outlined absolute right-2.5 top-2.5 text-gray-400 text-[16px] animate-spin">
+                          progress_activity
+                        </span>
+                      )}
                     </div>
-                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Popular Bus Hubs</span>
+                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Verified Bus Terminals</span>
                     <div className="max-h-56 overflow-y-auto flex flex-col gap-1">
-                      {popularBusCities
-                        .filter(b => b.city.toLowerCase().includes(searchQuery.toLowerCase()) || b.point.toLowerCase().includes(searchQuery.toLowerCase()))
-                        .map(b => (
-                          <div 
-                            key={b.city}
-                            onClick={() => {
-                              if (activeDropdown === 'busFrom') setBusFromCity(b);
-                              else setBusToCity(b);
-                              setActiveDropdown(null);
-                            }}
-                            className="p-2 rounded-lg hover:bg-purple-50 cursor-pointer flex items-center justify-between transition"
-                          >
-                            <div>
-                              <span className="text-xs font-bold text-gray-900 block">{b.city}</span>
-                              <span className="text-[11px] text-gray-500">{b.point}</span>
-                            </div>
-                            <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded">All Buses</span>
+                      {(liveSuggestions.length > 0
+                        ? liveSuggestions
+                        : popularBusCities.map(b => ({
+                            id: `bus-${b.city}`,
+                            name: b.point,
+                            display_name: `${b.point} · ${b.city}`,
+                            secondary_description: b.city,
+                            city: b.city,
+                            country: 'India',
+                            category: 'BUS_STOP' as const,
+                            category_label: 'Bus Stand',
+                          }))
+                      ).map(b => (
+                        <div 
+                          key={b.id || b.name}
+                          onClick={() => {
+                            const selected: BusCityOption = {
+                              city: b.city || b.name,
+                              point: b.name !== b.city ? b.name : (b.secondary_description || 'Central Terminal'),
+                            };
+                            if (activeDropdown === 'busFrom') setBusFromCity(selected);
+                            else setBusToCity(selected);
+                            setActiveDropdown(null);
+                            setSearchQuery('');
+                          }}
+                          className="p-2 rounded-lg hover:bg-purple-50 cursor-pointer flex items-center justify-between transition"
+                        >
+                          <div>
+                            <span className="text-xs font-bold text-gray-900 block">{b.city}</span>
+                            <span className="text-[11px] text-gray-500">{b.name}</span>
                           </div>
-                        ))}
+                          <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded">
+                            {b.category_label || 'Bus Terminal'}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -1894,28 +2112,96 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                   <span className="text-[11px] text-rose-700 font-semibold truncate block">Coupon SSJHOLIDAY Applied</span>
                 </div>
 
-                {/* Holiday Dropdown Popover */}
+                {/* Holiday Dropdown Popover (Holiday Regions & Destinations) */}
                 {activeDropdown === 'holiday' && (
                   <div 
                     onClick={(e) => e.stopPropagation()}
-                    className="absolute top-full left-0 z-50 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 w-full sm:w-96 animate-scaleIn"
+                    className="absolute top-full left-0 z-50 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 w-full sm:w-[420px] max-w-[95vw] animate-scaleIn"
                   >
-                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Featured Holiday Destinations</span>
+                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100">
+                      <span className="text-xs font-bold text-gray-800">Select Holiday Destination or Theme</span>
+                      <button type="button" onClick={() => setActiveDropdown(null)} className="text-gray-400 hover:text-gray-700 cursor-pointer">
+                        <span className="material-symbols-outlined text-[18px]">close</span>
+                      </button>
+                    </div>
+                    <div className="relative mb-3">
+                      <span className="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-[18px]">luggage</span>
+                      <input 
+                        type="text" 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search destination, state or circuit (e.g. Kashmir, Kerala, Bali, Europe)..."
+                        className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-9 pr-8 py-2 text-xs text-gray-900 focus:outline-none focus:border-rose-500"
+                        autoFocus
+                      />
+                      {isSearchingLocation && (
+                        <span className="material-symbols-outlined absolute right-2.5 top-2.5 text-gray-400 text-[16px] animate-spin">
+                          progress_activity
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Immediate Custom Destination Option */}
+                    {searchQuery.trim().length > 1 && (
+                      <div 
+                        onClick={() => {
+                          const cleanQ = searchQuery.trim();
+                          setHolidayDestination({
+                            destination: cleanQ,
+                            title: `${cleanQ} Holiday Exploration Package`,
+                            days: '5 Days / 4 Nights',
+                          });
+                          setActiveDropdown(null);
+                          setSearchQuery('');
+                        }}
+                        className="mb-2 p-2 rounded-lg bg-rose-50/70 hover:bg-rose-100 border border-rose-200 cursor-pointer flex items-center justify-between transition"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span className="material-symbols-outlined text-rose-600 text-[18px]">explore</span>
+                          <div className="flex flex-col">
+                            <span className="text-xs font-bold text-rose-700">Explore holiday packages in "{searchQuery.trim()}"</span>
+                            <span className="text-[10px] text-gray-500">Search all guided tours and circuits</span>
+                          </div>
+                        </div>
+                        <span className="material-symbols-outlined text-gray-400 text-sm">arrow_forward</span>
+                      </div>
+                    )}
+
+                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Popular Holiday Packages</span>
                     <div className="max-h-56 overflow-y-auto flex flex-col gap-1">
-                      {popularHolidayThemes.map(h => (
+                      {(liveSuggestions.length > 0
+                        ? liveSuggestions
+                        : popularHolidayThemes.map(h => ({
+                            id: `pkg-${h.destination}`,
+                            name: h.destination,
+                            display_name: `${h.destination} · ${h.title}`,
+                            secondary_description: h.days,
+                            city: h.destination,
+                            country: 'India',
+                            category: 'REGION' as const,
+                            category_label: 'Holiday Circuit',
+                          }))
+                      ).map(h => (
                         <div 
-                          key={h.destination}
+                          key={h.id || h.name}
                           onClick={() => {
-                            setHolidayDestination(h);
+                            setHolidayDestination({
+                              destination: h.city || h.name,
+                              title: h.secondary_description || `${h.city || h.name} Special Package`,
+                              days: '5 Days / 4 Nights',
+                            });
                             setActiveDropdown(null);
+                            setSearchQuery('');
                           }}
                           className="p-2.5 rounded-lg hover:bg-rose-50 cursor-pointer flex flex-col transition"
                         >
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-gray-900">{h.destination}</span>
-                            <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded">{h.days}</span>
+                            <span className="text-xs font-bold text-gray-900">{h.city || h.name}</span>
+                            <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded">
+                              {h.category_label || 'Package'}
+                            </span>
                           </div>
-                          <span className="text-[11px] text-gray-500 mt-0.5">{h.title}</span>
+                          <span className="text-[11px] text-gray-500 mt-0.5">{h.secondary_description}</span>
                         </div>
                       ))}
                     </div>
@@ -2028,50 +2314,99 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
                   </span>
                 </div>
 
-                {/* Villa Location Dropdown Popover */}
+                {/* Villa Location Dropdown Popover (Worldwide Destinations & Villas) */}
                 {activeDropdown === 'villa' && (
                   <div 
                     onClick={(e) => e.stopPropagation()}
                     className="absolute top-full left-0 z-50 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 w-full sm:w-[420px] max-w-[95vw] animate-scaleIn"
                   >
                     <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100">
-                      <span className="text-xs font-bold text-gray-800">Select Villa or Resort Location</span>
-                      <button type="button" onClick={() => setActiveDropdown(null)} className="text-gray-400 hover:text-gray-700">
+                      <span className="text-xs font-bold text-gray-800">Select Villa Destination or Resort Location</span>
+                      <button type="button" onClick={() => setActiveDropdown(null)} className="text-gray-400 hover:text-gray-700 cursor-pointer">
                         <span className="material-symbols-outlined text-[18px]">close</span>
                       </button>
                     </div>
                     <div className="relative mb-3">
-                      <span className="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-[18px]">search</span>
+                      <span className="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-[18px]">holiday_village</span>
                       <input 
                         type="text" 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search villa destination, resort or hill station..."
-                        className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-emerald-500"
+                        placeholder="Search villa destination, resort or hill station (e.g. Goa, Manali, Bali)..."
+                        className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-9 pr-8 py-2 text-xs text-gray-900 focus:outline-none focus:border-emerald-500"
                         autoFocus
                       />
+                      {isSearchingLocation && (
+                        <span className="material-symbols-outlined absolute right-2.5 top-2.5 text-gray-400 text-[16px] animate-spin">
+                          progress_activity
+                        </span>
+                      )}
                     </div>
+
+                    {/* Immediate Custom Destination Option */}
+                    {searchQuery.trim().length > 1 && (
+                      <div 
+                        onClick={() => {
+                          const cleanQ = searchQuery.trim();
+                          setVillaDestination({
+                            city: cleanQ,
+                            location: 'Entire Private Estate / Homestay',
+                            name: `Handpicked Stays in ${cleanQ}`,
+                          });
+                          setActiveDropdown(null);
+                          setSearchQuery('');
+                        }}
+                        className="mb-2 p-2 rounded-lg bg-emerald-50/70 hover:bg-emerald-100 border border-emerald-200 cursor-pointer flex items-center justify-between transition"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span className="material-symbols-outlined text-emerald-600 text-[18px]">home_work</span>
+                          <div className="flex flex-col">
+                            <span className="text-xs font-bold text-emerald-700">Search villas in "{searchQuery.trim()}"</span>
+                            <span className="text-[10px] text-gray-500">Query luxury villas & homestays in this area</span>
+                          </div>
+                        </div>
+                        <span className="material-symbols-outlined text-gray-400 text-sm">arrow_forward</span>
+                      </div>
+                    )}
+
                     <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Featured Luxury Destinations</span>
                     <div className="max-h-60 overflow-y-auto flex flex-col gap-1">
-                      {popularVillaDestinations
-                        .filter(v => !searchQuery || v.city.toLowerCase().includes(searchQuery.toLowerCase()) || v.location.toLowerCase().includes(searchQuery.toLowerCase()) || v.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                        .map(v => (
-                          <div 
-                            key={v.name}
-                            onClick={() => {
-                              setVillaDestination(v);
-                              setActiveDropdown(null);
-                            }}
-                            className="p-2.5 rounded-lg hover:bg-emerald-50 cursor-pointer flex flex-col transition border border-transparent hover:border-emerald-200"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-gray-900">{v.city}</span>
-                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">Private Pool</span>
-                            </div>
-                            <span className="text-[11px] text-gray-600 font-medium mt-0.5">{v.name}</span>
-                            <span className="text-[10px] text-gray-400">{v.location}</span>
+                      {(liveSuggestions.length > 0
+                        ? liveSuggestions
+                        : popularVillaDestinations.map(v => ({
+                            id: `v-${v.name}`,
+                            name: v.name,
+                            display_name: `${v.city} · ${v.name}`,
+                            secondary_description: v.location,
+                            city: v.city,
+                            country: 'India',
+                            category: 'LOCALITY' as const,
+                            category_label: 'Luxury Villa',
+                          }))
+                      ).map(v => (
+                        <div 
+                          key={v.id || v.name}
+                          onClick={() => {
+                            setVillaDestination({
+                              city: v.city || v.name,
+                              location: v.secondary_description || v.display_name,
+                              name: v.name,
+                            });
+                            setActiveDropdown(null);
+                            setSearchQuery('');
+                          }}
+                          className="p-2.5 rounded-lg hover:bg-emerald-50 cursor-pointer flex flex-col transition border border-transparent hover:border-emerald-200"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-gray-900">{v.city || v.name}</span>
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                              {v.category_label || 'Private Stay'}
+                            </span>
                           </div>
-                        ))}
+                          <span className="text-[11px] text-gray-600 font-medium mt-0.5">{v.name}</span>
+                          <span className="text-[10px] text-gray-400">{v.secondary_description}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -2135,29 +2470,92 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
           {/* ── MODE 8: TOURS & ATTRACTIONS ── */}
           {searchMode === 'tours' && (
             <div className="flex flex-col gap-3">
-              <div className="grid grid-cols-1 md:grid-cols-12 border border-gray-200 rounded-xl overflow-hidden p-4 bg-sky-50/40">
-                <div className="md:col-span-5">
+              <div className="grid grid-cols-1 md:grid-cols-12 border border-gray-200 rounded-xl overflow-visible p-4 bg-sky-50/40 relative">
+                <div 
+                  onClick={() => { setActiveDropdown(activeDropdown === 'tourCity' ? null : 'tourCity'); setSearchQuery(''); }}
+                  className="md:col-span-5 cursor-pointer hover:opacity-85 transition"
+                >
                   <span className="text-[12px] text-sky-800 font-bold uppercase tracking-wider block">Destination / City</span>
-                  <span className="text-2xl font-extrabold text-gray-900 block">Dubai, United Arab Emirates</span>
-                  <span className="text-[11px] text-gray-500">Theme Parks, Sightseeing, Desert Safari</span>
+                  <span className="text-2xl font-extrabold text-gray-900 block">{hotelCity.city}, {hotelCity.country}</span>
+                  <span className="text-[11px] text-gray-500">Click to change destination · Theme Parks, Sightseeing, Tours</span>
                 </div>
                 <div className="md:col-span-4 border-t md:border-t-0 md:border-l border-sky-200 pl-0 md:pl-4">
-                  <span className="text-[12px] text-sky-800 font-bold uppercase tracking-wider block">Activity Date</span>
+                  <span className="text-[12px] text-sky-800 font-bold uppercase tracking-wider block">Activity Pass</span>
                   <span className="text-2xl font-extrabold text-gray-900 block">Instant E-Voucher</span>
-                  <span className="text-[11px] text-gray-500">Flexible 30 Days Validity</span>
+                  <span className="text-[11px] text-gray-500">Flexible 30 Days Validity · Skip Ticket Lines</span>
                 </div>
                 <div className="md:col-span-3 border-t md:border-t-0 md:border-l border-sky-200 pl-0 md:pl-4">
                   <span className="text-[12px] text-sky-800 font-bold uppercase tracking-wider block">Experience Type</span>
-                  <span className="text-2xl font-extrabold text-sky-700 block">Skip The Line</span>
-                  <span className="text-[11px] text-sky-600 font-semibold">100% Guaranteed Entry</span>
+                  <span className="text-2xl font-extrabold text-sky-700 block">Verified Guides</span>
+                  <span className="text-[11px] text-sky-600 font-semibold">100% Guaranteed Slot</span>
                 </div>
+
+                {/* Tour City Popover */}
+                {activeDropdown === 'tourCity' && (
+                  <div 
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute top-full left-0 z-50 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 w-full sm:w-[400px] max-w-[95vw] animate-scaleIn"
+                  >
+                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100">
+                      <span className="text-xs font-bold text-gray-800">Select City or Attraction</span>
+                      <button type="button" onClick={() => setActiveDropdown(null)} className="text-gray-400 hover:text-gray-700 cursor-pointer">
+                        <span className="material-symbols-outlined text-[18px]">close</span>
+                      </button>
+                    </div>
+                    <div className="relative mb-3">
+                      <span className="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-[18px]">attractions</span>
+                      <input 
+                        type="text" 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search city or sightseeing experience..."
+                        className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-9 pr-8 py-2 text-xs text-gray-900 focus:outline-none focus:border-sky-500"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="max-h-56 overflow-y-auto flex flex-col gap-1">
+                      {(liveSuggestions.length > 0 ? liveSuggestions : filteredHotelCities.map(c => ({
+                        id: `tour-${c.city}`,
+                        name: c.city,
+                        display_name: `${c.city}, ${c.country}`,
+                        secondary_description: `Sightseeing & Activities in ${c.city}`,
+                        city: c.city,
+                        country: c.country,
+                        category: 'LOCALITY' as const,
+                        category_label: 'Top Destination',
+                      }))).map((item) => (
+                        <div 
+                          key={item.id || item.name}
+                          onClick={() => {
+                            setHotelCity({
+                              city: item.city || item.name,
+                              region: item.secondary_description || item.city,
+                              country: item.country || 'Worldwide',
+                            });
+                            setActiveDropdown(null);
+                            setSearchQuery('');
+                          }}
+                          className="p-2 rounded-lg hover:bg-sky-50 cursor-pointer flex justify-between items-center transition"
+                        >
+                          <div>
+                            <span className="text-xs font-bold text-gray-900 block">{item.city || item.name}</span>
+                            <span className="text-[11px] text-gray-500">{item.country}</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded">Experiences</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Fast Available Attraction Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                 {[
                   { name: 'Burj Khalifa: At The Top (124th + 125th Floor)', city: 'Dubai, UAE', price: 3850, highlight: 'Instant Mobile Ticket · Sky Views · 4.9 ★' },
+                  { name: 'Eiffel Tower Direct Summit Access & History Tour', city: 'Paris, France', price: 6200, highlight: 'Skip The Ticket Line · Art Historian Guide · 4.9 ★' },
                   { name: 'Universal Studios Singapore One-Day Pass', city: 'Sentosa, Singapore', price: 5400, highlight: 'Direct Barcode Entry · All Rides Access · 4.8 ★' },
+                  { name: 'Grand Island Scuba Diving & Dolphin Cruise', city: 'Goa, India', price: 1950, highlight: 'PADI Certified Dive · Water Sports Combo · 4.8 ★' },
                 ].map((act) => (
                   <div key={act.name} className="border border-gray-200 rounded-xl p-3 bg-white flex items-center justify-between hover:shadow-md transition">
                     <div>
@@ -2184,29 +2582,92 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
           {/* ── MODE 9: VISA SERVICES ── */}
           {searchMode === 'visa' && (
             <div className="flex flex-col gap-3">
-              <div className="grid grid-cols-1 md:grid-cols-12 border border-gray-200 rounded-xl overflow-hidden p-4 bg-emerald-50/40">
-                <div className="md:col-span-5">
+              <div className="grid grid-cols-1 md:grid-cols-12 border border-gray-200 rounded-xl overflow-visible p-4 bg-emerald-50/40 relative">
+                <div 
+                  onClick={() => { setActiveDropdown(activeDropdown === 'visaCountry' ? null : 'visaCountry'); setSearchQuery(''); }}
+                  className="md:col-span-5 cursor-pointer hover:opacity-85 transition"
+                >
                   <span className="text-[12px] text-emerald-800 font-bold uppercase tracking-wider block">Destination Country</span>
-                  <span className="text-2xl font-extrabold text-gray-900 block">Dubai (United Arab Emirates)</span>
-                  <span className="text-[11px] text-gray-500">Also available: Thailand, Singapore, Schengen, Vietnam</span>
+                  <span className="text-2xl font-extrabold text-gray-900 block">
+                    {selectedVisaCountry.flag} {selectedVisaCountry.name}
+                  </span>
+                  <span className="text-[11px] text-emerald-700 font-semibold">Click to search sovereign countries (UAE, Singapore, Schengen, etc.)</span>
                 </div>
                 <div className="md:col-span-4 border-t md:border-t-0 md:border-l border-emerald-200 pl-0 md:pl-4">
                   <span className="text-[12px] text-emerald-800 font-bold uppercase tracking-wider block">Visa Category</span>
-                  <span className="text-2xl font-extrabold text-gray-900 block">30-Days Express Tourist eVisa</span>
+                  <span className="text-2xl font-extrabold text-gray-900 block">{selectedVisaCountry.category}</span>
                   <span className="text-[11px] text-gray-500">100% Online · No Embassy Visit</span>
                 </div>
                 <div className="md:col-span-3 border-t md:border-t-0 md:border-l border-emerald-200 pl-0 md:pl-4">
                   <span className="text-[12px] text-emerald-800 font-bold uppercase tracking-wider block">Approval Rate</span>
-                  <span className="text-2xl font-extrabold text-emerald-600 block">99.7% Success</span>
+                  <span className="text-2xl font-extrabold text-emerald-600 block">99.4% Success</span>
                   <span className="text-[11px] text-emerald-700 font-semibold">Free Re-Application Guarantee</span>
                 </div>
+
+                {/* Visa Country Dropdown Popover */}
+                {activeDropdown === 'visaCountry' && (
+                  <div 
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute top-full left-0 z-50 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 w-full sm:w-[420px] max-w-[95vw] animate-scaleIn"
+                  >
+                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100">
+                      <span className="text-xs font-bold text-gray-800">Select Destination Country (Countries Only)</span>
+                      <button type="button" onClick={() => setActiveDropdown(null)} className="text-gray-400 hover:text-gray-700 cursor-pointer">
+                        <span className="material-symbols-outlined text-[18px]">close</span>
+                      </button>
+                    </div>
+                    <div className="relative mb-3">
+                      <span className="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-[18px]">public</span>
+                      <input 
+                        type="text" 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search sovereign country (e.g. Dubai, Singapore, France, UK)..."
+                        className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-9 pr-8 py-2 text-xs text-gray-900 focus:outline-none focus:border-emerald-500"
+                        autoFocus
+                      />
+                      {isSearchingLocation && (
+                        <span className="material-symbols-outlined absolute right-2.5 top-2.5 text-gray-400 text-[16px] animate-spin">
+                          progress_activity
+                        </span>
+                      )}
+                    </div>
+                    <div className="max-h-56 overflow-y-auto flex flex-col gap-1">
+                      {liveSuggestions.map((c) => (
+                        <div 
+                          key={c.id || c.code}
+                          onClick={() => {
+                            setSelectedVisaCountry({
+                              name: c.country || c.name,
+                              code: c.code || 'AE',
+                              flag: c.name.split(' ')[0] || '🌐',
+                              category: c.code === 'FR' ? 'Schengen Short-Stay Tourist Visa' : c.code === 'GB' ? 'UK Standard Visitor Visa (6 Months)' : '30-Days Express Tourist eVisa',
+                              price: c.code === 'FR' ? 8499 : c.code === 'GB' ? 14999 : c.code === 'SG' ? 2750 : 6499,
+                            });
+                            setActiveDropdown(null);
+                            setSearchQuery('');
+                          }}
+                          className="p-2 rounded-lg hover:bg-emerald-50 cursor-pointer flex justify-between items-center transition"
+                        >
+                          <div>
+                            <span className="text-xs font-bold text-gray-900 block">{c.name}</span>
+                            <span className="text-[11px] text-gray-500">{c.secondary_description}</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">eVisa Ready</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Fast Available Visa Options */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                 {[
                   { country: 'Dubai (UAE)', type: '30-Days Express Tourist eVisa', speed: 'Processed in 48 Hours', price: 6499, highlight: 'Only Passport Scan & Photo Needed' },
-                  { country: 'Thailand', type: 'Fast-Track eVisa on Arrival', speed: 'Processed in 24 Hours', price: 2999, highlight: 'Skip Long Airport Immigration Lines' },
+                  { country: 'Singapore', type: '30-Days Multiple Entry eVisa (ICA Verified)', speed: 'Processed in 3 Days', price: 2750, highlight: 'Valid for 2 Years · Multiple Entry' },
+                  { country: 'France (Schengen)', type: 'Schengen Tourist Visa Appointment & Concierge', speed: '12-15 Working Days', price: 8499, highlight: 'Access 27 European Countries' },
+                  { country: 'United Kingdom', type: 'UK Standard 6-Month Visitor Visa File Review', speed: '15 Working Days', price: 14999, highlight: 'Biometrics Booking Assistance' },
                 ].map((visaItem) => (
                   <div key={visaItem.country} className="border border-gray-200 rounded-xl p-3 bg-white flex items-center justify-between hover:shadow-md transition">
                     <div>
@@ -2233,22 +2694,65 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({
           {/* ── MODE 10: TRAVEL INSURANCE ── */}
           {searchMode === 'insurance' && (
             <div className="flex flex-col gap-3">
-              <div className="grid grid-cols-1 md:grid-cols-12 border border-gray-200 rounded-xl overflow-hidden p-4 bg-blue-50/40">
-                <div className="md:col-span-5">
+              <div className="grid grid-cols-1 md:grid-cols-12 border border-gray-200 rounded-xl overflow-visible p-4 bg-blue-50/40 relative">
+                <div 
+                  onClick={() => { setActiveDropdown(activeDropdown === 'insuranceCountry' ? null : 'insuranceCountry'); setSearchQuery(''); }}
+                  className="md:col-span-5 cursor-pointer hover:opacity-85 transition"
+                >
                   <span className="text-[12px] text-blue-800 font-bold uppercase tracking-wider block">Travel Coverage Destination</span>
-                  <span className="text-2xl font-extrabold text-gray-900 block">International (Worldwide)</span>
-                  <span className="text-[11px] text-gray-500">Includes USA, Canada &amp; 27 Schengen European Countries</span>
+                  <span className="text-2xl font-extrabold text-gray-900 block">{selectedInsuranceZone.zone}</span>
+                  <span className="text-[11px] text-blue-700 font-semibold">Click to change destination zone or country</span>
                 </div>
                 <div className="md:col-span-4 border-t md:border-t-0 md:border-l border-blue-200 pl-0 md:pl-4">
                   <span className="text-[12px] text-blue-800 font-bold uppercase tracking-wider block">Medical Sum Insured</span>
-                  <span className="text-2xl font-extrabold text-gray-900 block">Up to $500,000 Cover</span>
-                  <span className="text-[11px] text-gray-500">Zero Deductibles · Cashless Hospitals</span>
+                  <span className="text-2xl font-extrabold text-gray-900 block">{selectedInsuranceZone.maxCover}</span>
+                  <span className="text-[11px] text-gray-500">Zero Deductibles · Cashless Hospitals Worldwide</span>
                 </div>
                 <div className="md:col-span-3 border-t md:border-t-0 md:border-l border-blue-200 pl-0 md:pl-4">
                   <span className="text-[12px] text-blue-800 font-bold uppercase tracking-wider block">Policy Delivery</span>
                   <span className="text-2xl font-extrabold text-[#008cff] block">Instant PDF</span>
                   <span className="text-[11px] text-blue-700 font-semibold">100% Embassy &amp; Visa Approved</span>
                 </div>
+
+                {/* Insurance Zone Dropdown Popover */}
+                {activeDropdown === 'insuranceCountry' && (
+                  <div 
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute top-full left-0 z-50 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 w-full sm:w-[420px] max-w-[95vw] animate-scaleIn"
+                  >
+                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100">
+                      <span className="text-xs font-bold text-gray-800">Select Travel Destination Zone</span>
+                      <button type="button" onClick={() => setActiveDropdown(null)} className="text-gray-400 hover:text-gray-700 cursor-pointer">
+                        <span className="material-symbols-outlined text-[18px]">close</span>
+                      </button>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      {[
+                        { zone: 'Worldwide (Includes USA, Schengen & Asia)', maxCover: '$250,000 USD Medical Cover', planName: 'Global Travel Shield Platinum', price: 850 },
+                        { zone: 'Europe & Schengen Area', maxCover: '€30,000 / $250,000 (100% Embassy Approved)', planName: 'Schengen Certified Travel Shield', price: 590 },
+                        { zone: 'Asia & Middle East (Dubai, Thailand, Singapore)', maxCover: '$50,000 USD Medical Cover', planName: 'Travel Shield Silver', price: 499 },
+                        { zone: 'USA & Canada Ultra Comprehensive', maxCover: '$500,000 USD Medical Cover', planName: 'USA Ultra Comprehensive Shield', price: 1999 },
+                      ].map((item) => (
+                        <div 
+                          key={item.zone}
+                          onClick={() => {
+                            setSelectedInsuranceZone(item);
+                            setActiveDropdown(null);
+                          }}
+                          className="p-2.5 rounded-lg hover:bg-blue-50 cursor-pointer flex justify-between items-center transition border border-transparent hover:border-blue-200"
+                        >
+                          <div>
+                            <span className="text-xs font-bold text-gray-900 block">{item.zone}</span>
+                            <span className="text-[11px] text-gray-500">{item.maxCover}</span>
+                          </div>
+                          <span className="text-xs font-bold text-[#008cff] bg-blue-50 px-2 py-1 rounded">
+                            {formatPrice(item.price)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Fast Available Insurance Plans */}
