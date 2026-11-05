@@ -326,7 +326,7 @@ export const MyTripsScreen: React.FC<MyTripsScreenProps> = ({ onNavigate, onOpen
               {/* Modal Header */}
               <View style={styles.modalHeader}>
                 <View>
-                  <Text style={styles.modalTitle}>SS Journey E-Ticket Voucher</Text>
+                  <Text style={styles.modalTitle}>Syolo Trips E-Ticket Voucher</Text>
                   <Text style={styles.modalSub}>
                     REF: <Text style={{ color: '#0066FF', fontFamily: 'monospace', fontWeight: 'bold' }}>{selectedTicket.booking_reference}</Text>
                   </Text>
@@ -343,7 +343,7 @@ export const MyTripsScreen: React.FC<MyTripsScreenProps> = ({ onNavigate, onOpen
               <View style={styles.disclaimerBox}>
                 <MaterialIcons name="info" size={15} color="#f59e0b" style={{ marginTop: 1 }} />
                 <Text style={styles.disclaimerText}>
-                  Demonstration Voucher: Issued by SS Journey travel platform for reservation confirmation. Reflects internal verified database record. Not a live carrier boarding pass.
+                  Demonstration Voucher: Issued by Syolo Trips travel platform for reservation confirmation. Reflects internal verified database record. Not a live carrier boarding pass.
                 </Text>
               </View>
 

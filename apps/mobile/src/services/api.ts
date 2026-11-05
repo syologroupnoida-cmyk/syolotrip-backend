@@ -869,3 +869,56 @@ export async function validateRouteMobileApi(category: string, origin: string, d
   return json.data;
 }
 
+// ================= Dual Wallet Mobile API =================
+export interface MobileWalletBalances {
+  cashBalance: number;
+  promotionalBalance: number;
+  totalSpendable: number;
+  isFrozen: boolean;
+  eligibleLots?: Array<{
+    id: string;
+    lot_name: string;
+    remaining_balance: number;
+    expiry_date: string;
+    allowed_services?: string[];
+  }>;
+}
+
+export interface MobileWalletLedgerEntry {
+  id: string;
+  transaction_type: string;
+  sub_wallet_type: 'CASH' | 'PROMOTIONAL';
+  amount: number;
+  direction: 'CREDIT' | 'DEBIT';
+  description: string;
+  reference_type?: string;
+  created_at: string;
+}
+
+export async function getWalletBalancesMobileApi(): Promise<MobileWalletBalances | null> {
+  try {
+    const headers = await getAuthHeaders(true);
+    const res = await fetch(`${API_BASE_URL}/customer/wallet`, { headers });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data || null;
+  } catch (err) {
+    console.warn('[MobileAPI] Error fetching wallet balances:', err);
+    return null;
+  }
+}
+
+export async function getWalletLedgerMobileApi(limit: number = 20): Promise<MobileWalletLedgerEntry[]> {
+  try {
+    const headers = await getAuthHeaders(true);
+    const res = await fetch(`${API_BASE_URL}/customer/wallet/ledger?limit=${limit}`, { headers });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data?.items || [];
+  } catch (err) {
+    console.warn('[MobileAPI] Error fetching wallet ledger:', err);
+    return [];
+  }
+}
+
+

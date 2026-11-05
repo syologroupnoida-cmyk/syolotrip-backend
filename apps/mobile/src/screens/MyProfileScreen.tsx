@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Shadows, Spacing, BorderRadius } from '../theme/theme';
 import { ScreenName } from '../types/travel';
 import { useWishlist } from '../context/WishlistContext';
+import { WalletModal } from '../components/WalletModal';
+import { getWalletBalancesMobileApi } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -39,11 +41,25 @@ export const MyProfileScreen: React.FC<MyProfileScreenProps> = ({
   const [country, setCountry] = useState('India');
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
   const [ratingStars, setRatingStars] = useState(5);
+  const [isWalletOpen, setIsWalletOpen] = useState(false);
+  const [walletTotal, setWalletTotal] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      getWalletBalancesMobileApi()
+        .then((b) => {
+          if (b?.totalSpendable != null) {
+            setWalletTotal(b.totalSpendable);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user]);
 
   const handleLogoutPress = () => {
     Alert.alert(
       'Log Out',
-      'Are you sure you want to log out of your SS Journey account?',
+      'Are you sure you want to log out of your Syolo Trips account?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -60,8 +76,8 @@ export const MyProfileScreen: React.FC<MyProfileScreenProps> = ({
 
   const handleRateUs = () => {
     Alert.alert(
-      'Rate SS Journey ⭐⭐⭐⭐⭐',
-      'Thank you for traveling with SS Journey! We are dedicated to providing the smoothest flights, hotels & tour bookings.',
+      'Rate Syolo Trips ⭐⭐⭐⭐⭐',
+      'Thank you for traveling with Syolo Trips! We are dedicated to providing the smoothest flights, hotels & tour bookings.',
       [
         { text: 'Later', style: 'cancel' },
         {
@@ -121,7 +137,7 @@ export const MyProfileScreen: React.FC<MyProfileScreenProps> = ({
               </View>
             </View>
 
-            <Text style={styles.loginBannerTitle}>Welcome to SS Journey</Text>
+            <Text style={styles.loginBannerTitle}>Welcome to Syolo Trips</Text>
             <Text style={styles.loginBannerSub}>
               Sign in to view your bookings, unlock flat 25% discounts & sync your liked hotels and flights.
             </Text>
@@ -195,14 +211,16 @@ export const MyProfileScreen: React.FC<MyProfileScreenProps> = ({
 
         <TouchableOpacity
           style={styles.quickActionTile}
-          onPress={handleCoupons}
+          onPress={() => setIsWalletOpen(true)}
           activeOpacity={0.8}
         >
-          <View style={[styles.quickIconCircle, { backgroundColor: '#fef3c7' }]}>
-            <MaterialIcons name="account-balance-wallet" size={22} color="#d97706" />
+          <View style={[styles.quickIconCircle, { backgroundColor: '#ecfdf5' }]}>
+            <MaterialIcons name="account-balance-wallet" size={22} color="#059669" />
           </View>
-          <Text style={styles.quickActionTitle}>SS Wallet</Text>
-          <Text style={styles.quickActionSub}>₹1,250 Coins</Text>
+          <Text style={styles.quickActionTitle}>Syolo Wallet</Text>
+          <Text style={[styles.quickActionSub, { color: '#059669', fontWeight: '700' }]}>
+            {walletTotal != null ? `₹${walletTotal.toLocaleString('en-IN')}` : 'Dual Wallet'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -282,8 +300,8 @@ export const MyProfileScreen: React.FC<MyProfileScreenProps> = ({
           style={styles.menuRow}
           onPress={() => {
             Alert.alert(
-              'SS Journey Rewards Club',
-              'Earn 5% SS Coins on every flight and hotel booking. Redeem coins for instant cash discounts with zero expiration.'
+              'Syolo Trips Rewards Club',
+              'Earn 5% Syolo Coins on every flight and hotel booking. Redeem coins for instant cash discounts with zero expiration.'
             );
           }}
           activeOpacity={0.7}
@@ -402,7 +420,7 @@ export const MyProfileScreen: React.FC<MyProfileScreenProps> = ({
           onPress={() => {
             Alert.alert(
               'Privacy & Terms',
-              'SS Journey values your privacy. All payment transactions are encrypted with 256-bit SSL security and compliant with PCI-DSS standards.'
+              'Syolo Trips values your privacy. All payment transactions are encrypted with 256-bit SSL security and compliant with PCI-DSS standards.'
             );
           }}
           activeOpacity={0.7}
@@ -426,15 +444,18 @@ export const MyProfileScreen: React.FC<MyProfileScreenProps> = ({
           activeOpacity={0.8}
         >
           <MaterialIcons name="logout" size={20} color="#e11d48" style={{ marginRight: 8 }} />
-          <Text style={styles.logoutButtonText}>Log Out from SS Journey</Text>
+          <Text style={styles.logoutButtonText}>Log Out from Syolo Trips</Text>
         </TouchableOpacity>
       )}
 
       {/* Footer Branding Info */}
       <View style={styles.footerBranding}>
-        <Text style={styles.footerVersion}>SS Journey Mobile • v1.0.0</Text>
+        <Text style={styles.footerVersion}>Syolo Trips Mobile • v1.0.0</Text>
         <Text style={styles.footerTagline}>Engineered for seamless world-class travel</Text>
       </View>
+
+      {/* Syolo Dual Wallet Modal */}
+      <WalletModal visible={isWalletOpen} onClose={() => setIsWalletOpen(false)} />
     </ScrollView>
   );
 };

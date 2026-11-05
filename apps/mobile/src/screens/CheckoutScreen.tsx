@@ -588,7 +588,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
                 size={20}
                 color={paymentMethod === 'applepay' ? Colors.primary : Colors.onSurfaceVariant}
               />
-              <Text style={styles.paymentOptionLabel}>Demo UPI / Wallet Sim</Text>
+              <Text style={styles.paymentOptionLabel}>Syolo Wallet (Dual Cash &amp; Promo)</Text>
               {paymentMethod === 'applepay' && (
                 <MaterialIcons name="check-circle" size={16} color={Colors.primary} />
               )}

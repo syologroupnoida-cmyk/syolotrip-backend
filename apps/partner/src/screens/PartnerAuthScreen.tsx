@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
+  ImageBackground,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, Shadows } from '../theme/theme';
@@ -19,13 +20,30 @@ interface PartnerAuthScreenProps {
   onSuccess: () => void;
 }
 
+const PROPERTY_CATEGORIES = [
+  'Hotel',
+  'Homestay / Villa',
+  'Resort',
+  'Guest House',
+  'Apartment',
+] as const;
+
+type PropertyCategory = typeof PROPERTY_CATEGORIES[number];
+
+const ROOM_UNIT_OPTIONS = [
+  '1 - 5 Rooms (Homestay / Boutique)',
+  '6 - 15 Rooms (Boutique / Heritage)',
+  '16 - 50 Rooms (Mid-scale Hotel)',
+  '50+ Rooms (Luxury Resort / Chain)',
+];
+
 export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess }) => {
   const { user, partnerProfile, login, demoLogin, registerPartnerFlow, registerProfile } = usePartnerAuth();
 
   const scrollViewRef = useRef<any>(null);
   const isSubmittingRef = useRef(false);
 
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<'signup' | 'signin'>('signup');
   const [loading, setLoading] = useState(false);
   const [loadingStepText, setLoadingStepText] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -33,25 +51,26 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
   const [partialNotice, setPartialNotice] = useState<string | null>(null);
 
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRoomsDropdown, setShowRoomsDropdown] = useState(false);
 
-  // Sign In / Sign Up fields
+  // Form fields matching reference design
+  const [selectedCategory, setSelectedCategory] = useState<PropertyCategory>('Hotel');
+  const [ownerAndBusinessName, setOwnerAndBusinessName] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-
-  // Business Profile fields
-  const [businessName, setBusinessName] = useState('');
-  const [businessType, setBusinessType] = useState<'HOTELIER' | 'HOMESTAY_HOST'>('HOTELIER');
-  const [businessPhone, setBusinessPhone] = useState('');
   const [city, setCity] = useState('');
+  const [password, setPassword] = useState('');
   const [address, setAddress] = useState('');
   const [taxId, setTaxId] = useState('');
+  const [selectedRooms, setSelectedRooms] = useState(ROOM_UNIT_OPTIONS[0]);
+
+  // Sign in fields
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
 
   const needsOnboarding = !!user && !partnerProfile;
 
-  // Listen for keyboard events to adjust scroll padding dynamically
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
@@ -78,7 +97,7 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
   const handleSignIn = async () => {
     if (loading || isSubmittingRef.current) return;
 
-    if (!email.trim() || !password) {
+    if (!loginEmail.trim() || !loginPassword) {
       setErrorMsg('Please enter both email and password.');
       return;
     }
@@ -89,7 +108,7 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
     setLoading(true);
     setLoadingStepText('Verifying credentials...');
     try {
-      await login(email.trim().toLowerCase(), password);
+      await login(loginEmail.trim().toLowerCase(), loginPassword);
       onSuccess();
     } catch (err: any) {
       setErrorMsg(err.message || 'Login failed. Please check your credentials.');
@@ -123,41 +142,55 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
   const handleRegister = async () => {
     if (loading || isSubmittingRef.current) return;
 
-    // Field validations
-    if (!fullName.trim() || !email.trim() || !password) {
-      setErrorMsg('Please enter your full name, email, and password.');
+    if (!ownerAndBusinessName.trim()) {
+      setErrorMsg('Please enter your Owner and Business / Property name.');
       return;
     }
-    if (password.length < 6) {
+    if (!mobileNumber.trim() || mobileNumber.length < 10) {
+      setErrorMsg('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+    if (!email.trim()) {
+      setErrorMsg('Please enter your contact email address.');
+      return;
+    }
+    if (!city.trim()) {
+      setErrorMsg('Please enter your property city or location.');
+      return;
+    }
+    if (!password || password.length < 6) {
       setErrorMsg('Password must be at least 6 characters long.');
       return;
     }
-    if (confirmPassword.trim() && password !== confirmPassword) {
-      setErrorMsg('Passwords do not match. Please verify your password.');
-      return;
+
+    // Parse owner name and business name
+    let ownerName = ownerAndBusinessName.trim();
+    let bizName = ownerAndBusinessName.trim();
+    if (ownerAndBusinessName.includes('/')) {
+      const parts = ownerAndBusinessName.split('/');
+      ownerName = parts[0].trim() || bizName;
+      bizName = parts.slice(1).join('/').trim() || ownerName;
     }
-    if (!businessName.trim() || !city.trim()) {
-      setErrorMsg('Business / brand name and operating city are required.');
-      return;
-    }
+
+    const businessTypeVal = selectedCategory.includes('Homestay') ? 'HOMESTAY_HOST' : 'HOTELIER';
 
     setErrorMsg(null);
     setSuccessMsg(null);
     setPartialNotice(null);
     isSubmittingRef.current = true;
     setLoading(true);
-    setLoadingStepText('Step 1 of 2: Creating partner account...');
+    setLoadingStepText('Creating partner account...');
 
     try {
       const result = await registerPartnerFlow(
         {
           email: email.trim().toLowerCase(),
-          full_name: fullName.trim(),
+          full_name: ownerName,
           password,
-          phone: phone.trim() || undefined,
-          business_name: businessName.trim(),
-          business_type: businessType,
-          business_phone: businessPhone.trim() || phone.trim() || undefined,
+          phone: `+91${mobileNumber.trim()}`,
+          business_name: bizName,
+          business_type: businessTypeVal,
+          business_phone: `+91${mobileNumber.trim()}`,
           city: city.trim(),
           address: address.trim() || undefined,
           tax_id: taxId.trim() || undefined,
@@ -166,25 +199,21 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
           if (step === 'ACCOUNT') {
             setLoadingStepText('Step 1 of 2: Creating partner account...');
           } else if (step === 'PROFILE') {
-            setLoadingStepText('Step 2 of 2: Registering business profile...');
+            setLoadingStepText('Step 2 of 2: Registering property profile...');
           }
         }
       );
 
-      // Handle partial state: user created but partner onboarding failed
       if (!result.success && result.partialState?.accountCreated) {
-        setPassword('');
-        setConfirmPassword('');
+        setLoginEmail(email.trim().toLowerCase());
         setMode('signin');
         setPartialNotice(
-          `Your partner user account was created, but business onboarding could not be completed (${result.partialState.error}). Please sign in with your email and password to complete your business profile.`
+          `Your partner account was created. Please sign in with your password to complete your profile.`
         );
         return;
       }
 
-      // Complete registration success: SEC-04 requires explicit login
-      setPassword('');
-      setConfirmPassword('');
+      setLoginEmail(email.trim().toLowerCase());
       setMode('signin');
       setSuccessMsg(
         result.message ||
@@ -202,8 +231,8 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
   const handleCompleteOnboarding = async () => {
     if (loading || isSubmittingRef.current) return;
 
-    if (!businessName.trim() || !city.trim()) {
-      setErrorMsg('Business name and operating city are required.');
+    if (!city.trim()) {
+      setErrorMsg('Operating city is required.');
       return;
     }
     setErrorMsg(null);
@@ -212,9 +241,9 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
     setLoadingStepText('Saving hospitality business profile...');
     try {
       await registerProfile({
-        business_name: businessName.trim(),
-        business_type: businessType,
-        phone: businessPhone.trim() || user?.phone,
+        business_name: ownerAndBusinessName.trim() || 'My Property',
+        business_type: selectedCategory.includes('Homestay') ? 'HOMESTAY_HOST' : 'HOTELIER',
+        phone: mobileNumber ? `+91${mobileNumber.trim()}` : user?.phone,
         city: city.trim(),
         address: address.trim() || undefined,
         tax_id: taxId.trim() || undefined,
@@ -230,11 +259,19 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.keyboardAvoidingView}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
+    <ImageBackground
+      source={{
+        uri: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=80',
+      }}
+      style={styles.backgroundImage}
+      resizeMode="cover"
     >
+      <View style={styles.backgroundOverlay} />
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
+      >
       <ScrollView
         ref={scrollViewRef}
         style={styles.container}
@@ -246,22 +283,59 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
-        {/* Brand Hero */}
+        {/* Brand Header */}
         <View style={styles.brandHero}>
           <View style={styles.heroLogoCircle}>
-            <MaterialIcons name="business" size={32} color={Colors.secondary} />
+            <MaterialIcons name="business" size={28} color="#008cff" />
           </View>
-          <Text style={styles.heroTitle}>SS JOURNEY PARTNER</Text>
+          <Text style={styles.heroTitle}>SYOLO TRAVELS PARTNER</Text>
           <Text style={styles.heroSub}>
-            Hospitality Management Portal for Hotels &amp; Homestays
+            Extranet Portal for Hotels, Homestays &amp; Resorts
           </Text>
         </View>
 
-        {/* Main Card */}
+        {/* Main Floating Card matching reference design */}
         <View style={styles.card}>
+          {/* Top Pill Tab Switcher */}
+          <View style={styles.tabHeaderPill}>
+            <TouchableOpacity
+              style={[styles.tabPill, mode === 'signup' && styles.tabPillActive]}
+              onPress={() => {
+                if (loading) return;
+                setMode('signup');
+                setErrorMsg(null);
+                setSuccessMsg(null);
+                setPartialNotice(null);
+              }}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.tabPillText, mode === 'signup' && styles.tabPillTextActive]}>
+                Register Property (Free)
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tabPill, mode === 'signin' && styles.tabPillActive]}
+              onPress={() => {
+                if (loading) return;
+                setMode('signin');
+                setErrorMsg(null);
+                setPartialNotice(null);
+              }}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.tabPillText, mode === 'signin' && styles.tabPillTextActive]}>
+                Partner Login
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Feedback Messages */}
           {errorMsg && (
             <View style={styles.errorBox}>
-              <MaterialIcons name="error" size={16} color={Colors.error} />
+              <MaterialIcons name="error-outline" size={16} color="#dc2626" />
               <Text style={styles.errorText}>{errorMsg}</Text>
             </View>
           )}
@@ -282,81 +356,19 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
 
           {needsOnboarding ? (
             /* Step 2: Complete Profile if authenticated user lacks PartnerProfile */
-            <View>
-              <View style={styles.stepIndicator}>
-                <Text style={styles.stepTitle}>Step 2: Business Onboarding</Text>
-                <Text style={styles.stepSub}>
-                  Register your hospitality business to start listing inventory.
-                </Text>
-              </View>
-
-              <Text style={styles.inputLabel}>Business / Property Brand Name *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. Royal Heritage Stays"
-                placeholderTextColor={Colors.onSurfaceSubtle}
-                value={businessName}
-                onChangeText={setBusinessName}
-                editable={!loading}
-              />
-
-              <Text style={styles.inputLabel}>Business Type *</Text>
-              <View style={styles.typeSelectorRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.typeOption,
-                    businessType === 'HOTELIER' && styles.typeOptionActive,
-                  ]}
-                  onPress={() => setBusinessType('HOTELIER')}
-                  disabled={loading}
-                >
-                  <MaterialIcons
-                    name="hotel"
-                    size={16}
-                    color={businessType === 'HOTELIER' ? '#ffffff' : Colors.primary}
-                  />
-                  <Text
-                    style={[
-                      styles.typeOptionText,
-                      businessType === 'HOTELIER' && styles.typeOptionTextActive,
-                    ]}
-                  >
-                    Hotelier
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.typeOption,
-                    businessType === 'HOMESTAY_HOST' && styles.typeOptionActive,
-                  ]}
-                  onPress={() => setBusinessType('HOMESTAY_HOST')}
-                  disabled={loading}
-                >
-                  <MaterialIcons
-                    name="villa"
-                    size={16}
-                    color={businessType === 'HOMESTAY_HOST' ? '#ffffff' : Colors.primary}
-                  />
-                  <Text
-                    style={[
-                      styles.typeOptionText,
-                      businessType === 'HOMESTAY_HOST' && styles.typeOptionTextActive,
-                    ]}
-                  >
-                    Homestay / Villa
-                  </Text>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.formSection}>
+              <Text style={styles.mainTitle}>Complete Business Profile</Text>
+              <Text style={styles.mainSub}>
+                Register your hospitality business to start listing inventory.
+              </Text>
 
               <Text style={styles.inputLabel}>Operating City *</Text>
               <TextInput
                 style={styles.input}
                 placeholder="e.g. Manali, Goa, Jaipur"
-                placeholderTextColor={Colors.onSurfaceSubtle}
+                placeholderTextColor="#94a3b8"
                 value={city}
                 onChangeText={setCity}
-                onFocus={handleFocusLowerField}
                 editable={!loading}
               />
 
@@ -364,22 +376,9 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
               <TextInput
                 style={styles.input}
                 placeholder="e.g. Hadimba Road, Manali, HP"
-                placeholderTextColor={Colors.onSurfaceSubtle}
+                placeholderTextColor="#94a3b8"
                 value={address}
                 onChangeText={setAddress}
-                onFocus={handleFocusLowerField}
-                editable={!loading}
-              />
-
-              <Text style={styles.inputLabel}>Business Contact Phone</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="+91 98765 43210"
-                placeholderTextColor={Colors.onSurfaceSubtle}
-                keyboardType="phone-pad"
-                value={businessPhone}
-                onChangeText={setBusinessPhone}
-                onFocus={handleFocusLowerField}
                 editable={!loading}
               />
 
@@ -387,371 +386,661 @@ export const PartnerAuthScreen: React.FC<PartnerAuthScreenProps> = ({ onSuccess 
               <TextInput
                 style={styles.input}
                 placeholder="e.g. 07AAAAA0000A1Z5"
-                placeholderTextColor={Colors.onSurfaceSubtle}
+                placeholderTextColor="#94a3b8"
                 value={taxId}
                 onChangeText={setTaxId}
-                onFocus={handleFocusLowerField}
                 editable={!loading}
               />
 
               <TouchableOpacity
-                style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
+                style={[styles.orangeSubmitBtn, loading && styles.btnDisabled]}
                 onPress={handleCompleteOnboarding}
                 disabled={loading}
               >
                 {loading ? (
-                  <View style={styles.loadingRow}>
-                    <ActivityIndicator color="#ffffff" size="small" />
-                    <Text style={styles.loadingBtnText}>
-                      {loadingStepText || 'Saving Profile...'}
-                    </Text>
-                  </View>
+                  <ActivityIndicator color="#ffffff" size="small" />
                 ) : (
-                  <Text style={styles.submitBtnText}>Complete Registration</Text>
+                  <Text style={styles.orangeSubmitBtnText}>Complete Registration</Text>
                 )}
               </TouchableOpacity>
             </View>
-          ) : (
-            /* Step 1: Sign In or Register Flow */
-            <View>
-              <View style={styles.tabHeader}>
-                <TouchableOpacity
-                  style={[styles.tab, mode === 'signin' && styles.tabActive]}
-                  onPress={() => {
-                    if (loading) return;
-                    setMode('signin');
-                    setErrorMsg(null);
-                    setPartialNotice(null);
-                  }}
-                  disabled={loading}
-                >
-                  <Text
-                    style={[styles.tabText, mode === 'signin' && styles.tabTextActive]}
-                  >
-                    Partner Sign In
-                  </Text>
-                </TouchableOpacity>
+          ) : mode === 'signup' ? (
+            /* MODE 1: REGISTER PROPERTY FORM (Matches Reference Screenshot) */
+            <View style={styles.formSection}>
+              <Text style={styles.mainTitle}>Sign up &amp; List Your Property</Text>
+              <Text style={styles.mainSub}>
+                Register directly on the official Syolo Travels Partner Network.
+              </Text>
 
+              {/* PROPERTY CATEGORY Pills */}
+              <Text style={styles.categoryLabel}>PROPERTY CATEGORY</Text>
+              <View style={styles.categoryPillsRow}>
+                {PROPERTY_CATEGORIES.map((cat) => {
+                  const isSelected = selectedCategory === cat;
+                  return (
+                    <TouchableOpacity
+                      key={cat}
+                      style={[
+                        styles.catPill,
+                        isSelected && styles.catPillActive,
+                      ]}
+                      onPress={() => setSelectedCategory(cat)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.catPillText,
+                          isSelected && styles.catPillTextActive,
+                        ]}
+                      >
+                        {cat}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Owner / Property Business Name * */}
+              <Text style={styles.inputLabel}>Owner / Property Business Name *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. Vikramaditya Rathore / Royal Retreats"
+                placeholderTextColor="#94a3b8"
+                value={ownerAndBusinessName}
+                onChangeText={setOwnerAndBusinessName}
+                editable={!loading}
+              />
+
+              {/* Mobile Number (10 Digits) * */}
+              <Text style={styles.inputLabel}>Mobile Number (10 Digits) *</Text>
+              <View style={styles.phoneInputRow}>
+                <View style={styles.countryCodeBadge}>
+                  <Text style={styles.countryCodeText}>IN +91</Text>
+                </View>
+                <TextInput
+                  style={[styles.input, styles.phoneInput]}
+                  placeholder="9876543210"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                  value={mobileNumber}
+                  onChangeText={(val) => setMobileNumber(val.replace(/\D/g, ''))}
+                  editable={!loading}
+                />
+              </View>
+
+              {/* 2-Column: Email Address & City */}
+              <View style={styles.twoColRow}>
+                <View style={styles.colHalf}>
+                  <Text style={styles.inputLabel}>Email Address *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="partner@hotel.com"
+                    placeholderTextColor="#94a3b8"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    value={email}
+                    onChangeText={setEmail}
+                    editable={!loading}
+                  />
+                </View>
+                <View style={styles.colHalf}>
+                  <Text style={styles.inputLabel}>City / Location *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. Goa, Jaipur"
+                    placeholderTextColor="#94a3b8"
+                    value={city}
+                    onChangeText={setCity}
+                    editable={!loading}
+                  />
+                </View>
+              </View>
+
+              {/* Create Extranet Password * */}
+              <View style={styles.labelRow}>
+                <Text style={styles.inputLabel}>Create Extranet Password *</Text>
+                <Text style={styles.hintLabel}>Min 6 characters</Text>
+              </View>
+              <View style={styles.passwordInputContainer}>
+                <TextInput
+                  style={[styles.input, { flex: 1, borderWidth: 0, paddingRight: 36 }]}
+                  placeholder="Choose a secure password"
+                  placeholderTextColor="#94a3b8"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                  editable={!loading}
+                />
                 <TouchableOpacity
-                  style={[styles.tab, mode === 'signup' && styles.tabActive]}
-                  onPress={() => {
-                    if (loading) return;
-                    setMode('signup');
-                    setErrorMsg(null);
-                    setSuccessMsg(null);
-                    setPartialNotice(null);
-                  }}
-                  disabled={loading}
+                  style={styles.eyeIconBtn}
+                  onPress={() => setShowPassword(!showPassword)}
                 >
-                  <Text
-                    style={[styles.tabText, mode === 'signup' && styles.tabTextActive]}
-                  >
-                    Register Partner
-                  </Text>
+                  <MaterialIcons
+                    name={showPassword ? 'visibility-off' : 'lock-outline'}
+                    size={18}
+                    color="#94a3b8"
+                  />
                 </TouchableOpacity>
               </View>
 
-              {mode === 'signup' && (
-                <>
-                  <Text style={styles.sectionHeader}>Personal Account Details</Text>
-
-                  <Text style={styles.inputLabel}>Full Name *</Text>
+              {/* 2-Column: Address & GSTIN */}
+              <View style={styles.twoColRow}>
+                <View style={styles.colHalf}>
+                  <Text style={styles.inputLabel}>Address / Locality</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="e.g. Ramesh Kumar"
-                    placeholderTextColor={Colors.onSurfaceSubtle}
-                    value={fullName}
-                    onChangeText={setFullName}
-                    editable={!loading}
-                  />
-                </>
-              )}
-
-              <Text style={styles.inputLabel}>Email Address *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="partner@yourhotel.com"
-                placeholderTextColor={Colors.onSurfaceSubtle}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={email}
-                onChangeText={setEmail}
-                editable={!loading}
-              />
-
-              <Text style={styles.inputLabel}>Password *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="••••••••"
-                placeholderTextColor={Colors.onSurfaceSubtle}
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-                editable={!loading}
-              />
-
-              {mode === 'signup' && (
-                <>
-                  <Text style={styles.inputLabel}>Confirm Password</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="••••••••"
-                    placeholderTextColor={Colors.onSurfaceSubtle}
-                    secureTextEntry
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    editable={!loading}
-                  />
-
-                  <Text style={styles.inputLabel}>Mobile Phone</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="+91 98765 43210"
-                    placeholderTextColor={Colors.onSurfaceSubtle}
-                    keyboardType="phone-pad"
-                    value={phone}
-                    onChangeText={setPhone}
-                    editable={!loading}
-                  />
-
-                  <Text style={[styles.sectionHeader, { marginTop: Spacing.md }]}>
-                    Hospitality Business Profile
-                  </Text>
-
-                  <Text style={styles.inputLabel}>Business / Brand Name *</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g. Grand Heritage Palace"
-                    placeholderTextColor={Colors.onSurfaceSubtle}
-                    value={businessName}
-                    onChangeText={setBusinessName}
-                    editable={!loading}
-                  />
-
-                  <Text style={styles.inputLabel}>Business Type *</Text>
-                  <View style={styles.typeSelectorRow}>
-                    <TouchableOpacity
-                      style={[
-                        styles.typeOption,
-                        businessType === 'HOTELIER' && styles.typeOptionActive,
-                      ]}
-                      onPress={() => setBusinessType('HOTELIER')}
-                      disabled={loading}
-                    >
-                      <MaterialIcons
-                        name="hotel"
-                        size={16}
-                        color={businessType === 'HOTELIER' ? '#ffffff' : Colors.primary}
-                      />
-                      <Text
-                        style={[
-                          styles.typeOptionText,
-                          businessType === 'HOTELIER' && styles.typeOptionTextActive,
-                        ]}
-                      >
-                        Hotelier
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[
-                        styles.typeOption,
-                        businessType === 'HOMESTAY_HOST' && styles.typeOptionActive,
-                      ]}
-                      onPress={() => setBusinessType('HOMESTAY_HOST')}
-                      disabled={loading}
-                    >
-                      <MaterialIcons
-                        name="villa"
-                        size={16}
-                        color={businessType === 'HOMESTAY_HOST' ? '#ffffff' : Colors.primary}
-                      />
-                      <Text
-                        style={[
-                          styles.typeOptionText,
-                          businessType === 'HOMESTAY_HOST' && styles.typeOptionTextActive,
-                        ]}
-                      >
-                        Homestay Host
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  <Text style={styles.inputLabel}>Operating City *</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g. Manali, Jaipur, Goa"
-                    placeholderTextColor={Colors.onSurfaceSubtle}
-                    value={city}
-                    onChangeText={setCity}
-                    onFocus={handleFocusLowerField}
-                    editable={!loading}
-                  />
-
-                  <Text style={styles.inputLabel}>Registered Address</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g. Station Road, Civil Lines"
-                    placeholderTextColor={Colors.onSurfaceSubtle}
+                    placeholder="Beach Road, Calangute"
+                    placeholderTextColor="#94a3b8"
                     value={address}
                     onChangeText={setAddress}
                     onFocus={handleFocusLowerField}
                     editable={!loading}
                   />
-
+                </View>
+                <View style={styles.colHalf}>
                   <Text style={styles.inputLabel}>GSTIN / Tax ID (Optional)</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="e.g. 07AAAAA0000A1Z5"
-                    placeholderTextColor={Colors.onSurfaceSubtle}
+                    placeholder="E.G. 29AAAAA0000A1Z5"
+                    placeholderTextColor="#94a3b8"
+                    autoCapitalize="characters"
                     value={taxId}
                     onChangeText={setTaxId}
                     onFocus={handleFocusLowerField}
                     editable={!loading}
                   />
-                </>
-              )}
+                </View>
+              </View>
 
+              {/* Total Number of Rooms / Units */}
+              <Text style={styles.inputLabel}>Total Number of Rooms / Units</Text>
+              <View style={styles.dropdownContainer}>
+                <TouchableOpacity
+                  style={styles.dropdownSelector}
+                  onPress={() => setShowRoomsDropdown(!showRoomsDropdown)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.dropdownSelectorText}>{selectedRooms}</Text>
+                  <MaterialIcons
+                    name={showRoomsDropdown ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                    size={20}
+                    color="#64748b"
+                  />
+                </TouchableOpacity>
+                {showRoomsDropdown && (
+                  <View style={styles.dropdownMenu}>
+                    {ROOM_UNIT_OPTIONS.map((opt) => {
+                      const isOptSelected = selectedRooms === opt;
+                      return (
+                        <TouchableOpacity
+                          key={opt}
+                          style={[
+                            styles.dropdownMenuItem,
+                            isOptSelected && styles.dropdownMenuItemActive,
+                          ]}
+                          onPress={() => {
+                            setSelectedRooms(opt);
+                            setShowRoomsDropdown(false);
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.dropdownMenuItemText,
+                              isOptSelected && styles.dropdownMenuItemTextActive,
+                            ]}
+                          >
+                            {opt}
+                          </Text>
+                          {isOptSelected && (
+                            <MaterialIcons name="check" size={16} color="#008cff" />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+
+              {/* Vibrant Orange Action Button */}
               <TouchableOpacity
-                style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
-                onPress={mode === 'signin' ? handleSignIn : handleRegister}
+                style={[styles.orangeSubmitBtn, loading && styles.btnDisabled]}
+                onPress={handleRegister}
                 disabled={loading}
+                activeOpacity={0.88}
               >
                 {loading ? (
                   <View style={styles.loadingRow}>
                     <ActivityIndicator color="#ffffff" size="small" />
-                    <Text style={styles.loadingBtnText}>
-                      {loadingStepText || 'Processing...'}
+                    <Text style={styles.orangeSubmitBtnText}>
+                      {loadingStepText || 'Submitting...'}
                     </Text>
                   </View>
                 ) : (
-                  <Text style={styles.submitBtnText}>
-                    {mode === 'signin'
-                      ? 'Sign In to Portal'
-                      : 'Submit Partner Application'}
-                  </Text>
+                  <View style={styles.btnContentRow}>
+                    <Text style={styles.orangeSubmitBtnText}>
+                      SUBMIT PARTNER APPLICATION
+                    </Text>
+                    <MaterialIcons name="arrow-forward" size={18} color="#ffffff" />
+                  </View>
                 )}
               </TouchableOpacity>
 
-              {/* 1-Click Instant Security Bypass Login */}
+              {/* Footer Compliance Text */}
+              <Text style={styles.complianceText}>
+                By proceeding, you agree to Syolo Travels'{' '}
+                <Text style={styles.complianceLink}>Partner Terms of Service</Text> and{' '}
+                <Text style={styles.complianceLink}>Compliance Verification Policy</Text>.
+              </Text>
+            </View>
+          ) : (
+            /* MODE 2: PARTNER SIGN IN FORM */
+            <View style={styles.formSection}>
+              <Text style={styles.mainTitle}>Partner Extranet Login</Text>
+              <Text style={styles.mainSub}>
+                Sign in to manage your property, rates, inventory and guest check-ins.
+              </Text>
+
+              <Text style={styles.inputLabel}>Partner Email Address *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="partner@hotel.com"
+                placeholderTextColor="#94a3b8"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={loginEmail}
+                onChangeText={setLoginEmail}
+                editable={!loading}
+              />
+
+              <Text style={styles.inputLabel}>Extranet Password *</Text>
+              <View style={styles.passwordInputContainer}>
+                <TextInput
+                  style={[styles.input, { flex: 1, borderWidth: 0, paddingRight: 36 }]}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#94a3b8"
+                  secureTextEntry={!showPassword}
+                  value={loginPassword}
+                  onChangeText={setLoginPassword}
+                  editable={!loading}
+                />
+                <TouchableOpacity
+                  style={styles.eyeIconBtn}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <MaterialIcons
+                    name={showPassword ? 'visibility-off' : 'lock-outline'}
+                    size={18}
+                    color="#94a3b8"
+                  />
+                </TouchableOpacity>
+              </View>
+
               <TouchableOpacity
-                style={styles.bypassBtn}
-                onPress={handleInstantBypassLogin}
+                style={[styles.blueSubmitBtn, loading && styles.btnDisabled]}
+                onPress={handleSignIn}
                 disabled={loading}
-                activeOpacity={0.8}
+                activeOpacity={0.88}
               >
-                <MaterialIcons name="bolt" size={18} color="#d97706" />
-                <Text style={styles.bypassBtnText}>
-                  Instant Security Bypass Login (1-Click Partner)
-                </Text>
+                {loading ? (
+                  <View style={styles.loadingRow}>
+                    <ActivityIndicator color="#ffffff" size="small" />
+                    <Text style={styles.blueSubmitBtnText}>Signing In...</Text>
+                  </View>
+                ) : (
+                  <View style={styles.btnContentRow}>
+                    <Text style={styles.blueSubmitBtnText}>SIGN IN TO EXTRANET</Text>
+                    <MaterialIcons name="arrow-forward" size={18} color="#ffffff" />
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
           )}
+
+          {/* 1-Click Instant Security Bypass Login (Demo) */}
+          <TouchableOpacity
+            style={styles.bypassBtn}
+            onPress={handleInstantBypassLogin}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="bolt" size={18} color="#d97706" />
+            <Text style={styles.bypassBtnText}>
+              ⚡ 1-Click Quick Demo (Verified Partner)
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
-  );
+  </ImageBackground>
+);
 };
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  backgroundOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(10, 22, 40, 0.55)',
+  },
   keyboardAvoidingView: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   content: {
     padding: Spacing.md,
+    alignItems: 'center',
   },
   brandHero: {
     alignItems: 'center',
-    marginTop: Spacing.lg,
-    marginBottom: Spacing.lg,
+    marginVertical: Spacing.lg,
   },
   heroLogoCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: Colors.primaryDark,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.sm,
-    borderWidth: 2,
-    borderColor: Colors.secondary,
     ...Shadows.md,
   },
   heroTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.primaryDark,
-    letterSpacing: 1,
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: 1.2,
   },
   heroSub: {
-    fontSize: 12,
-    color: Colors.onSurfaceSubtle,
-    marginTop: 2,
-    textAlign: 'center',
+    fontSize: 11,
+    color: '#94a3b8',
+    marginTop: 3,
+    fontWeight: '500',
   },
   card: {
+    width: '100%',
+    maxWidth: 500,
     backgroundColor: '#ffffff',
-    borderRadius: BorderRadius.lg,
+    borderRadius: 24,
     padding: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    ...Shadows.md,
+    ...Shadows.lg,
   },
-  tabHeader: {
+  tabHeaderPill: {
     flexDirection: 'row',
-    marginBottom: Spacing.lg,
-    backgroundColor: Colors.surfaceLow,
-    borderRadius: BorderRadius.md,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 30,
     padding: 3,
+    marginBottom: Spacing.md,
   },
-  tab: {
+  tabPill: {
     flex: 1,
-    paddingVertical: Spacing.sm,
+    paddingVertical: 10,
+    borderRadius: 26,
     alignItems: 'center',
-    borderRadius: BorderRadius.sm,
+    justifyContent: 'center',
   },
-  tabActive: {
+  tabPillActive: {
     backgroundColor: '#ffffff',
-    ...Shadows.sm,
+    ...Shadows.xs,
   },
-  tabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.onSurfaceSubtle,
-  },
-  tabTextActive: {
-    color: Colors.primaryDark,
-    fontWeight: 'bold',
-  },
-  sectionHeader: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.primary,
-    marginBottom: Spacing.xs,
-    paddingBottom: Spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.surfaceLow,
-  },
-  inputLabel: {
+  tabPillText: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.onSurface,
+    color: '#64748b',
+  },
+  tabPillTextActive: {
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  formSection: {
+    marginBottom: Spacing.sm,
+  },
+  mainTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#0f172a',
+    letterSpacing: -0.3,
+  },
+  mainSub: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+    marginBottom: Spacing.md,
+    fontWeight: '500',
+  },
+  categoryLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#64748b',
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  categoryPillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: Spacing.md,
+  },
+  catPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
+  },
+  catPillActive: {
+    borderColor: '#008cff',
+    borderWidth: 1.5,
+    backgroundColor: '#eff6ff',
+  },
+  catPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  catPillTextActive: {
+    color: '#008cff',
+    fontWeight: '800',
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
     marginBottom: 4,
-    marginTop: Spacing.sm,
+    marginTop: 8,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  hintLabel: {
+    fontSize: 10,
+    color: '#94a3b8',
   },
   input: {
-    backgroundColor: Colors.surfaceLow,
     borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
+    borderColor: '#cbd5e1',
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
     fontSize: 13,
-    color: Colors.onSurface,
+    color: '#0f172a',
+    backgroundColor: '#ffffff',
+  },
+  phoneInputRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  countryCodeBadge: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#f8fafc',
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  countryCodeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#334155',
+  },
+  phoneInput: {
+    flex: 1,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  twoColRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  colHalf: {
+    flex: 1,
+  },
+  passwordInputContainer: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+  },
+  eyeIconBtn: {
+    padding: 10,
+  },
+  dropdownContainer: {
+    marginTop: 4,
+    position: 'relative',
+    zIndex: 20,
+  },
+  dropdownSelector: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    backgroundColor: '#ffffff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dropdownSelectorText: {
+    fontSize: 12,
+    color: '#1e293b',
+    fontWeight: '500',
+  },
+  dropdownMenu: {
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 16,
+    backgroundColor: '#ffffff',
+    overflow: 'hidden',
+    ...Shadows.md,
+  },
+  dropdownMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  dropdownMenuItemActive: {
+    backgroundColor: '#f0f9ff',
+  },
+  dropdownMenuItemText: {
+    fontSize: 12,
+    color: '#334155',
+    fontWeight: '500',
+  },
+  dropdownMenuItemTextActive: {
+    color: '#008cff',
+    fontWeight: '700',
+  },
+  orangeSubmitBtn: {
+    backgroundColor: '#ff6b00',
+    borderRadius: 30,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.lg,
+    ...Shadows.md,
+  },
+  orangeSubmitBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  blueSubmitBtn: {
+    backgroundColor: '#008cff',
+    borderRadius: 30,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.lg,
+    ...Shadows.md,
+  },
+  blueSubmitBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  btnContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  btnDisabled: {
+    opacity: 0.6,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  complianceText: {
+    fontSize: 10,
+    color: '#64748b',
+    textAlign: 'center',
+    marginTop: Spacing.md,
+    lineHeight: 14,
+  },
+  complianceLink: {
+    textDecorationLine: 'underline',
+    fontWeight: '700',
+    color: '#334155',
+  },
+  bypassBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fffbeb',
+    borderColor: '#fde68a',
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    paddingVertical: 11,
+    marginTop: Spacing.md,
+    gap: 6,
+  },
+  bypassBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#92400e',
   },
   errorBox: {
     flexDirection: 'row',
@@ -759,14 +1048,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#fef2f2',
     borderWidth: 1,
     borderColor: '#fecaca',
+    borderRadius: BorderRadius.sm,
     padding: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
     gap: 6,
   },
   errorText: {
-    color: Colors.error,
-    fontSize: 12,
+    color: '#dc2626',
+    fontSize: 11,
     fontWeight: '600',
     flex: 1,
   },
@@ -775,18 +1064,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fffbeb',
     borderWidth: 1,
-    borderColor: '#fde68a',
+    borderColor: '#fef3c7',
+    borderRadius: BorderRadius.sm,
     padding: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
-    gap: 8,
+    marginBottom: Spacing.sm,
+    gap: 6,
   },
   partialText: {
-    color: '#92400e',
-    fontSize: 12,
+    color: '#b45309',
+    fontSize: 11,
     fontWeight: '600',
     flex: 1,
-    lineHeight: 16,
   },
   successBox: {
     flexDirection: 'row',
@@ -794,112 +1082,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#ecfdf5',
     borderWidth: 1,
     borderColor: '#a7f3d0',
+    borderRadius: BorderRadius.sm,
     padding: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
-    gap: 8,
+    marginBottom: Spacing.sm,
+    gap: 6,
   },
   successText: {
-    color: '#065f46',
-    fontSize: 12,
-    fontWeight: '600',
-    flex: 1,
-    lineHeight: 16,
-  },
-  typeSelectorRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    marginTop: 2,
-  },
-  typeOption: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.surfaceLow,
-    gap: 6,
-  },
-  typeOptionActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  typeOptionText: {
+    color: '#059669',
     fontSize: 11,
     fontWeight: '600',
-    color: Colors.onSurface,
-  },
-  typeOptionTextActive: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-  },
-  submitBtn: {
-    backgroundColor: Colors.secondary,
-    paddingVertical: Spacing.md - 2,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.lg,
-    ...Shadows.sm,
-    minHeight: 46,
-  },
-  submitBtnDisabled: {
-    opacity: 0.8,
-  },
-  submitBtnText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-  },
-  loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  loadingBtnText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  stepIndicator: {
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.surfaceLow,
-    paddingBottom: Spacing.sm,
-    marginBottom: Spacing.sm,
-  },
-  stepTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: Colors.primary,
-  },
-  stepSub: {
-    fontSize: 11,
-    color: Colors.onSurfaceVariant,
-    marginTop: 2,
-  },
-  bypassBtn: {
-    backgroundColor: '#fffbeb',
-    borderWidth: 1,
-    borderColor: '#fcd34d',
-    paddingVertical: Spacing.sm + 2,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.full,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.md,
-    gap: 6,
-    ...Shadows.sm,
-  },
-  bypassBtnText: {
-    color: '#92400e',
-    fontSize: 13,
-    fontWeight: 'bold',
+    flex: 1,
   },
 });

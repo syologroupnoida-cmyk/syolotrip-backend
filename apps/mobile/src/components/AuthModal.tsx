@@ -117,7 +117,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <View style={styles.logoBadge}>
                   <MaterialIcons name="flight-takeoff" size={18} color="#f28c1c" />
                 </View>
-                <Text style={styles.brandTitle}>SS JOURNEY</Text>
+                <Text style={styles.brandTitle}>SYOLO TRIPS</Text>
               </View>
               <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
                 <MaterialIcons name="close" size={20} color="#ffffff" />
@@ -168,7 +168,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
               <TouchableOpacity style={styles.logoutBtn} onPress={handleSignOut} activeOpacity={0.8}>
                 <MaterialIcons name="logout" size={16} color="#ffffff" />
-                <Text style={styles.logoutBtnText}>Sign Out of SS Journey</Text>
+                <Text style={styles.logoutBtnText}>Sign Out of Syolo Trips</Text>
               </TouchableOpacity>
             </View>
           ) : (

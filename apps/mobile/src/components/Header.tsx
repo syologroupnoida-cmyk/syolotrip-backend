@@ -14,7 +14,7 @@ interface HeaderProps {
 }
 
 const SCREEN_TITLES: Record<ScreenName, { title: string; subtitle: string }> = {
-  explore: { title: 'SS JOURNEY', subtitle: 'Explore · Book · Travel' },
+  explore: { title: 'SYOLO TRIPS', subtitle: 'Explore · Book · Travel' },
   flights: { title: 'Flights Search', subtitle: 'Live Airline Rates' },
   hotels: { title: 'Hotels & Stays', subtitle: 'Verified Luxury Stays' },
   trains: { title: 'Trains (IRCTC)', subtitle: 'Authorized Train Tickets' },
@@ -66,7 +66,7 @@ export const Header: React.FC<HeaderProps> = ({
             {canGoBack ? (
               <View style={styles.titleColumn}>
                 <Text style={styles.brandTitle} numberOfLines={1}>
-                  {SCREEN_TITLES[currentScreen]?.title || 'SS JOURNEY'}
+                  {SCREEN_TITLES[currentScreen]?.title || 'SYOLO TRIPS'}
                 </Text>
                 <Text style={styles.brandSubtitle} numberOfLines={1}>
                   {SCREEN_TITLES[currentScreen]?.subtitle || 'Explore · Book · Travel'}

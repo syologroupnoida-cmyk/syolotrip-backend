@@ -369,7 +369,7 @@ export const PartnerDashboardScreen: React.FC<PartnerDashboardScreenProps> = ({
           <Text style={styles.emptyTitle}>No Reservations Yet</Text>
           <Text style={styles.emptyDesc}>
             {isVerified
-              ? 'Confirmed customer bookings from the SS Journey marketplace will appear here automatically.'
+              ? 'Confirmed customer bookings from the Syolo Travels marketplace will appear here automatically.'
               : 'Partner profile verification by platform compliance is required before bookings can be placed.'}
           </Text>
         </View>

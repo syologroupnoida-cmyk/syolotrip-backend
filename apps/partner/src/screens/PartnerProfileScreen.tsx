@@ -71,7 +71,7 @@ export const PartnerProfileScreen: React.FC<PartnerProfileScreenProps> = ({ onLo
   const handleConfirmLogout = () => {
     Alert.alert(
       'Sign Out',
-      'Are you sure you want to sign out of the SS Journey Partner Portal?',
+      'Are you sure you want to sign out of the Syolo Travels Partner Portal?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -195,7 +195,7 @@ export const PartnerProfileScreen: React.FC<PartnerProfileScreenProps> = ({ onLo
       </View>
 
       <Text style={styles.appFooter}>
-        SS Journey Partner Portal · v1.0.0 (Build 2026.10)
+        Syolo Travels Partner Portal · v1.0.0 (Build 2026.10)
       </Text>
 
       {/* Edit Profile Modal */}

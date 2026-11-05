@@ -14,6 +14,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, Shadows } from '../theme/theme';
 import { useCurrency } from '../context/CurrencyContext';
+import { WalletModal } from './WalletModal';
 
 const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = Math.min(width * 0.82, 340);
@@ -39,6 +40,7 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
 }) => {
   const { currency, setCurrency, currencyConfig, currencies } = useCurrency();
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
+  const [walletModalVisible, setWalletModalVisible] = useState(false);
   const [country, setCountry] = useState<'India' | 'United States' | 'UAE'>('India');
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
   const [userStars, setUserStars] = useState(5);
@@ -59,7 +61,7 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
     setRatingModalVisible(false);
     Alert.alert(
       'Thank You for Rating!',
-      `You gave SS Journey ${userStars} star${userStars > 1 ? 's' : ''}! We appreciate your feedback to make travel seamless.`
+      `You gave Syolo Trips ${userStars} star${userStars > 1 ? 's' : ''}! We appreciate your feedback to make travel seamless.`
     );
   };
 
@@ -210,6 +212,25 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
                 <MaterialIcons name="chevron-right" size={20} color={Colors.onSurfaceVariant} />
               </TouchableOpacity>
 
+              {/* 3.5. Syolo Wallet */}
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  onClose();
+                  setWalletModalVisible(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.itemIconCircle, { backgroundColor: '#ecfdf5' }]}>
+                  <MaterialIcons name="account-balance-wallet" size={20} color="#059669" />
+                </View>
+                <View style={styles.itemMeta}>
+                  <Text style={styles.itemTitle}>Syolo Wallet</Text>
+                  <Text style={styles.itemSubtitle}>Dual Cash &amp; Promotional Rewards</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={20} color={Colors.onSurfaceVariant} />
+              </TouchableOpacity>
+
               <View style={styles.divider} />
 
               <Text style={styles.sectionLabel}>PREFERENCES</Text>
@@ -280,7 +301,7 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
 
             {/* Drawer Footer */}
             <View style={styles.drawerFooter}>
-              <Text style={styles.footerBrand}>SS JOURNEY MOBILE</Text>
+              <Text style={styles.footerBrand}>SYOLO TRIPS MOBILE</Text>
               <Text style={styles.footerVersion}>Version 1.0.0 (Build 58)</Text>
             </View>
           </View>
@@ -299,7 +320,7 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
             <View style={styles.ratingIconCircle}>
               <MaterialIcons name="star" size={32} color="#f59e0b" />
             </View>
-            <Text style={styles.ratingTitle}>Enjoying SS Journey?</Text>
+            <Text style={styles.ratingTitle}>Enjoying Syolo Trips?</Text>
             <Text style={styles.ratingSubtitle}>
               Tap the stars below to rate your booking experience on the app:
             </Text>
@@ -417,6 +438,12 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
           </TouchableWithoutFeedback>
         </TouchableOpacity>
       </Modal>
+
+      {/* Syolo Wallet Modal */}
+      <WalletModal
+        visible={walletModalVisible}
+        onClose={() => setWalletModalVisible(false)}
+      />
     </>
   );
 };

@@ -46,7 +46,7 @@ export const PartnerHeader: React.FC<PartnerHeaderProps> = ({
       case 'auth':
         return 'Partner Portal';
       default:
-        return 'SS Journey Partner';
+        return 'Syolo Travels Partner';
     }
   };
 
@@ -64,7 +64,7 @@ export const PartnerHeader: React.FC<PartnerHeaderProps> = ({
         )}
         <View style={styles.titleColumn}>
           <View style={styles.brandRow}>
-            <Text style={styles.brandText}>SS JOURNEY</Text>
+            <Text style={styles.brandText}>SYOLO TRAVELS</Text>
             <View style={styles.portalTag}>
               <Text style={styles.portalTagText}>PARTNER</Text>
             </View>
