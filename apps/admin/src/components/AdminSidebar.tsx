@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   LayoutDashboard, Plane, Hotel, Bus, Train, Car, Compass, 
   Receipt, Users, Tag, FileText, Settings, ShieldAlert, TrendingUp,
-  Home, MapPin, FileCheck2, ShieldCheck, Database, Shield, FileSpreadsheet
+  Home, MapPin, FileCheck2, ShieldCheck, Database, Shield, FileSpreadsheet, Wallet
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -65,6 +65,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       items: [
         { id: 'pricing', label: 'Pricing & Markups', icon: TrendingUp },
         { id: 'coupons', label: 'Offers & Coupons', icon: Tag },
+        { id: 'wallet', label: 'Wallet & Ledger', icon: Wallet, badge: 'Dual' },
       ],
     },
     {

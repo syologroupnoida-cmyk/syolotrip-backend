@@ -523,6 +523,194 @@ export const updateAdminUserRole = async (userId: string, role: string) => {
   return response.data;
 };
 
+// ==========================================
+// Admin Dual Wallet APIs
+// ==========================================
+
+export interface AdminWalletOverview {
+  totalWallets: number;
+  activeWallets: number;
+  frozenWallets: number;
+  totalCashLiability: number;
+  totalPromoLiability: number;
+  activePromotionalLots: number;
+  volume24h: {
+    totalCredits: number;
+    totalDebits: number;
+    count: number;
+  };
+  reconciliation: {
+    cashVariance: number;
+    promoVariance: number;
+    isBalanced: boolean;
+  };
+}
+
+export interface AdminWalletCustomerItem {
+  id: string;
+  user_id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  status: 'ACTIVE' | 'FROZEN' | 'SUSPENDED';
+  currency: string;
+  cash_available: string | number;
+  cash_reserved: string | number;
+  promo_available: string | number;
+  promo_reserved: string | number;
+  freeze_reason?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminWalletTransactionItem {
+  id: string;
+  transaction_id: string;
+  customer_id: string;
+  customer_name?: string;
+  customer_email?: string;
+  wallet_type: 'CASH' | 'PROMOTIONAL';
+  direction: 'CREDIT' | 'DEBIT';
+  transaction_type: string;
+  amount: string | number;
+  currency: string;
+  status: string;
+  description: string;
+  reference_id?: string;
+  created_at: string;
+}
+
+export interface AdminPromotionalCampaign {
+  id: string;
+  campaign_code: string;
+  title: string;
+  description?: string;
+  reward_type: string;
+  percentage_rate: string | number;
+  flat_amount: string | number;
+  max_reward_per_booking?: string | number;
+  min_booking_amount?: string | number;
+  valid_days: number;
+  applicable_services: string[] | string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AdminWalletReconciliation {
+  asOf: string;
+  ledger: {
+    totalJournals: number;
+    totalLedgerEntries: number;
+    cashLiabilities: number;
+    promoLiabilities: number;
+  };
+  wallets: {
+    activeWalletsCount: number;
+    totalCashBalances: number;
+    totalPromoBalances: number;
+  };
+  variance: {
+    cashVariance: number;
+    promoVariance: number;
+    isBalanced: boolean;
+  };
+}
+
+export interface AdminWalletConfig {
+  features: {
+    WALLET_ENABLED: boolean;
+    CASH_WALLET_ENABLED: boolean;
+    CASH_TOPUP_ENABLED: boolean;
+    PROMOTIONAL_WALLET_ENABLED: boolean;
+    CASH_WITHDRAWAL_ENABLED: boolean;
+    WALLET_PAYMENT_ENABLED: boolean;
+  };
+  configItems: Array<{
+    config_key: string;
+    config_value: string;
+    description: string;
+    data_type: string;
+    updated_at: string;
+  }>;
+}
+
+export const getAdminWalletOverview = async (): Promise<AdminWalletOverview> => {
+  const response = await adminApiClient.get('/admin/wallet/overview');
+  return response.data.data;
+};
+
+export const getAdminWalletCustomers = async (params?: {
+  search?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{ items: AdminWalletCustomerItem[]; pagination: any }> => {
+  const response = await adminApiClient.get('/admin/wallet/customers', { params });
+  return response.data.data;
+};
+
+export const freezeAdminWalletCustomer = async (
+  customerId: string,
+  payload: { freeze: boolean; reason: string }
+): Promise<any> => {
+  const response = await adminApiClient.post(`/admin/wallet/customers/${customerId}/freeze`, payload);
+  return response.data;
+};
+
+export const adjustAdminWalletBalance = async (payload: {
+  customer_id: string;
+  wallet_type: 'CASH' | 'PROMOTIONAL';
+  direction: 'CREDIT' | 'DEBIT';
+  amount: number;
+  reason: string;
+  reference_id?: string;
+}): Promise<any> => {
+  const response = await adminApiClient.post('/admin/wallet/adjust', payload);
+  return response.data;
+};
+
+export const getAdminWalletTransactions = async (params?: {
+  customer_id?: string;
+  wallet_type?: string;
+  direction?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{ items: AdminWalletTransactionItem[]; pagination: any }> => {
+  const response = await adminApiClient.get('/admin/wallet/transactions', { params });
+  return response.data.data;
+};
+
+export const getAdminWalletCampaigns = async (): Promise<AdminPromotionalCampaign[]> => {
+  const response = await adminApiClient.get('/admin/wallet/campaigns');
+  return response.data.data;
+};
+
+export const toggleAdminWalletCampaign = async (campaignId: string): Promise<any> => {
+  const response = await adminApiClient.patch(`/admin/wallet/campaigns/${campaignId}/toggle`);
+  return response.data;
+};
+
+export const createAdminWalletCampaign = async (payload: Partial<AdminPromotionalCampaign>): Promise<any> => {
+  const response = await adminApiClient.post('/admin/wallet/campaigns', payload);
+  return response.data;
+};
+
+export const getAdminWalletReconciliation = async (): Promise<AdminWalletReconciliation> => {
+  const response = await adminApiClient.get('/admin/wallet/reconciliation');
+  return response.data.data;
+};
+
+export const getAdminWalletConfig = async (): Promise<AdminWalletConfig> => {
+  const response = await adminApiClient.get('/admin/wallet/config');
+  return response.data.data;
+};
+
+export const updateAdminWalletConfig = async (key: string, value: string): Promise<any> => {
+  const response = await adminApiClient.put('/admin/wallet/config', { key, value });
+  return response.data;
+};
+
 
 
 

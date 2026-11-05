@@ -21,6 +21,8 @@ import { couponsRouter, wishlistRouter, locationsRouter } from './routes/misc.js
 import { mybizRouter, partnerRouter } from './routes/partnerMybiz.js';
 import { villasRouter, toursRouter, visaRouter, insuranceRouter } from './routes/servicesExtra.js';
 import customerRouter from './routes/customer.js';
+import walletRouter from './routes/wallet.js';
+import adminWalletRouter from './routes/adminWallet.js';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config();
@@ -109,6 +111,8 @@ apiV1.use('/insurance', insuranceRouter);
 apiV1.use('/mybiz', mybizRouter);
 apiV1.use('/partner', partnerRouter);
 apiV1.use('/customer', customerRouter);
+apiV1.use('/wallet', walletRouter);
+apiV1.use('/admin/wallet', adminWalletRouter);
 
 app.use('/api/v1', apiV1);
 

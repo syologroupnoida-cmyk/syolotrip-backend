@@ -1117,6 +1117,186 @@ export async function initDbSchema() {
       'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&auto=format&fit=crop&q=80',
       4.85, 30, true
     WHERE NOT EXISTS (SELECT 1 FROM holiday_packages WHERE title LIKE '%Goa Coastal Bliss%');
+
+    -- ========================================================
+    -- DUAL WALLET FINANCIAL SUBSYSTEM SCHEMA (PHASE 1)
+    -- ========================================================
+
+    -- 1. Wallet Accounts Table (Dual balance: Cash + Promotional)
+    CREATE TABLE IF NOT EXISTS wallet_accounts (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      customer_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+      cash_available_balance NUMERIC(14, 2) NOT NULL DEFAULT 0.00 CHECK (cash_available_balance >= 0),
+      cash_reserved_balance NUMERIC(14, 2) NOT NULL DEFAULT 0.00 CHECK (cash_reserved_balance >= 0),
+      promotional_available_balance NUMERIC(14, 2) NOT NULL DEFAULT 0.00 CHECK (promotional_available_balance >= 0),
+      promotional_reserved_balance NUMERIC(14, 2) NOT NULL DEFAULT 0.00 CHECK (promotional_reserved_balance >= 0),
+      status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
+      freeze_reason TEXT,
+      frozen_at TIMESTAMPTZ,
+      frozen_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_wallet_accounts_customer_id ON wallet_accounts(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_wallet_accounts_status ON wallet_accounts(status);
+
+    -- 2. Wallet Journals (Double-Entry Header)
+    CREATE TABLE IF NOT EXISTS wallet_journals (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      transaction_reference VARCHAR(100) UNIQUE NOT NULL,
+      transaction_type VARCHAR(50) NOT NULL,
+      status VARCHAR(30) NOT NULL DEFAULT 'POSTED',
+      description TEXT NOT NULL,
+      idempotency_key VARCHAR(150) UNIQUE,
+      related_booking_id UUID REFERENCES bookings(id) ON DELETE SET NULL,
+      related_payment_id UUID REFERENCES payments(id) ON DELETE SET NULL,
+      created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      completed_at TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS idx_wallet_journals_reference ON wallet_journals(transaction_reference);
+    CREATE INDEX IF NOT EXISTS idx_wallet_journals_booking_id ON wallet_journals(related_booking_id);
+    CREATE INDEX IF NOT EXISTS idx_wallet_journals_idempotency ON wallet_journals(idempotency_key);
+
+    -- 3. Wallet Ledger Entries (Immutable double-entry lines: debits == credits)
+    CREATE TABLE IF NOT EXISTS wallet_ledger_entries (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      journal_id UUID NOT NULL REFERENCES wallet_journals(id) ON DELETE RESTRICT,
+      account_code VARCHAR(100) NOT NULL,
+      wallet_account_id UUID REFERENCES wallet_accounts(id) ON DELETE RESTRICT,
+      debit_amount NUMERIC(14, 2) NOT NULL DEFAULT 0.00 CHECK (debit_amount >= 0),
+      credit_amount NUMERIC(14, 2) NOT NULL DEFAULT 0.00 CHECK (credit_amount >= 0),
+      currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_wallet_ledger_entries_journal_id ON wallet_ledger_entries(journal_id);
+    CREATE INDEX IF NOT EXISTS idx_wallet_ledger_entries_account ON wallet_ledger_entries(account_code);
+    CREATE INDEX IF NOT EXISTS idx_wallet_ledger_entries_wallet_id ON wallet_ledger_entries(wallet_account_id);
+
+    -- 4. Customer-Readable Wallet Transactions Log
+    CREATE TABLE IF NOT EXISTS wallet_transactions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      transaction_id VARCHAR(100) UNIQUE NOT NULL,
+      customer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      wallet_account_id UUID NOT NULL REFERENCES wallet_accounts(id) ON DELETE CASCADE,
+      journal_id UUID REFERENCES wallet_journals(id) ON DELETE SET NULL,
+      wallet_type VARCHAR(20) NOT NULL,
+      direction VARCHAR(10) NOT NULL,
+      transaction_type VARCHAR(50) NOT NULL,
+      amount NUMERIC(14, 2) NOT NULL CHECK (amount > 0),
+      currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+      status VARCHAR(30) NOT NULL DEFAULT 'COMPLETED',
+      description TEXT NOT NULL,
+      reference_id VARCHAR(100),
+      booking_id UUID REFERENCES bookings(id) ON DELETE SET NULL,
+      payment_id UUID REFERENCES payments(id) ON DELETE SET NULL,
+      idempotency_key VARCHAR(150),
+      balance_after NUMERIC(14, 2),
+      metadata JSONB DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      completed_at TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS idx_wallet_tx_customer ON wallet_transactions(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_wallet_tx_wallet ON wallet_transactions(wallet_account_id);
+    CREATE INDEX IF NOT EXISTS idx_wallet_tx_type ON wallet_transactions(transaction_type);
+    CREATE INDEX IF NOT EXISTS idx_wallet_tx_created ON wallet_transactions(created_at DESC);
+
+    -- 5. Promotional Credit Lots (Expiry-bound lots with service restrictions)
+    CREATE TABLE IF NOT EXISTS promotional_credit_lots (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      customer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      wallet_account_id UUID NOT NULL REFERENCES wallet_accounts(id) ON DELETE CASCADE,
+      lot_reference VARCHAR(100) UNIQUE NOT NULL,
+      reward_source VARCHAR(50) NOT NULL,
+      original_amount NUMERIC(14, 2) NOT NULL CHECK (original_amount > 0),
+      remaining_amount NUMERIC(14, 2) NOT NULL CHECK (remaining_amount >= 0),
+      currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+      campaign_id UUID,
+      applicable_services JSONB DEFAULT '["FLIGHT","HOTEL","VILLA","PACKAGE","TRAIN","BUS","CAB","TOUR","VISA","INSURANCE"]'::jsonb,
+      min_booking_amount NUMERIC(14, 2) DEFAULT 0.00,
+      max_usable_amount NUMERIC(14, 2),
+      issue_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      expiry_date TIMESTAMPTZ NOT NULL,
+      status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
+      metadata JSONB DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_promo_lots_customer ON promotional_credit_lots(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_promo_lots_expiry ON promotional_credit_lots(expiry_date);
+    CREATE INDEX IF NOT EXISTS idx_promo_lots_status ON promotional_credit_lots(status);
+
+    -- 6. Wallet Reservations (Atomic funds reservation during checkout)
+    CREATE TABLE IF NOT EXISTS wallet_reservations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      reservation_reference VARCHAR(100) UNIQUE NOT NULL,
+      customer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      wallet_account_id UUID NOT NULL REFERENCES wallet_accounts(id) ON DELETE CASCADE,
+      booking_id UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+      cash_reserved NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
+      promotional_reserved NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
+      lots_reserved JSONB DEFAULT '[]'::jsonb,
+      status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+      expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '15 minutes'),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_wallet_reservations_booking ON wallet_reservations(booking_id);
+    CREATE INDEX IF NOT EXISTS idx_wallet_reservations_status ON wallet_reservations(status);
+
+    -- 7. Promotional Campaigns Table (Admin manageable reward campaigns)
+    CREATE TABLE IF NOT EXISTS promotional_campaigns (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name VARCHAR(255) NOT NULL,
+      code VARCHAR(50) UNIQUE NOT NULL,
+      campaign_type VARCHAR(50) NOT NULL DEFAULT 'CASHBACK',
+      reward_type VARCHAR(20) NOT NULL DEFAULT 'PERCENTAGE',
+      reward_value NUMERIC(10, 2) NOT NULL,
+      max_reward_amount NUMERIC(10, 2),
+      min_booking_amount NUMERIC(10, 2) DEFAULT 0.00,
+      applicable_services JSONB DEFAULT '["FLIGHT","HOTEL","VILLA","PACKAGE","TRAIN","BUS","CAB","TOUR","VISA","INSURANCE"]'::jsonb,
+      validity_days INT DEFAULT 90,
+      start_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      end_date TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '1 year'),
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      total_budget NUMERIC(14, 2) DEFAULT 1000000.00,
+      total_issued NUMERIC(14, 2) DEFAULT 0.00,
+      total_redeemed NUMERIC(14, 2) DEFAULT 0.00,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- 8. Regulatory & Feature Flag Configuration Table
+    CREATE TABLE IF NOT EXISTS wallet_config (
+      key VARCHAR(100) PRIMARY KEY,
+      value VARCHAR(255) NOT NULL,
+      description TEXT,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    INSERT INTO wallet_config (key, value, description)
+    VALUES
+      ('WALLET_ENABLED', 'true', 'Master switch for wallet subsystem'),
+      ('CASH_WALLET_ENABLED', 'true', 'Allows cash wallet balance usage and refund storage'),
+      ('CASH_TOPUP_ENABLED', 'false', 'Requires regulatory RBI/PPI license before enabling public stored-value topup'),
+      ('PROMOTIONAL_WALLET_ENABLED', 'true', 'Enables marketing rewards, cashback, and promotional credit redemption'),
+      ('CASH_WITHDRAWAL_ENABLED', 'false', 'Locked: customer cash withdrawals to bank account disabled'),
+      ('WALLET_PAYMENT_ENABLED', 'true', 'Enables wallet checkout payment option')
+    ON CONFLICT (key) DO NOTHING;
+
+    -- Seed Default Promotional Cashback Campaign if none exists
+    INSERT INTO promotional_campaigns (name, code, campaign_type, reward_type, reward_value, max_reward_amount, min_booking_amount, validity_days)
+    VALUES ('SS Journey Travel Cashback', 'SSJ_CASHBACK_5', 'CASHBACK', 'PERCENTAGE', 5.00, 500.00, 1000.00, 90)
+    ON CONFLICT (code) DO NOTHING;
+
+    -- Mixed Payment columns on Bookings & Payments
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cash_wallet_amount NUMERIC(12, 2) DEFAULT 0.00;
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS promotional_wallet_amount NUMERIC(12, 2) DEFAULT 0.00;
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS online_payment_amount NUMERIC(12, 2) DEFAULT 0.00;
+    ALTER TABLE payments ADD COLUMN IF NOT EXISTS cash_wallet_amount NUMERIC(12, 2) DEFAULT 0.00;
+    ALTER TABLE payments ADD COLUMN IF NOT EXISTS promotional_wallet_amount NUMERIC(12, 2) DEFAULT 0.00;
+    ALTER TABLE payments ADD COLUMN IF NOT EXISTS gateway_amount NUMERIC(12, 2) DEFAULT 0.00;
   `);
 }
 

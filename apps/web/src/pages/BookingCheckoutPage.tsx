@@ -16,6 +16,10 @@ import {
   CouponValidateResult,
   getSavedTravellersApi,
   SavedTraveller,
+  getWalletQuoteApi,
+  applyWalletToBookingApi,
+  releaseWalletReservationApi,
+  WalletQuoteResponse,
 } from '../services/api';
 import { useCurrency } from '../context/CurrencyContext';
 
@@ -124,6 +128,13 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
   const [simulateFailure, setSimulateFailure] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(currentUser || null);
   const [createdBooking, setCreatedBooking] = useState<any | null>(null);
+
+  // Dual Wallet Checkout State
+  const [walletQuote, setWalletQuote] = useState<WalletQuoteResponse | null>(null);
+  const [usePromoWallet, setUsePromoWallet] = useState(true);
+  const [useCashWallet, setUseCashWallet] = useState(true);
+  const [activeReservationId, setActiveReservationId] = useState<string | null>(null);
+  const [isLoadingWalletQuote, setIsLoadingWalletQuote] = useState(false);
 
   // Helper to ensure Razorpay Checkout script is loaded (commented out temporarily)
   /*
@@ -275,6 +286,25 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
 
   const isUuid = (str?: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str || '');
   const hasValidInventoryId = !bookingItem || isUuid(bookingItem.itemId);
+
+  // Fetch wallet deduction quote when reaching payment step
+  useEffect(() => {
+    if (step >= 3 && grandTotal > 0 && user) {
+      setIsLoadingWalletQuote(true);
+      getWalletQuoteApi(activeService, grandTotal)
+        .then((q) => setWalletQuote(q))
+        .catch(() => setWalletQuote(null))
+        .finally(() => setIsLoadingWalletQuote(false));
+    }
+  }, [step, grandTotal, activeService, user]);
+
+  const maxEligiblePromo = walletQuote ? walletQuote.eligible.promoAmount : 0;
+  const appliedPromo = usePromoWallet ? Math.min(maxEligiblePromo, grandTotal) : 0;
+  const remainingAfterPromo = Math.max(0, grandTotal - appliedPromo);
+  const maxEligibleCash = walletQuote ? walletQuote.eligible.cashAmount : 0;
+  const appliedCash = useCashWallet ? Math.min(maxEligibleCash, remainingAfterPromo) : 0;
+  const totalWalletDeduction = appliedPromo + appliedCash;
+  const netPayableOnline = Math.max(0, grandTotal - totalWalletDeduction);
 
   const handleConfirmAndPay = async () => {
     setIsProcessing(true);
@@ -467,18 +497,31 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
       */
 
 
-      // 3. Fallback: Demo Payment via Backend Simulation Endpoint
+      // 2. Reserve Wallet Funds if applied
+      let reservationIdToCommit: string | undefined = undefined;
+      if (totalWalletDeduction > 0) {
+        try {
+          const resRes = await applyWalletToBookingApi(bookingToPay.id, appliedCash, appliedPromo);
+          reservationIdToCommit = resRes.reservationId;
+          setActiveReservationId(resRes.reservationId);
+        } catch (resErr: any) {
+          throw new Error(resErr.response?.data?.message || 'Failed to reserve wallet funds. Please check balance.');
+        }
+      }
+
+      // 3. Payment via Backend Endpoint (Supports full wallet payments with 0 gateway charge)
       const payRes = await payDemoBookingApi({
         booking_id: bookingToPay.id,
-        payment_method: paymentMethod === 'card' ? 'CREDIT_CARD' : paymentMethod === 'apple' ? 'APPLE_PAY' : 'UPI',
+        payment_method: netPayableOnline === 0 ? 'WALLET' : paymentMethod === 'card' ? 'CREDIT_CARD' : paymentMethod === 'apple' ? 'APPLE_PAY' : 'UPI',
         simulate_failure: simulateFailure,
         card_last_four: '4242',
+        reservation_id: reservationIdToCommit,
       });
 
       if (payRes.status !== 'SUCCESS') {
         throw new Error(
           payRes.gateway_response?.reason ||
-          'Simulated payment was declined by demo gateway. You can retry safely.'
+          'Payment was declined. You can retry safely.'
         );
       }
 
@@ -488,14 +531,24 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
         email: bookingToPay.contact_email,
         total: Number(bookingToPay.total_amount),
         serviceType: bookingToPay.service_type,
-        paymentMethodUsed: 'Demo Simulator',
+        paymentMethodUsed:
+          netPayableOnline === 0
+            ? 'SS Journey Wallet (100%)'
+            : totalWalletDeduction > 0
+            ? `Split Payment (Wallet + ${paymentMethod.toUpperCase()})`
+            : 'Demo Simulator',
       });
       setIsConfirmed(true);
       setErrorMessage(null);
     } catch (err: any) {
       console.error('Checkout error:', err);
+      if (activeReservationId) {
+        releaseWalletReservationApi(activeReservationId, 'Checkout error').catch(() => {});
+        setActiveReservationId(null);
+      }
       const detail =
         err.response?.data?.detail ||
+        err.response?.data?.message ||
         err.message ||
         'An error occurred while creating or paying for your reservation. Please verify details and retry.';
       setErrorMessage(detail);
@@ -1034,6 +1087,89 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                   <span className="text-label-lg text-on-surface font-bold">Payment Method</span>
                 </div>
                 <div className="p-space-md flex flex-col gap-space-md">
+                  {/* SS Journey Dual Wallet Split Option */}
+                  {user && walletQuote && (walletQuote.balances.cashAvailable > 0 || walletQuote.balances.promoAvailable > 0) && (
+                    <div className="bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-white border border-blue-200/80 rounded-2xl p-4 space-y-3.5">
+                      <div className="flex items-center justify-between pb-2.5 border-b border-blue-200/60">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[#008cff] text-[22px]">account_balance_wallet</span>
+                          <div>
+                            <h4 className="text-sm font-black text-gray-900">SS Journey Dual Wallet</h4>
+                            <p className="text-[11px] text-gray-500">
+                              Apply saved balances to pay less online {isLoadingWalletQuote && '· Recalculating...'}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-xs font-black text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full">
+                          {formatPrice((walletQuote.balances.cashAvailable || 0) + (walletQuote.balances.promoAvailable || 0))} Available
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {/* Option 1: Promotional Wallet */}
+                        {walletQuote.balances.promoAvailable > 0 && (
+                          <label className="flex items-start justify-between p-3 rounded-xl border border-indigo-200/60 bg-white hover:bg-indigo-50/30 transition cursor-pointer">
+                            <div className="flex items-start gap-3">
+                              <input
+                                type="checkbox"
+                                checked={usePromoWallet}
+                                onChange={(e) => setUsePromoWallet(e.target.checked)}
+                                className="w-4 h-4 rounded text-[#008cff] focus:ring-[#008cff] mt-0.5 cursor-pointer"
+                              />
+                              <div>
+                                <span className="text-xs font-bold text-gray-900 block">
+                                  Use Promotional Wallet
+                                </span>
+                                <span className="text-[11px] text-gray-500 block mt-0.5">
+                                  Eligible for this booking: <strong>{formatPrice(walletQuote.eligible.promoAmount)}</strong> (Earliest-expiring FIFO)
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-xs font-black text-indigo-600">
+                              -{formatPrice(appliedPromo)}
+                            </span>
+                          </label>
+                        )}
+
+                        {/* Option 2: Cash Wallet */}
+                        {walletQuote.balances.cashAvailable > 0 && (
+                          <label className="flex items-start justify-between p-3 rounded-xl border border-emerald-200/60 bg-white hover:bg-emerald-50/30 transition cursor-pointer">
+                            <div className="flex items-start gap-3">
+                              <input
+                                type="checkbox"
+                                checked={useCashWallet}
+                                onChange={(e) => setUseCashWallet(e.target.checked)}
+                                className="w-4 h-4 rounded text-[#008cff] focus:ring-[#008cff] mt-0.5 cursor-pointer"
+                              />
+                              <div>
+                                <span className="text-xs font-bold text-gray-900 block">
+                                  Use Cash Wallet
+                                </span>
+                                <span className="text-[11px] text-gray-500 block mt-0.5">
+                                  Refundable &amp; stored value. Available: <strong>{formatPrice(walletQuote.balances.cashAvailable)}</strong>
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-xs font-black text-emerald-600">
+                              -{formatPrice(appliedCash)}
+                            </span>
+                          </label>
+                        )}
+                      </div>
+
+                      {/* Split summary banner */}
+                      <div className="p-3 bg-white rounded-xl border border-blue-200/50 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2">
+                        <div className="flex items-center gap-1.5 text-gray-600">
+                          <span className="material-symbols-outlined text-[16px] text-emerald-600">check_circle</span>
+                          <span>Total Wallet Applied: <strong>-{formatPrice(totalWalletDeduction)}</strong></span>
+                        </div>
+                        <div className="font-bold text-gray-900">
+                          Remaining to Pay: <span className="text-[#008cff] font-black">{formatPrice(netPayableOnline)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Payment Method Tabs */}
                   <div className="flex flex-wrap items-center gap-space-sm">
                     {([
@@ -1295,14 +1431,41 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
 
                 <div className="h-[1px] bg-outline-variant/20" />
 
-                {/* Grand Total */}
+                {/* Wallet Deductions in Summary */}
+                {totalWalletDeduction > 0 && (
+                  <div className="flex flex-col gap-1 py-1 bg-blue-50/50 p-2.5 rounded-lg border border-blue-200/50 text-body-sm">
+                    {appliedPromo > 0 && (
+                      <div className="flex justify-between text-indigo-700 font-semibold">
+                        <span>Promotional Wallet Applied</span>
+                        <span className="tabular-nums font-bold">-{formatPrice(appliedPromo)}</span>
+                      </div>
+                    )}
+                    {appliedCash > 0 && (
+                      <div className="flex justify-between text-emerald-700 font-semibold">
+                        <span>Cash Wallet Applied</span>
+                        <span className="tabular-nums font-bold">-{formatPrice(appliedCash)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Grand Total / Net Payable */}
                 <div className="flex justify-between items-baseline">
-                  <span className="text-headline-sm text-on-surface font-bold">Total</span>
+                  <span className="text-headline-sm text-on-surface font-bold">
+                    {totalWalletDeduction > 0 ? 'Net Payable Online' : 'Total'}
+                  </span>
                   <div className="text-right">
-                    <span className="text-headline-lg text-on-surface font-bold tabular-nums block">{formatPrice(grandTotal)}</span>
+                    <span className="text-headline-lg text-on-surface font-bold tabular-nums block">
+                      {formatPrice(netPayableOnline)}
+                    </span>
+                    {totalWalletDeduction > 0 && (
+                      <span className="text-[11px] text-gray-400 line-through block">
+                        Original Total: {formatPrice(grandTotal)}
+                      </span>
+                    )}
                     {currency !== 'INR' && (
                       <span className="text-[11px] text-on-surface-variant font-medium block">
-                        (approx. ₹{grandTotal.toLocaleString('en-IN')})
+                        (approx. ₹{netPayableOnline.toLocaleString('en-IN')})
                       </span>
                     )}
                   </div>
@@ -1311,9 +1474,11 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                 <div className="bg-tertiary/10 text-tertiary text-label-sm px-space-sm py-space-xs rounded-lg flex items-center gap-space-xs font-bold">
                   <span className="material-symbols-outlined text-[16px]">savings</span>
                   <span>
-                    {isCustomItem
-                      ? `Instant instant confirmation with 100% verified provider.`
-                      : `You save ${formatPrice(Math.abs(defaultP.bundleDiscount))} with this bundle!`}
+                    {netPayableOnline === 0
+                      ? '100% of this reservation is covered by your SS Journey Wallet!'
+                      : isCustomItem
+                      ? `Instant confirmation with 100% verified provider.`
+                      : `You save ${formatPrice(Math.abs(defaultP.bundleDiscount) + totalWalletDeduction)} on this booking!`}
                   </span>
                 </div>
 
@@ -1377,15 +1542,17 @@ export const BookingCheckoutPage: React.FC<BookingCheckoutPageProps> = ({
                     {isProcessing ? (
                       <>
                         <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
-                        <span>Processing Demo Payment...</span>
+                        <span>Processing Payment...</span>
                       </>
                     ) : (
                       <>
                         <span className="material-symbols-outlined text-[20px]">lock</span>
                         <span>
-                          {createdBooking
-                            ? `Retry Demo Payment · Ref: ${createdBooking.booking_reference}`
-                            : `Confirm & Pay ${formatPrice(grandTotal)}`}
+                          {netPayableOnline === 0
+                            ? 'Confirm & Pay ₹0 via Wallet'
+                            : createdBooking
+                            ? `Retry Payment · Ref: ${createdBooking.booking_reference}`
+                            : `Confirm & Pay ${formatPrice(netPayableOnline)}`}
                         </span>
                       </>
                     )}

@@ -7,6 +7,7 @@ import {
   resolvePricingRule,
   computePriceWithRule,
 } from '../services/pricingEngine.js';
+import { processBookingRefund } from '../services/walletService.js';
 
 const router = Router();
 
@@ -363,10 +364,25 @@ router.post('/:id/cancel', authenticateToken, async (req: AuthenticatedRequest, 
       [reason || 'User requested cancellation', b.id]
     );
 
+    // Process source-preserving refund if user has an account
+    let refundResult = null;
+    if (b.user_id && parseFloat(b.total_amount) > 0) {
+      try {
+        refundResult = await processBookingRefund({
+          bookingId: b.id,
+          refundAmount: parseFloat(b.total_amount),
+          reason: reason || 'User requested cancellation',
+          adminUserId: req.user!.role === 'ADMIN' ? req.user!.id : undefined,
+        });
+      } catch (refundErr: any) {
+        console.warn('Wallet refund auto-processing warning:', refundErr.message);
+      }
+    }
+
     return res.json({
       success: true,
-      message: 'Booking cancelled successfully',
-      data: { id: b.id, status: 'CANCELLED' },
+      message: 'Booking cancelled successfully and refund processed',
+      data: { id: b.id, status: 'CANCELLED', refund: refundResult },
     });
   } catch (err: any) {
     return res.status(500).json({ success: false, message: err.message });

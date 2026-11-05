@@ -9,6 +9,16 @@ import {
   deleteSavedTravellerApi,
   getMyTripsApi,
   cancelBookingApi,
+  getWalletBalancesApi,
+  getWalletSummaryApi,
+  getWalletTransactionsApi,
+  getPromotionalLotsApi,
+  createWalletTopupOrderApi,
+  verifyWalletTopupApi,
+  WalletBalancesResponse,
+  WalletSummaryResponse,
+  WalletTransactionItem,
+  PromotionalCreditLot,
   CustomerDashboardSummary,
   CustomerProfileData,
   SavedTraveller,
@@ -25,7 +35,8 @@ export type DashboardSubTab =
   | 'payments'
   | 'profile'
   | 'devices'
-  | 'support';
+  | 'support'
+  | 'wallet';
 
 interface CustomerDashboardPageProps {
   onNavigate: (screen: any) => void;
@@ -115,6 +126,50 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
     berthPreference: 'No Preference',
     passportIssuingCountry: 'India',
   });
+
+  // Dual Wallet state
+  const [walletBalances, setWalletBalances] = useState<WalletBalancesResponse | null>(null);
+  const [walletSummary, setWalletSummary] = useState<WalletSummaryResponse | null>(null);
+  const [walletTransactions, setWalletTransactions] = useState<WalletTransactionItem[]>([]);
+  const [promotionalLots, setPromotionalLots] = useState<PromotionalCreditLot[]>([]);
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [walletFilterType, setWalletFilterType] = useState<'ALL' | 'CASH' | 'PROMOTIONAL'>('ALL');
+  const [walletFilterDir, setWalletFilterDir] = useState<'ALL' | 'CREDIT' | 'DEBIT'>('ALL');
+  const [isTopupModalOpen, setIsTopupModalOpen] = useState(false);
+  const [topupAmount, setTopupAmount] = useState('1000');
+  const [topupLoading, setTopupLoading] = useState(false);
+  const [topupError, setTopupError] = useState<string | null>(null);
+  const [topupSuccess, setTopupSuccess] = useState<string | null>(null);
+
+  const fetchWalletData = async () => {
+    try {
+      setWalletLoading(true);
+      const [bal, sum, lots, tx] = await Promise.all([
+        getWalletBalancesApi().catch(() => null),
+        getWalletSummaryApi().catch(() => null),
+        getPromotionalLotsApi().catch(() => []),
+        getWalletTransactionsApi({ limit: 50 }).catch(() => ({ items: [], pagination: {} })),
+      ]);
+      if (bal) setWalletBalances(bal);
+      if (sum) setWalletSummary(sum);
+      if (lots) setPromotionalLots(lots);
+      if (tx?.items) setWalletTransactions(tx.items);
+    } catch (e) {
+      console.warn('Failed to load wallet information:', e);
+    } finally {
+      setWalletLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchWalletData();
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'wallet') {
+      fetchWalletData();
+    }
+  }, [activeTab]);
 
   // Load initial data
   const loadDashboardData = async () => {
@@ -333,6 +388,36 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
     }
   };
 
+  const handleSimulatedTopup = async () => {
+    setTopupLoading(true);
+    setTopupError(null);
+    setTopupSuccess(null);
+    try {
+      const amt = parseFloat(topupAmount);
+      if (isNaN(amt) || amt <= 0) {
+        throw new Error('Please enter a valid amount');
+      }
+      const orderRes = await createWalletTopupOrderApi(amt);
+      if (orderRes.order_id) {
+        await verifyWalletTopupApi({
+          order_id: orderRes.order_id,
+          razorpay_payment_id: `pay_sim_${Date.now()}`,
+          razorpay_signature: 'simulated_valid_signature',
+        });
+        setTopupSuccess(`Successfully added ₹${amt} to your Cash Wallet!`);
+        await fetchWalletData();
+        setTimeout(() => {
+          setIsTopupModalOpen(false);
+          setTopupSuccess(null);
+        }, 1500);
+      }
+    } catch (e: any) {
+      setTopupError(e.response?.data?.message || e.message || 'Top-up failed');
+    } finally {
+      setTopupLoading(false);
+    }
+  };
+
   // Filter trips
   const filteredTrips = trips.filter((t) => {
     if (tripFilter === 'ALL') return true;
@@ -439,7 +524,27 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                   )}
                 </button>
 
-                {/* 3. Logged In Devices */}
+                {/* 3. SS Wallet */}
+                <button
+                  onClick={() => setActiveTab('wallet')}
+                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === 'wallet'
+                      ? 'bg-[#eaf5ff] text-[#008cff]'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+                    <span>SS Wallet</span>
+                  </div>
+                  {walletBalances && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-[#008cff]">
+                      {formatPrice(walletBalances.totalSpendable || 0)}
+                    </span>
+                  )}
+                </button>
+
+                {/* 4. Logged In Devices */}
                 <button
                   onClick={() => setActiveTab('devices')}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
@@ -450,26 +555,6 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                 >
                   <span className="material-symbols-outlined text-[20px]">devices</span>
                   <span>Logged In Devices</span>
-                </button>
-
-                {/* 4. Trips & Bookings */}
-                <button
-                  onClick={() => setActiveTab('trips')}
-                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                    activeTab === 'trips'
-                      ? 'bg-[#eaf5ff] text-[#008cff]'
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-[20px]">luggage</span>
-                    <span>My Trips</span>
-                  </div>
-                  {trips.length > 0 && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                      {trips.length}
-                    </span>
-                  )}
                 </button>
 
                 {/* 5. Logout */}
@@ -1405,6 +1490,378 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
             )}
 
             {/* ==================================================== */}
+            {/* 3.5. SS JOURNEY DUAL WALLET TAB */}
+            {/* ==================================================== */}
+            {activeTab === 'wallet' && (
+              <div className="space-y-6 animate-fade-in">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-gray-100 gap-4">
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <h2 className="text-2xl font-black text-gray-900 tracking-tight">SS Journey Wallet</h2>
+                      <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 tracking-wider">
+                        {walletBalances?.status || 'ACTIVE'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Dual balance wallet with Cash (Deposit/Refunds) and Promotional (Cashback &amp; Rewards) balances.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={fetchWalletData}
+                      disabled={walletLoading}
+                      className="p-2 text-gray-500 hover:text-[#008cff] hover:bg-blue-50 rounded-xl transition cursor-pointer"
+                      title="Refresh Balances"
+                    >
+                      <span className={`material-symbols-outlined text-[20px] ${walletLoading ? 'animate-spin' : ''}`}>
+                        refresh
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setIsTopupModalOpen(true)}
+                      className="bg-[#008cff] hover:bg-blue-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer uppercase tracking-wider"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">add</span>
+                      <span>Add Money</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Balances Grid: Cash Wallet + Promo Wallet + Total Spendable */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  {/* Card 1: Cash Wallet */}
+                  <div className="bg-gradient-to-br from-emerald-50 via-white to-white rounded-2xl p-5 border border-emerald-200/80 shadow-xs relative overflow-hidden">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[11px] font-extrabold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[18px]">payments</span>
+                        Cash Wallet
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        100% Usable
+                      </span>
+                    </div>
+                    <div className="text-2xl font-black text-gray-900 tracking-tight">
+                      {formatPrice(walletBalances?.cashAvailable || 0)}
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Direct deposits &amp; booking refunds. Never expires.
+                    </p>
+                    {Boolean(walletBalances?.cashLocked && walletBalances.cashLocked > 0) && (
+                      <p className="text-[10px] text-amber-700 font-semibold mt-2">
+                        Locked/Reserved: {formatPrice(walletBalances?.cashLocked || 0)}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Card 2: Promotional Wallet */}
+                  <div className="bg-gradient-to-br from-indigo-50 via-white to-white rounded-2xl p-5 border border-indigo-200/80 shadow-xs relative overflow-hidden">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[11px] font-extrabold text-indigo-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+                        Promotional Wallet
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                        {promotionalLots.length} Active Lot(s)
+                      </span>
+                    </div>
+                    <div className="text-2xl font-black text-gray-900 tracking-tight">
+                      {formatPrice(walletBalances?.promoAvailable || 0)}
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Cashback, rewards &amp; campaigns. Earliest expiry used first.
+                    </p>
+                    {Boolean(walletBalances?.promoLocked && walletBalances.promoLocked > 0) && (
+                      <p className="text-[10px] text-amber-700 font-semibold mt-2">
+                        Locked/Reserved: {formatPrice(walletBalances?.promoLocked || 0)}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Card 3: Total Spendable Balance */}
+                  <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-sm relative overflow-hidden flex flex-col justify-between">
+                    <div>
+                      <span className="text-[11px] font-extrabold text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[18px]">wallet</span>
+                        Total Spendable Balance
+                      </span>
+                      <div className="text-2xl font-black text-white tracking-tight mt-3">
+                        {formatPrice(walletBalances?.totalSpendable || 0)}
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-slate-300 mt-3 pt-3 border-t border-slate-800">
+                      Combined purchasing power across eligible bookings.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Expiring Soon Banner */}
+                {walletSummary && walletSummary.expiringSoonAmount > 0 && (
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
+                    <span className="material-symbols-outlined text-[22px] text-amber-600 shrink-0 mt-0.5">
+                      schedule
+                    </span>
+                    <div className="text-xs text-amber-900">
+                      <span className="font-bold">
+                        {formatPrice(walletSummary.expiringSoonAmount)} of your promotional credits is expiring soon!
+                      </span>
+                      <p className="text-amber-700 mt-0.5">
+                        Nearest expiration:{' '}
+                        <span className="font-bold">
+                          {walletSummary.nearestExpiryDate
+                            ? new Date(walletSummary.nearestExpiryDate).toLocaleDateString()
+                            : 'Within 30 days'}
+                        </span>
+                        . Book your next flight, hotel, or holiday package to redeem it before it lapses.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Promotional Lots Section */}
+                <div className="bg-white rounded-2xl border border-gray-200/90 p-5 space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                    <div>
+                      <h3 className="text-sm font-black text-gray-900">Active Promotional Credit Lots (FIFO)</h3>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        Credits are redeemed in order of earliest expiration date for maximum savings.
+                      </p>
+                    </div>
+                    <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-full">
+                      {promotionalLots.length} lot{promotionalLots.length === 1 ? '' : 's'}
+                    </span>
+                  </div>
+
+                  {promotionalLots.length === 0 ? (
+                    <div className="py-8 text-center text-gray-400">
+                      <span className="material-symbols-outlined text-[36px]">loyalty</span>
+                      <p className="text-xs font-bold text-gray-600 mt-1">No active promotional lots</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        Complete your first booking to automatically earn 5% cashback into your Promotional Wallet!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {promotionalLots.map((lot) => {
+                        const daysLeft = Math.max(
+                          0,
+                          Math.ceil((new Date(lot.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                        );
+                        let services: string[] = [];
+                        if (typeof lot.applicable_services === 'string') {
+                          try {
+                            services = JSON.parse(lot.applicable_services);
+                          } catch (e) {
+                            services = [];
+                          }
+                        } else if (Array.isArray(lot.applicable_services)) {
+                          services = lot.applicable_services;
+                        }
+
+                        return (
+                          <div
+                            key={lot.id}
+                            className="p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition flex flex-col justify-between gap-2.5"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <span className="text-[10px] font-mono text-gray-400 block">
+                                  #{lot.lot_reference}
+                                </span>
+                                <h4 className="text-xs font-extrabold text-gray-900 mt-0.5">
+                                  {lot.reward_source?.replace(/_/g, ' ') || 'Reward Credit'}
+                                </h4>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-sm font-black text-indigo-600">
+                                  {formatPrice(lot.remaining_amount)}
+                                </div>
+                                <span className="text-[10px] text-gray-400">
+                                  of {formatPrice(lot.original_amount)}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-gray-200/60 text-[10px]">
+                              <span
+                                className={`font-bold px-2 py-0.5 rounded-full ${
+                                  daysLeft <= 7
+                                    ? 'bg-rose-100 text-rose-800'
+                                    : daysLeft <= 30
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-blue-100 text-blue-800'
+                                }`}
+                              >
+                                Expires in {daysLeft} day{daysLeft === 1 ? '' : 's'}
+                              </span>
+
+                              {services.length > 0 && !services.includes('ALL') ? (
+                                services.map((s) => (
+                                  <span key={s} className="bg-gray-200/70 text-gray-700 px-2 py-0.5 rounded-full font-semibold">
+                                    {s}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-semibold">
+                                  All Travel Services
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Transaction Ledger Table */}
+                <div className="bg-white rounded-2xl border border-gray-200/90 p-5 space-y-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 border-b border-gray-100 gap-3">
+                    <div>
+                      <h3 className="text-sm font-black text-gray-900">Wallet Transaction Ledger</h3>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        Double-entry ledger records for every credit, debit, top-up, and refund.
+                      </p>
+                    </div>
+
+                    {/* Filter Pills */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl text-xs font-bold">
+                        {(['ALL', 'CASH', 'PROMOTIONAL'] as const).map((wt) => (
+                          <button
+                            key={wt}
+                            onClick={() => setWalletFilterType(wt)}
+                            className={`px-2.5 py-1 rounded-lg transition cursor-pointer text-[11px] ${
+                              walletFilterType === wt ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-900'
+                            }`}
+                          >
+                            {wt === 'ALL' ? 'All Wallets' : wt === 'CASH' ? 'Cash' : 'Promo'}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl text-xs font-bold">
+                        {(['ALL', 'CREDIT', 'DEBIT'] as const).map((dir) => (
+                          <button
+                            key={dir}
+                            onClick={() => setWalletFilterDir(dir)}
+                            className={`px-2.5 py-1 rounded-lg transition cursor-pointer text-[11px] ${
+                              walletFilterDir === dir ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-900'
+                            }`}
+                          >
+                            {dir === 'ALL' ? 'All' : dir === 'CREDIT' ? 'Credits' : 'Debits'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Filtered items */}
+                  {(() => {
+                    const filteredTx = walletTransactions.filter((tx) => {
+                      if (walletFilterType !== 'ALL' && tx.wallet_type !== walletFilterType) return false;
+                      if (walletFilterDir !== 'ALL' && tx.direction !== walletFilterDir) return false;
+                      return true;
+                    });
+
+                    if (filteredTx.length === 0) {
+                      return (
+                        <div className="py-12 text-center text-gray-400">
+                          <span className="material-symbols-outlined text-[36px]">receipt_long</span>
+                          <p className="text-xs font-bold text-gray-600 mt-1">No transaction records found</p>
+                          <p className="text-[11px] text-gray-400 mt-0.5">
+                            Wallet movements will appear here automatically.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="border-b border-gray-100 text-gray-400 font-bold uppercase text-[10px] tracking-wider">
+                              <th className="py-2.5 px-3">Date &amp; Time</th>
+                              <th className="py-2.5 px-3">Wallet</th>
+                              <th className="py-2.5 px-3">Direction</th>
+                              <th className="py-2.5 px-3">Description</th>
+                              <th className="py-2.5 px-3 text-right">Amount</th>
+                              <th className="py-2.5 px-3 text-right">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {filteredTx.map((tx) => {
+                              const isCredit = tx.direction === 'CREDIT';
+                              return (
+                                <tr key={tx.id} className="hover:bg-gray-50/70 transition">
+                                  <td className="py-3 px-3 text-gray-600 font-medium">
+                                    {new Date(tx.created_at).toLocaleString([], {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}
+                                    <span className="text-[10px] font-mono text-gray-400 block">
+                                      #{tx.transaction_id ? tx.transaction_id.slice(0, 8) : tx.id.slice(0, 8)}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-3 font-semibold">
+                                    <span
+                                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                        tx.wallet_type === 'CASH'
+                                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                          : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                      }`}
+                                    >
+                                      {tx.wallet_type}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-3">
+                                    <span
+                                      className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                                        isCredit
+                                          ? 'bg-emerald-100 text-emerald-800'
+                                          : 'bg-rose-100 text-rose-800'
+                                      }`}
+                                    >
+                                      {isCredit ? '+ CREDIT' : '- DEBIT'}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-3 font-medium text-gray-800">
+                                    {tx.description || tx.transaction_type}
+                                    {tx.reference_id && (
+                                      <span className="text-[10px] text-gray-400 block font-mono">
+                                        Ref: {tx.reference_id}
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td
+                                    className={`py-3 px-3 text-right font-black ${
+                                      isCredit ? 'text-emerald-600' : 'text-gray-900'
+                                    }`}
+                                  >
+                                    {isCredit ? '+' : '-'}
+                                    {formatPrice(tx.amount)}
+                                  </td>
+                                  <td className="py-3 px-3 text-right">
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                                      {tx.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {/* ==================================================== */}
             {/* 4. MY TRIPS TAB */}
             {/* ==================================================== */}
             {activeTab === 'trips' && (
@@ -1605,6 +2062,130 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
       )}
 
 
+
+      {/* ── TOP-UP MODAL (WITH RBI COMPLIANCE GATE) ── */}
+      {isTopupModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[20px]">add_card</span>
+                </div>
+                <h3 className="text-base font-black text-gray-900">Add Money to Cash Wallet</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setIsTopupModalOpen(false);
+                  setTopupError(null);
+                  setTopupSuccess(null);
+                }}
+                className="p-1 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            {/* Regulatory Notice per RBI PPI Master Directions */}
+            {!walletBalances?.features?.cashTopupEnabled && (
+              <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs space-y-1.5">
+                <div className="flex items-center gap-1.5 text-amber-900 font-bold">
+                  <span className="material-symbols-outlined text-[16px] text-amber-700">shield</span>
+                  <span>Regulatory Gate Notice (RBI PPI Guidelines)</span>
+                </div>
+                <p className="text-[11px] text-amber-800 leading-relaxed">
+                  Direct customer credit card / netbanking top-ups for stored-value wallets are restricted until full RBI Prepaid Payment Instrument regulatory clearance.
+                </p>
+                <p className="text-[11px] text-emerald-800 font-semibold">
+                  Refunds from cancelled bookings and reversals are credited to your Cash Wallet automatically and never expire.
+                </p>
+              </div>
+            )}
+
+            {topupSuccess && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                <span>{topupSuccess}</span>
+              </div>
+            )}
+
+            {topupError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold rounded-xl flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">error</span>
+                <span>{topupError}</span>
+              </div>
+            )}
+
+            {/* Amount input & presets */}
+            <div className="space-y-3 pt-1">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                ENTER AMOUNT (INR)
+              </label>
+              <div className="relative flex items-center">
+                <span className="absolute left-3.5 text-base font-black text-gray-400">₹</span>
+                <input
+                  type="number"
+                  min="100"
+                  max="100000"
+                  step="100"
+                  value={topupAmount}
+                  onChange={(e) => setTopupAmount(e.target.value)}
+                  className="w-full text-lg font-black text-gray-900 pl-8 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-hidden focus:border-[#008cff]"
+                  placeholder="1000"
+                />
+              </div>
+
+              {/* Presets */}
+              <div className="flex items-center gap-2">
+                {['500', '1000', '2000', '5000'].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setTopupAmount(preset)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                      topupAmount === preset
+                        ? 'bg-blue-50 border-[#008cff] text-[#008cff]'
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    +₹{preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100">
+              <button
+                onClick={() => {
+                  setIsTopupModalOpen(false);
+                  setTopupError(null);
+                  setTopupSuccess(null);
+                }}
+                className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSimulatedTopup}
+                disabled={topupLoading}
+                className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer uppercase tracking-wider"
+              >
+                {topupLoading ? (
+                  <>
+                    <span className="material-symbols-outlined text-[16px] animate-spin">refresh</span>
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[16px]">check</span>
+                    <span>{walletBalances?.features?.cashTopupEnabled ? 'Proceed to Pay' : 'Simulate Top-Up (Sandbox)'}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── CANCELLATION CONFIRMATION MODAL ── */}
       {isCancelModalOpen && (

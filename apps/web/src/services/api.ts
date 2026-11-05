@@ -334,6 +334,7 @@ export const payDemoBookingApi = async (payload: {
   payment_method?: string;
   simulate_failure?: boolean;
   card_last_four?: string;
+  reservation_id?: string;
 }): Promise<any> => {
   const res = await apiClient.post<ApiResponse<any>>('/payments/demo', payload);
   return res.data.data;
@@ -1113,6 +1114,159 @@ export const getCustomerPaymentsApi = async (): Promise<CustomerPaymentItem[]> =
   const res = await apiClient.get<ApiResponse<CustomerPaymentItem[]>>('/customer/payments');
   return res.data.data || [];
 };
+
+// ==========================================
+// DUAL WALLET API INTERFACES & CALLS
+// ==========================================
+export interface WalletBalancesResponse {
+  walletId: string;
+  customerId: string;
+  currency: string;
+  cashAvailable: number;
+  cashReserved: number;
+  promoAvailable: number;
+  promoReserved: number;
+  totalEligible: number;
+  totalSpendable?: number;
+  cashLocked?: number;
+  promoLocked?: number;
+  status: 'ACTIVE' | 'FROZEN' | 'SUSPENDED';
+  freezeReason?: string | null;
+  features: {
+    cashTopupEnabled: boolean;
+    promotionalEnabled: boolean;
+    withdrawalEnabled: boolean;
+  };
+}
+
+export interface WalletTransactionItem {
+  id: string;
+  transaction_id: string;
+  customer_id: string;
+  wallet_type: 'CASH' | 'PROMOTIONAL';
+  direction: 'CREDIT' | 'DEBIT';
+  transaction_type: string;
+  amount: number;
+  currency: string;
+  status: string;
+  description: string;
+  reference_id?: string;
+  booking_id?: string;
+  created_at: string;
+  completed_at?: string;
+}
+
+export interface PromotionalCreditLot {
+  id: string;
+  lot_reference: string;
+  reward_source: string;
+  original_amount: number;
+  remaining_amount: number;
+  currency: string;
+  applicable_services: string[] | string;
+  min_booking_amount: number;
+  max_usable_amount?: number;
+  issue_date: string;
+  expiry_date: string;
+  status: string;
+}
+
+export interface WalletSummaryResponse {
+  balances: WalletBalancesResponse;
+  totalCredited: number;
+  totalRedeemed: number;
+  expiringSoonAmount: number;
+  nearestExpiryDate: string | null;
+  recentTransactions: WalletTransactionItem[];
+}
+
+export interface WalletQuoteResponse {
+  bookingAmount: number;
+  serviceType: string;
+  walletStatus: string;
+  balances: {
+    cashAvailable: number;
+    promoAvailable: number;
+  };
+  eligible: {
+    promoAmount: number;
+    cashAmount: number;
+    totalWalletEligible: number;
+    remainingOnlinePayable: number;
+    promoLotsCount: number;
+  };
+}
+
+export const getWalletBalancesApi = async (): Promise<WalletBalancesResponse> => {
+  const res = await apiClient.get<ApiResponse<WalletBalancesResponse>>('/wallet');
+  return res.data.data;
+};
+
+export const getWalletSummaryApi = async (): Promise<WalletSummaryResponse> => {
+  const res = await apiClient.get<ApiResponse<WalletSummaryResponse>>('/wallet/summary');
+  return res.data.data;
+};
+
+export const getWalletTransactionsApi = async (params?: {
+  page?: number;
+  limit?: number;
+  wallet_type?: string;
+  direction?: string;
+  status?: string;
+}): Promise<{ items: WalletTransactionItem[]; pagination: any }> => {
+  const res = await apiClient.get<ApiResponse<{ items: WalletTransactionItem[]; pagination: any }>>('/wallet/transactions', { params });
+  return res.data.data;
+};
+
+export const getPromotionalLotsApi = async (): Promise<PromotionalCreditLot[]> => {
+  const res = await apiClient.get<ApiResponse<PromotionalCreditLot[]>>('/wallet/promotional-lots');
+  return res.data.data;
+};
+
+export const getWalletQuoteApi = async (serviceType: string, bookingAmount: number): Promise<WalletQuoteResponse> => {
+  const res = await apiClient.post<ApiResponse<WalletQuoteResponse>>('/wallet/quote', {
+    service_type: serviceType,
+    booking_amount: bookingAmount,
+  });
+  return res.data.data;
+};
+
+export const applyWalletToBookingApi = async (
+  bookingId: string,
+  cashAmount: number,
+  promoAmount: number
+): Promise<{ reservationId: string; reservationReference: string; cashReserved: number; promoReserved: number }> => {
+  const res = await apiClient.post<ApiResponse<any>>('/wallet/apply-to-booking', {
+    booking_id: bookingId,
+    cash_amount: cashAmount,
+    promo_amount: promoAmount,
+  });
+  return res.data.data;
+};
+
+export const releaseWalletReservationApi = async (reservationId: string, reason?: string): Promise<void> => {
+  await apiClient.post('/wallet/release-reservation', {
+    reservation_id: reservationId,
+    reason,
+  });
+};
+
+export const createWalletTopupOrderApi = async (amount: number): Promise<any> => {
+  const res = await apiClient.post<ApiResponse<any>>('/wallet/topup/orders', { amount });
+  return res.data.data;
+};
+
+export const verifyWalletTopupApi = async (payload: {
+  amount?: number;
+  order_id?: string;
+  razorpay_order_id?: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}): Promise<any> => {
+  const res = await apiClient.post<ApiResponse<any>>('/wallet/topup/verify', payload);
+  return res.data.data;
+};
+
 
 
 
