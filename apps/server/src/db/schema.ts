@@ -1297,6 +1297,116 @@ export async function initDbSchema() {
     ALTER TABLE payments ADD COLUMN IF NOT EXISTS cash_wallet_amount NUMERIC(12, 2) DEFAULT 0.00;
     ALTER TABLE payments ADD COLUMN IF NOT EXISTS promotional_wallet_amount NUMERIC(12, 2) DEFAULT 0.00;
     ALTER TABLE payments ADD COLUMN IF NOT EXISTS gateway_amount NUMERIC(12, 2) DEFAULT 0.00;
+
+    -- =========================================================================
+    -- VENDOR ONBOARDING, KYC & PROPERTY APPROVAL WORKFLOW SUB-SYSTEM
+    -- =========================================================================
+
+    -- 1. Extend Partner Profiles with Vendor Onboarding State
+    ALTER TABLE partner_profiles ADD COLUMN IF NOT EXISTS owner_name VARCHAR(150);
+    ALTER TABLE partner_profiles ADD COLUMN IF NOT EXISTS state VARCHAR(100);
+    ALTER TABLE partner_profiles ADD COLUMN IF NOT EXISTS property_type VARCHAR(50) DEFAULT 'HOTEL';
+    ALTER TABLE partner_profiles ADD COLUMN IF NOT EXISTS onboarding_status VARCHAR(50) DEFAULT 'REGISTERED';
+    ALTER TABLE partner_profiles ADD COLUMN IF NOT EXISTS kyc_status VARCHAR(50) DEFAULT 'KYC_INCOMPLETE';
+    ALTER TABLE partner_profiles ADD COLUMN IF NOT EXISTS kyc_submitted_at TIMESTAMPTZ;
+    ALTER TABLE partner_profiles ADD COLUMN IF NOT EXISTS kyc_approved_at TIMESTAMPTZ;
+    ALTER TABLE partner_profiles ADD COLUMN IF NOT EXISTS kyc_reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL;
+    ALTER TABLE partner_profiles ADD COLUMN IF NOT EXISTS admin_notes TEXT;
+
+    -- 2. Vendor KYC Applications (Configurable Document Architecture)
+    CREATE TABLE IF NOT EXISTS vendor_kyc_applications (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      vendor_id UUID NOT NULL REFERENCES partner_profiles(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      business_structure VARCHAR(50) NOT NULL DEFAULT 'INDIVIDUAL',
+      legal_business_name VARCHAR(255) NOT NULL,
+      trade_name VARCHAR(255),
+      gstin VARCHAR(50),
+      pan_number VARCHAR(50),
+      registered_address TEXT,
+      city VARCHAR(100),
+      state VARCHAR(100),
+      pincode VARCHAR(20),
+      status VARCHAR(50) NOT NULL DEFAULT 'DRAFT',
+      submission_notes TEXT,
+      admin_review_notes TEXT,
+      rejection_reason TEXT,
+      submitted_at TIMESTAMPTZ,
+      reviewed_at TIMESTAMPTZ,
+      reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_vendor_kyc_vendor_id ON vendor_kyc_applications(vendor_id);
+    CREATE INDEX IF NOT EXISTS idx_vendor_kyc_status ON vendor_kyc_applications(status);
+
+    -- 3. Vendor KYC Documents (Encrypted/Masked, Secure Private Storage)
+    CREATE TABLE IF NOT EXISTS vendor_kyc_documents (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      application_id UUID REFERENCES vendor_kyc_applications(id) ON DELETE CASCADE,
+      vendor_id UUID NOT NULL REFERENCES partner_profiles(id) ON DELETE CASCADE,
+      document_section VARCHAR(50) NOT NULL,
+      document_type VARCHAR(100) NOT NULL,
+      document_number_masked VARCHAR(100),
+      file_name VARCHAR(255) NOT NULL,
+      file_path VARCHAR(500) NOT NULL,
+      file_size INT NOT NULL,
+      mime_type VARCHAR(100) NOT NULL,
+      verification_status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+      notes TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_kyc_docs_vendor_id ON vendor_kyc_documents(vendor_id);
+    CREATE INDEX IF NOT EXISTS idx_kyc_docs_app_id ON vendor_kyc_documents(application_id);
+
+    -- 4. Vendor Notifications (Persistent in PostgreSQL)
+    CREATE TABLE IF NOT EXISTS vendor_notifications (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      vendor_id UUID NOT NULL REFERENCES partner_profiles(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title VARCHAR(200) NOT NULL,
+      message TEXT NOT NULL,
+      type VARCHAR(50) NOT NULL DEFAULT 'INFO',
+      is_read BOOLEAN NOT NULL DEFAULT FALSE,
+      reference_id VARCHAR(100),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_vendor_notif_vendor_id ON vendor_notifications(vendor_id, is_read);
+
+    -- 5. Persistent Admin Notifications (PostgreSQL)
+    CREATE TABLE IF NOT EXISTS admin_notifications (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      title VARCHAR(200) NOT NULL,
+      message TEXT NOT NULL,
+      type VARCHAR(50) NOT NULL DEFAULT 'VENDOR',
+      is_read BOOLEAN NOT NULL DEFAULT FALSE,
+      vendor_id UUID REFERENCES partner_profiles(id) ON DELETE SET NULL,
+      property_id UUID REFERENCES hotels(id) ON DELETE SET NULL,
+      link_url VARCHAR(255),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_admin_notif_is_read ON admin_notifications(is_read);
+
+    -- 6. Vendor Audit Logs
+    CREATE TABLE IF NOT EXISTS vendor_audit_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      entity_type VARCHAR(50) NOT NULL,
+      entity_id UUID NOT NULL,
+      action VARCHAR(100) NOT NULL,
+      actor_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      actor_role VARCHAR(50) NOT NULL,
+      details JSONB DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- 7. Hotels Extra Columns for Vendor Property Submission Workflow
+    ALTER TABLE hotels ADD COLUMN IF NOT EXISTS submission_date TIMESTAMPTZ;
+    ALTER TABLE hotels ADD COLUMN IF NOT EXISTS state VARCHAR(100);
   `);
 }
 

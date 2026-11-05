@@ -189,6 +189,9 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
         setProfile(p);
         setProfileForm({
           ...p,
+          fullName: p.fullName || currentUser?.fullName || '',
+          email: p.email || currentUser?.email || '',
+          phone: p.phone || currentUser?.phone || '',
           maritalStatus: p.maritalStatus || 'SINGLE',
           passportIssuingCountry: p.passportIssuingCountry || 'India',
           autoInsurancePreferences: p.autoInsurancePreferences || {
@@ -427,8 +430,6 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
     return true;
   });
 
-  const userDisplayName =
-    profile?.fullName || currentUser?.fullName || profile?.email?.split('@')[0] || 'Traveler';
 
   if (isLoading && !summary && !profile) {
     return (
@@ -470,19 +471,9 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
 
         {/* ── CARD WRAPPER: EXACT MAKEMYTRIP ACCOUNT LAYOUT ── */}
         <div className="bg-white rounded-3xl border border-gray-200/80 shadow-xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[640px]">
-          {/* ── LEFT SIDEBAR (MY ACCOUNT) ── */}
+          {/* ── LEFT SIDEBAR (MY ACCOUNT) — EXACT MATCH TO SCREENSHOT ── */}
           <aside className="lg:col-span-3 border-r border-gray-100 p-6 flex flex-col justify-between bg-white select-none">
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 px-1 pb-3 border-b border-gray-100">
-                <div className="w-10 h-10 rounded-full bg-[#008cff] text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">
-                  {userDisplayName.charAt(0).toUpperCase()}
-                </div>
-                <div className="overflow-hidden">
-                  <p className="text-xs font-bold text-gray-900 truncate">{userDisplayName}</p>
-                  <p className="text-[10px] text-gray-400 truncate">{profile?.phone || profile?.email}</p>
-                </div>
-              </div>
-
+            <div className="space-y-4">
               <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block px-2">
                 MY ACCOUNT
               </span>
@@ -490,7 +481,10 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
               <nav className="space-y-1">
                 {/* 1. My Profile */}
                 <button
-                  onClick={() => setActiveTab('profile')}
+                  onClick={() => {
+                    setActiveTab('profile');
+                    setIsEditingCoTraveller(false);
+                  }}
                   className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
                     activeTab === 'profile'
                       ? 'bg-[#eaf5ff] text-[#008cff]'
@@ -501,12 +495,15 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                     <span className="material-symbols-outlined text-[20px]">account_circle</span>
                     <span>My Profile</span>
                   </div>
-                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                  <span className="w-2 h-2 rounded-full bg-[#ff3b30]" />
                 </button>
 
                 {/* 2. Co-Travellers */}
                 <button
-                  onClick={() => setActiveTab('travellers')}
+                  onClick={() => {
+                    setActiveTab('travellers');
+                    setIsEditingCoTraveller(false);
+                  }}
                   className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
                     activeTab === 'travellers'
                       ? 'bg-[#eaf5ff] text-[#008cff]'
@@ -517,36 +514,14 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                     <span className="material-symbols-outlined text-[20px]">group</span>
                     <span>Co-Travellers</span>
                   </div>
-                  {travellers.length > 0 && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                      {travellers.length}
-                    </span>
-                  )}
                 </button>
 
-                {/* 3. SS Wallet */}
+                {/* 3. Logged In Devices */}
                 <button
-                  onClick={() => setActiveTab('wallet')}
-                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                    activeTab === 'wallet'
-                      ? 'bg-[#eaf5ff] text-[#008cff]'
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-[20px]">account_balance_wallet</span>
-                    <span>SS Wallet</span>
-                  </div>
-                  {walletBalances && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-[#008cff]">
-                      {formatPrice(walletBalances.totalSpendable || 0)}
-                    </span>
-                  )}
-                </button>
-
-                {/* 4. Logged In Devices */}
-                <button
-                  onClick={() => setActiveTab('devices')}
+                  onClick={() => {
+                    setActiveTab('devices');
+                    setIsEditingCoTraveller(false);
+                  }}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
                     activeTab === 'devices'
                       ? 'bg-[#eaf5ff] text-[#008cff]'
@@ -557,7 +532,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                   <span>Logged In Devices</span>
                 </button>
 
-                {/* 5. Logout */}
+                {/* 4. Logout */}
                 <button
                   onClick={onLogout}
                   className="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold text-gray-700 hover:text-rose-600 hover:bg-rose-50/50 transition-all cursor-pointer"
