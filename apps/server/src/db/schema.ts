@@ -606,6 +606,29 @@ export async function initDbSchema() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    -- Enhanced B2B Enterprise Columns
+    ALTER TABLE mybiz_companies ADD COLUMN IF NOT EXISTS account_type VARCHAR(50) DEFAULT 'CORPORATE';
+    ALTER TABLE mybiz_companies ADD COLUMN IF NOT EXISTS contact_person_name VARCHAR(255);
+    ALTER TABLE mybiz_companies ADD COLUMN IF NOT EXISTS contact_person_phone VARCHAR(50);
+    ALTER TABLE mybiz_companies ADD COLUMN IF NOT EXISTS website VARCHAR(255);
+    ALTER TABLE mybiz_companies ADD COLUMN IF NOT EXISTS verification_status VARCHAR(50) DEFAULT 'PENDING';
+    ALTER TABLE mybiz_companies ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+    ALTER TABLE mybiz_companies ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
+
+    ALTER TABLE mybiz_employees ADD COLUMN IF NOT EXISTS reporting_manager_id UUID REFERENCES mybiz_employees(id) ON DELETE SET NULL;
+    ALTER TABLE mybiz_employees ADD COLUMN IF NOT EXISTS booking_permission VARCHAR(50) DEFAULT 'CAN_BOOK';
+    ALTER TABLE mybiz_employees ADD COLUMN IF NOT EXISTS commission_rate NUMERIC(5, 2) DEFAULT 0.0;
+
+    ALTER TABLE mybiz_trip_requests ADD COLUMN IF NOT EXISTS booking_id UUID REFERENCES bookings(id) ON DELETE SET NULL;
+    ALTER TABLE mybiz_trip_requests ADD COLUMN IF NOT EXISTS destination VARCHAR(255);
+    ALTER TABLE mybiz_trip_requests ADD COLUMN IF NOT EXISTS travel_date_from DATE;
+    ALTER TABLE mybiz_trip_requests ADD COLUMN IF NOT EXISTS travel_date_to DATE;
+
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES mybiz_companies(id) ON DELETE SET NULL;
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booked_by_employee_id UUID REFERENCES mybiz_employees(id) ON DELETE SET NULL;
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS agent_id UUID REFERENCES mybiz_employees(id) ON DELETE SET NULL;
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_business_booking BOOLEAN DEFAULT FALSE;
+
     CREATE TABLE IF NOT EXISTS pricing_rules (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       name VARCHAR(255) NOT NULL,

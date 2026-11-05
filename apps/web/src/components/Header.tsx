@@ -19,6 +19,10 @@ export type ScreenType =
   | 'vendor-register' 
   | 'vendor-kyc' 
   | 'vendor-dashboard' 
+  | 'business'
+  | 'business-register'
+  | 'business-login'
+  | 'business-dashboard'
   | 'mybiz' 
   | 'mybiz-dashboard';
 
@@ -30,6 +34,7 @@ interface HeaderProps {
   bizContext?: MyBizContext | null;
   onOpenAuth: () => void;
   onPartnerLogin?: () => void;
+  onBusinessLogin?: () => void;
   onLogout: () => void;
   onOpenWishlist?: () => void;
   wishlistCount?: number;
@@ -44,6 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
   bizContext,
   onOpenAuth,
   onPartnerLogin,
+  onBusinessLogin,
   onLogout,
   onOpenWishlist,
   wishlistCount = 0,
@@ -60,7 +66,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   // Context-aware Header Authentication calculation
   const pathname = currentPath || (typeof window !== 'undefined' ? window.location.pathname : '/');
-  const routeContext = getHeaderRouteContext(pathname, activeScreen, user);
+  const routeContext = getHeaderRouteContext(pathname, activeScreen, user, bizContext?.is_biz_user);
 
   useEffect(() => {
     if (user && routeContext.authMode === 'CUSTOMER_AUTH') {
@@ -217,7 +223,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* ── RIGHT UTILITY BAR (Matches Reference Header Style) ── */}
           <div className="flex items-center gap-0.5 sm:gap-1 lg:gap-1.5">
-            {/* myBiz Account */}
+            {/* For Business / myBiz */}
             <UtilityNavItem
               icon={
                 <svg className="w-5 h-5 sm:w-[22px] sm:h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -225,10 +231,10 @@ export const Header: React.FC<HeaderProps> = ({
                   <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
                 </svg>
               }
-              label="myBiz"
-              onClick={() => setActiveScreen(bizContext?.is_biz_user ? 'mybiz-dashboard' : 'mybiz')}
-              isActive={activeScreen === 'mybiz' || activeScreen === 'mybiz-dashboard'}
-              title="myBiz Corporate Travel"
+              label="For Business / myBiz"
+              onClick={() => setActiveScreen(bizContext?.is_biz_user || user?.role?.includes('BUSINESS') || user?.role?.includes('AGENCY') ? 'business-dashboard' : 'business')}
+              isActive={routeContext.isBusinessArea}
+              title="SS Journey myBiz &bull; Corporate Travel & Agencies"
             />
 
             {/* List Your Property */}
@@ -516,6 +522,123 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 )}
               </div>
+            ) : routeContext.authMode === 'BUSINESS_AUTH' && user ? (
+              /* 2. Authenticated Business Member in Business Section */
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className={`flex items-center rounded-full pl-1.5 pr-3 sm:pr-4 py-1 sm:py-1.5 gap-2 sm:gap-2.5 transition-all duration-200 cursor-pointer shadow-md select-none ${
+                    isTransparent 
+                      ? 'bg-[#222638]/85 hover:bg-[#2c324a] border border-white/15 text-white' 
+                      : 'bg-[#1e293b] hover:bg-[#334155] border border-slate-700 text-white'
+                  }`}
+                  title="myBiz Business Account Menu"
+                >
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-amber-400 via-orange-500 to-amber-600 flex items-center justify-center text-xs sm:text-sm font-black text-white shadow-xs shrink-0">
+                    B
+                  </div>
+                  <div className="flex flex-col text-left hidden sm:flex">
+                    <span className="text-xs sm:text-sm font-bold text-white tracking-tight truncate max-w-[120px] leading-tight">
+                      {bizContext?.company_name || user.fullName || user.email.split('@')[0]}
+                    </span>
+                    <span className="text-[9px] font-black uppercase tracking-wider text-amber-300 leading-tight">
+                      {bizContext?.biz_role || user.role || 'Corporate'}
+                    </span>
+                  </div>
+                  <svg className={`w-3.5 h-3.5 text-white/90 shrink-0 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {/* Business Dropdown */}
+                {isUserMenuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-64 bg-white text-gray-800 rounded-2xl shadow-2xl border border-gray-200 p-2 z-50 animate-fade-in space-y-0.5">
+                    <div className="px-3 py-2.5 border-b border-gray-100 mb-1 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-black text-gray-900 truncate">
+                          {bizContext?.company_name || 'My Business'}
+                        </p>
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                          myBiz
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-gray-500 truncate mt-0.5">{user.email}</p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setActiveScreen('business-dashboard');
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-amber-50 hover:text-amber-800 transition"
+                    >
+                      <span className="material-symbols-outlined text-[18px] text-amber-600">dashboard</span>
+                      <span>Dashboard Overview</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setActiveScreen('business-dashboard');
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-amber-50 hover:text-amber-800 transition"
+                    >
+                      <span className="material-symbols-outlined text-[18px] text-blue-600">luggage</span>
+                      <span>Company Bookings</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setActiveScreen('business-dashboard');
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-amber-50 hover:text-amber-800 transition"
+                    >
+                      <span className="material-symbols-outlined text-[18px] text-emerald-600">group</span>
+                      <span>Employees &amp; Agents</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setActiveScreen('business-dashboard');
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-amber-50 hover:text-amber-800 transition"
+                    >
+                      <span className="material-symbols-outlined text-[18px] text-purple-600">fact_check</span>
+                      <span>Approval Requests</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setActiveScreen('business-dashboard');
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-amber-50 hover:text-amber-800 transition"
+                    >
+                      <span className="material-symbols-outlined text-[18px] text-teal-600">receipt_long</span>
+                      <span>Invoices &amp; Billing</span>
+                    </button>
+
+                    <div className="my-1 border-t border-gray-100" />
+
+                    <button
+                      type="button"
+                      onClick={() => { setIsUserMenuOpen(false); onLogout(); }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">logout</span>
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : routeContext.authMode === 'CUSTOMER_AUTH' && user ? (
               /* 2. Authenticated Customer Menu in Customer Section */
               <div className="relative" ref={userMenuRef}>
@@ -647,6 +770,28 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 )}
               </div>
+            ) : routeContext.authMode === 'BUSINESS_GUEST' ? (
+              /* 3. Business Section: "Business Login" */
+              <button 
+                type="button"
+                onClick={onBusinessLogin || (() => setActiveScreen('business-login'))}
+                className={`flex items-center rounded-full pl-1.5 pr-3 sm:pr-4 py-1 sm:py-1.5 gap-2 sm:gap-2.5 transition-all duration-200 cursor-pointer shadow-md select-none ${
+                  isTransparent 
+                    ? 'bg-[#222638]/85 hover:bg-[#2c324a] border border-white/15 text-white' 
+                    : 'bg-[#1e293b] hover:bg-[#334155] border border-amber-500/50 text-white'
+                }`}
+                title="SS Journey myBiz Business Login"
+              >
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-amber-400 via-orange-500 to-amber-600 flex items-center justify-center text-xs sm:text-sm font-black text-white shadow-xs shrink-0">
+                  B
+                </div>
+                <span className="text-xs sm:text-sm font-bold text-white tracking-tight hidden sm:inline leading-none">
+                  Business Login
+                </span>
+                <svg className="w-3.5 h-3.5 text-white/90 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
             ) : routeContext.authMode === 'VENDOR_GUEST' ? (
               /* 3. Vendor Section: "Partner Login" */
               <button 
@@ -830,6 +975,19 @@ export const Header: React.FC<HeaderProps> = ({
                       </button>
                     </div>
                   </div>
+                ) : routeContext.authMode === 'BUSINESS_GUEST' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      if (onBusinessLogin) onBusinessLogin();
+                      else setActiveScreen('business-login');
+                    }}
+                    className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-xs text-center shadow-md flex items-center justify-center space-x-2"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">business_center</span>
+                    <span>Business Login</span>
+                  </button>
                 ) : routeContext.authMode === 'VENDOR_GUEST' ? (
                   <button
                     type="button"
@@ -1046,6 +1204,24 @@ export const Header: React.FC<HeaderProps> = ({
                         <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
                       </button>
                     </>
+                  ) : routeContext.authMode === 'BUSINESS_GUEST' ? (
+                    <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200/80 text-center space-y-2">
+                      <p className="text-xs text-slate-700 font-medium leading-relaxed">
+                        Sign in to SS Journey myBiz to manage corporate bookings, approvals and employee travel.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          if (onBusinessLogin) onBusinessLogin();
+                          else setActiveScreen('business-login');
+                        }}
+                        className="w-full py-2 px-3 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-lg text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5"
+                      >
+                        <span className="material-symbols-outlined text-[17px]">business_center</span>
+                        <span>Business Login</span>
+                      </button>
+                    </div>
                   ) : routeContext.authMode === 'VENDOR_GUEST' ? (
                     <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200/80 text-center space-y-2">
                       <p className="text-xs text-slate-600 font-medium leading-relaxed">

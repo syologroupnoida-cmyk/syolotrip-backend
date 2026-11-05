@@ -714,3 +714,69 @@ export const updateAdminWalletConfig = async (key: string, value: string): Promi
 
 
 
+
+// ================= SS Journey myBiz Admin B2B APIs =================
+export interface AdminBusinessCompany {
+  id: string;
+  name: string;
+  account_type: 'CORPORATE' | 'AGENCY';
+  billing_email: string;
+  contact_person_name?: string;
+  contact_person_phone?: string;
+  gstin?: string;
+  pan?: string;
+  industry?: string;
+  company_size?: string;
+  credit_limit: number;
+  credit_used: number;
+  verification_status: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED';
+  rejection_reason?: string;
+  verified_at?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminCompanyDetail {
+  company: AdminBusinessCompany;
+  employees: any[];
+  policy?: any;
+  bookings: any[];
+  invoices: any[];
+}
+
+export const getAdminBusinessCompanies = async (params?: {
+  search?: string;
+  account_type?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{ companies: AdminBusinessCompany[]; total: number; page: number; totalPages: number }> => {
+  const response = await adminApiClient.get('/admin/business/companies', { params });
+  return response.data.data;
+};
+
+export const getAdminBusinessCompanyById = async (companyId: string): Promise<AdminCompanyDetail> => {
+  const response = await adminApiClient.get(`/admin/business/companies/${companyId}`);
+  return response.data.data;
+};
+
+export const verifyAdminBusinessCompany = async (companyId: string): Promise<any> => {
+  const response = await adminApiClient.post(`/admin/business/companies/${companyId}/verify`);
+  return response.data;
+};
+
+export const rejectAdminBusinessCompany = async (companyId: string, reason: string): Promise<any> => {
+  const response = await adminApiClient.post(`/admin/business/companies/${companyId}/reject`, { reason });
+  return response.data;
+};
+
+export const suspendAdminBusinessCompany = async (companyId: string, suspend: boolean): Promise<any> => {
+  const response = await adminApiClient.post(`/admin/business/companies/${companyId}/suspend`, { suspend });
+  return response.data;
+};
+
+export const updateAdminBusinessCompanyCredit = async (companyId: string, credit_limit: number): Promise<any> => {
+  const response = await adminApiClient.put(`/admin/business/companies/${companyId}/credit`, { credit_limit });
+  return response.data;
+};

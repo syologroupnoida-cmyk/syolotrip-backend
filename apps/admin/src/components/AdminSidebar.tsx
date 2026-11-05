@@ -2,7 +2,8 @@ import React from 'react';
 import { 
   LayoutDashboard, Plane, Hotel, Bus, Train, Car, Compass, 
   Receipt, Users, Tag, FileText, Settings, ShieldAlert, TrendingUp,
-  Home, MapPin, FileCheck2, ShieldCheck, Database, Shield, FileSpreadsheet, Wallet
+  Home, MapPin, FileCheck2, ShieldCheck, Database, Shield, FileSpreadsheet, Wallet,
+  Building2
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -72,6 +73,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       title: 'USERS & ACCESS',
       items: [
         { id: 'customers', label: 'Customers & Guests', icon: Users },
+        { id: 'business', label: 'B2B & Agencies', icon: Building2, badge: 'myBiz' },
         { id: 'roles', label: 'Roles & Permissions', icon: Shield, badge: 'RBAC' },
       ],
     },

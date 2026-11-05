@@ -30,6 +30,7 @@ interface MyBizDashboardPageProps {
   user: UserProfile | null;
   bizContext: MyBizContext | null;
   onOpenAuth: () => void;
+  initialTab?: string;
 }
 
 type DashboardTab = 'overview' | 'approvals' | 'employees' | 'policy' | 'invoices' | 'bookings' | 'settings';
@@ -37,10 +38,28 @@ type DashboardTab = 'overview' | 'approvals' | 'employees' | 'policy' | 'invoice
 export const MyBizDashboardPage: React.FC<MyBizDashboardPageProps> = ({
   onNavigate,
   user,
-  bizContext,
+  bizContext: _bizContext,
   onOpenAuth,
+  initialTab,
 }) => {
-  const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
+  const mapInitialTab = (tab?: string): DashboardTab => {
+    if (!tab) return 'overview';
+    if (tab === 'bookings') return 'bookings';
+    if (tab === 'employees' || tab === 'agents') return 'employees';
+    if (tab === 'approvals') return 'approvals';
+    if (tab === 'policy' || tab === 'travel-policies') return 'policy';
+    if (tab === 'invoices' || tab === 'payments') return 'invoices';
+    if (tab === 'settings' || tab === 'company-profile') return 'settings';
+    return 'overview';
+  };
+
+  const [activeTab, setActiveTab] = useState<DashboardTab>(() => mapInitialTab(initialTab));
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(mapInitialTab(initialTab));
+    }
+  }, [initialTab]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -245,20 +264,31 @@ export const MyBizDashboardPage: React.FC<MyBizDashboardPageProps> = ({
                   <h1 className="text-xl font-black text-white tracking-tight">
                     {company?.name || 'My Company Business Account'}
                   </h1>
-                  <span className="bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
-                    {bizContext?.biz_role === 'BIZ_ADMIN'
-                      ? 'Admin'
-                      : bizContext?.biz_role === 'BIZ_APPROVER'
-                      ? 'Approver'
-                      : 'Employee'}
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                    company?.account_type === 'AGENCY'
+                      ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
+                      : 'bg-amber-400/20 text-amber-300 border border-amber-400/30'
+                  }`}>
+                    {company?.account_type === 'AGENCY' ? 'Travel Agency' : 'Corporate'}
                   </span>
+                  {company?.verification_status === 'VERIFIED' ? (
+                    <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center space-x-1">
+                      <span className="material-symbols-outlined text-[14px]">verified</span>
+                      <span>Verified</span>
+                    </span>
+                  ) : (
+                    <span className="bg-amber-500/20 text-amber-300 border border-amber-400/30 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center space-x-1">
+                      <span className="material-symbols-outlined text-[14px]">schedule</span>
+                      <span>Verification Pending</span>
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center space-x-3 text-xs text-slate-300 mt-1">
                   <span>GSTIN: <strong className="text-slate-100">{company?.gstin || 'Not provided'}</strong></span>
                   <span>&bull;</span>
-                  <span>Employees: <strong className="text-slate-100">{employees.length}</strong></span>
+                  <span>{company?.account_type === 'AGENCY' ? 'Agents' : 'Employees'}: <strong className="text-slate-100">{employees.length}</strong></span>
                   <span>&bull;</span>
-                  <span>Industry: <strong className="text-slate-100">{company?.industry || 'Corporate'}</strong></span>
+                  <span>Credit Limit: <strong className="text-emerald-300">₹{company?.credit_limit?.toLocaleString() || '0'}</strong></span>
                 </div>
               </div>
             </div>
@@ -285,7 +315,7 @@ export const MyBizDashboardPage: React.FC<MyBizDashboardPageProps> = ({
             {[
               { id: 'overview', label: 'Overview & Analytics', icon: '📊' },
               { id: 'approvals', label: `Trip Approvals (${tripRequests.filter(r => r.status === 'PENDING').length})`, icon: '✍️' },
-              { id: 'employees', label: `Employees (${employees.length})`, icon: '👥' },
+              { id: 'employees', label: `${company?.account_type === 'AGENCY' ? 'Agents & Staff' : 'Employees'} (${employees.length})`, icon: '👥' },
               { id: 'policy', label: 'Travel Policies', icon: '🛡️' },
               { id: 'invoices', label: `GST Invoices (${invoices.length})`, icon: '🧾' },
               { id: 'bookings', label: `Company Bookings (${companyBookings.length})`, icon: '✈️' },

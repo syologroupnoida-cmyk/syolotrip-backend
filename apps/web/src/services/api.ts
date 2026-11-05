@@ -462,18 +462,30 @@ export interface MyBizContext {
 export interface MyBizCompany {
   id: string;
   name: string;
+  account_type?: 'CORPORATE' | 'AGENCY';
+  verification_status?: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED';
+  contact_person_name?: string;
+  contact_person_phone?: string;
+  credit_limit?: number;
+  used_credit?: number;
   gstin?: string;
   pan?: string;
   industry?: string;
-  employee_count_range: string;
+  company_size?: string;
+  employee_count_range?: string;
+  address?: string;
   billing_address?: string;
   city?: string;
   state?: string;
+  country?: string;
   pincode?: string;
+  postal_code?: string;
+  billing_email?: string;
+  billing_phone?: string;
   website?: string;
   is_active: boolean;
   created_at: string;
-  employee_count: number;
+  employee_count?: number;
 }
 
 export interface MyBizEmployee {
@@ -482,10 +494,17 @@ export interface MyBizEmployee {
   user_id?: string;
   email: string;
   full_name: string;
-  role: 'BIZ_ADMIN' | 'BIZ_APPROVER' | 'BIZ_EMPLOYEE';
+  phone?: string;
+  role: string;
   department?: string;
   designation?: string;
   status: 'ACTIVE' | 'INVITED' | 'DEACTIVATED';
+  monthly_budget?: number;
+  used_budget_this_month?: number;
+  booking_permission?: string;
+  commission_rate?: number;
+  booking_count?: number;
+  total_spent?: number;
   created_at: string;
 }
 
@@ -678,6 +697,93 @@ export const getMyBizReportsApi = async (): Promise<MyBizReport> => {
 
 export const getMyBizBookingsApi = async (): Promise<any[]> => {
   const res = await apiClient.get<ApiResponse<any[]>>('/mybiz/bookings');
+  return res.data.data;
+};
+
+// ================= SS Journey myBiz B2B APIs =================
+export const registerBusinessApi = async (payload: {
+  account_type: 'CORPORATE' | 'AGENCY';
+  company_name: string;
+  billing_email: string;
+  contact_person_name: string;
+  contact_person_phone?: string;
+  password: string;
+  industry?: string;
+  company_size?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postal_code?: string;
+  gstin?: string;
+  pan?: string;
+  website?: string;
+}): Promise<{ token: string; user: UserProfile; company: MyBizCompany; employee: MyBizEmployee }> => {
+  const res = await apiClient.post<ApiResponse<{ token: string; user: UserProfile; company: MyBizCompany; employee: MyBizEmployee }>>(
+    '/business/register',
+    payload
+  );
+  if (res.data.data.token) {
+    localStorage.setItem('auth_token', res.data.data.token);
+  }
+  return res.data.data;
+};
+
+export const loginBusinessApi = async (payload: {
+  email: string;
+  password: string;
+}): Promise<{ token: string; user: UserProfile; company: MyBizCompany; employee: MyBizEmployee }> => {
+  const res = await apiClient.post<ApiResponse<{ token: string; user: UserProfile; company: MyBizCompany; employee: MyBizEmployee }>>(
+    '/business/login',
+    payload
+  );
+  if (res.data.data.token) {
+    localStorage.setItem('auth_token', res.data.data.token);
+  }
+  return res.data.data;
+};
+
+export interface BusinessDashboardData {
+  company: MyBizCompany;
+  employee: MyBizEmployee;
+  metrics: {
+    totalBookings: number;
+    totalSpend: number;
+    upcomingTrips: number;
+    pendingApprovals: number;
+    activeMembers: number;
+    pendingInvoiceAmount: number;
+    totalInvoices: number;
+    creditLimit: number;
+    usedCredit: number;
+    availableCredit: number;
+  };
+  recentBookings: any[];
+  recentTripRequests: any[];
+  recentInvoices: any[];
+  spendTrend: { month_label: string; monthly_spend: number; booking_count: number }[];
+}
+
+export const getBusinessDashboardApi = async (): Promise<BusinessDashboardData> => {
+  const res = await apiClient.get<ApiResponse<BusinessDashboardData>>('/business/dashboard');
+  return res.data.data;
+};
+
+export const validateBusinessPolicyApi = async (payload: {
+  service_type: string;
+  amount: number;
+  travel_class?: string;
+  star_rating?: number;
+}): Promise<{ is_compliant: boolean; requires_approval: boolean; violations: string[] }> => {
+  const res = await apiClient.post<ApiResponse<{ is_compliant: boolean; requires_approval: boolean; violations: string[] }>>(
+    '/business/policy/validate',
+    payload
+  );
+  return res.data.data;
+};
+
+export const getBusinessInvoiceByIdApi = async (invoiceId: string): Promise<MyBizInvoice> => {
+  const res = await apiClient.get<ApiResponse<MyBizInvoice>>(`/business/invoices/${invoiceId}`);
   return res.data.data;
 };
 

@@ -100,3 +100,57 @@ test('6. Authenticated customer on customer routes gets CUSTOMER_AUTH', () => {
   assert.equal(ctx.loginTargetUrl, '/dashboard');
 });
 
+test('7. Public myBiz business routes identify as BUSINESS_GUEST with "Business Login"', () => {
+  const businessPublicRoutes = ['/business', '/business/register', '/business/login'];
+
+  for (const path of businessPublicRoutes) {
+    const ctx = getHeaderRouteContext(path, undefined, null);
+    assert.equal(ctx.isBusinessArea, true, `Expected ${path} to be business area`);
+    assert.equal(ctx.authMode, 'BUSINESS_GUEST');
+    assert.equal(ctx.loginButtonLabel, 'Business Login');
+    assert.equal(ctx.loginTargetUrl, '/business/login');
+  }
+});
+
+test('8. Protected myBiz routes with Business credentials render BUSINESS_AUTH', () => {
+  const businessUser = {
+    id: 'biz-123',
+    email: 'admin@enterprise.com',
+    role: 'BUSINESS_ADMIN',
+    fullName: 'Corporate Admin'
+  };
+
+  const protectedBizRoutes = [
+    '/business/dashboard',
+    '/business/bookings',
+    '/business/employees',
+    '/business/agents',
+    '/business/approvals',
+    '/business/invoices',
+    '/business/reports'
+  ];
+
+  for (const path of protectedBizRoutes) {
+    const ctx = getHeaderRouteContext(path, undefined, businessUser);
+    assert.equal(ctx.isBusinessArea, true);
+    assert.equal(ctx.isProtectedBusinessArea, true);
+    assert.equal(ctx.authMode, 'BUSINESS_AUTH');
+    assert.equal(ctx.loginButtonLabel, 'myBiz Portal');
+    assert.equal(ctx.loginTargetUrl, '/business/dashboard');
+  }
+});
+
+test('9. Customer user without B2B membership gets BUSINESS_GUEST on /business/dashboard', () => {
+  const customerUser = {
+    id: 'cust-789',
+    email: 'traveler@ssjourney.com',
+    role: 'CUSTOMER',
+    name: 'Regular Customer'
+  };
+
+  const ctx = getHeaderRouteContext('/business/dashboard', undefined, customerUser);
+  assert.equal(ctx.isBusinessArea, true);
+  assert.equal(ctx.authMode, 'BUSINESS_GUEST');
+  assert.equal(ctx.loginButtonLabel, 'Business Login');
+});
+

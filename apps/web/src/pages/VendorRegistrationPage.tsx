@@ -488,6 +488,39 @@ export const VendorRegistrationPage: React.FC<VendorRegistrationPageProps> = ({
                 >
                   {isLoading ? <span>Signing in...</span> : <span>Sign In to Extranet Dashboard</span>}
                 </button>
+
+                {/* 1-Click Demo Partner Login */}
+                <div className="pt-4 border-t border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 text-center">
+                    Quick 1-Click Demo Account
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginEmail('vendor.demo@ssjourney.com');
+                      setLoginPassword('Vendor@123456');
+                      setIsLoading(true);
+                      loginApi('vendor.demo@ssjourney.com', 'Vendor@123456')
+                        .then((res) => {
+                          if (res.tokens?.accessToken) {
+                            localStorage.setItem('auth_token', res.tokens.accessToken);
+                          }
+                          if (onLoginSuccess && res.user) {
+                            onLoginSuccess(res.user);
+                          }
+                          onNavigate('vendor-dashboard');
+                        })
+                        .catch((err: any) => {
+                          setErrorMessage(err.response?.data?.message || err.message);
+                        })
+                        .finally(() => setIsLoading(false));
+                    }}
+                    className="w-full py-2.5 px-3 rounded-xl bg-blue-50/80 hover:bg-blue-100 border border-blue-200 text-[#008cff] font-bold text-xs transition cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Building2 className="w-4 h-4" />
+                    <span>Quick Demo: Royal Heritage Retreat (Verified Hotel Partner)</span>
+                  </button>
+                </div>
               </form>
             )}
           </div>

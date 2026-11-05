@@ -14,8 +14,10 @@ import { ListPropertyPage } from './pages/ListPropertyPage';
 import { VendorRegistrationPage } from './pages/VendorRegistrationPage';
 import { VendorKYCPage } from './pages/VendorKYCPage';
 import { VendorDashboardPage } from './pages/VendorDashboardPage';
-import { MyBizLandingPage } from './pages/MyBizLandingPage';
-import { MyBizDashboardPage } from './pages/MyBizDashboardPage';
+import { BusinessLandingPage } from './pages/BusinessLandingPage';
+import { BusinessRegistrationPage } from './pages/BusinessRegistrationPage';
+import { BusinessLoginPage } from './pages/BusinessLoginPage';
+import { BusinessDashboardPage } from './pages/BusinessDashboardPage';
 import { CustomerDashboardPage, DashboardSubTab } from './pages/CustomerDashboardPage';
 import { normalizePath } from './utils/routeContext';
 import { AuthModal } from './components/AuthModal';
@@ -29,6 +31,7 @@ import {
   getMyBizContextApi,
   MyBizContext,
   MyBizCompany,
+  MyBizEmployee,
 } from './services/api';
 
 const queryClient = new QueryClient({
@@ -131,8 +134,12 @@ const AppContent: React.FC = () => {
       case 'vendor-register': return vendorMode === 'login' ? '/partner/login' : '/partner/register';
       case 'vendor-kyc': return '/partner/kyc';
       case 'vendor-dashboard': return '/partner/dashboard';
-      case 'mybiz': return '/mybiz';
-      case 'mybiz-dashboard': return '/mybiz-dashboard';
+      case 'business': return '/business';
+      case 'business-register': return '/business/register';
+      case 'business-login': return '/business/login';
+      case 'business-dashboard': return '/business/dashboard';
+      case 'mybiz': return '/business';
+      case 'mybiz-dashboard': return '/business/dashboard';
       default: return '/';
     }
   };
@@ -231,8 +238,31 @@ const AppContent: React.FC = () => {
       return;
     }
     if (norm === '/dashboard') { setActiveScreen('dashboard'); setCurrentPath('/dashboard'); return; }
-    if (norm === '/mybiz') { setActiveScreen('mybiz'); setCurrentPath('/mybiz'); return; }
-    if (norm === '/mybiz-dashboard') { setActiveScreen('mybiz-dashboard'); setCurrentPath('/mybiz-dashboard'); return; }
+    if (norm === '/business/register') {
+      setActiveScreen('business-register');
+      setCurrentPath('/business/register');
+      return;
+    }
+    if (norm === '/business/login') {
+      setActiveScreen('business-login');
+      setCurrentPath('/business/login');
+      return;
+    }
+    if (norm === '/business/dashboard' || norm.startsWith('/business/')) {
+      setActiveScreen('business-dashboard');
+      setCurrentPath(norm);
+      return;
+    }
+    if (norm === '/business' || norm === '/mybiz') {
+      setActiveScreen('business');
+      setCurrentPath('/business');
+      return;
+    }
+    if (norm === '/mybiz-dashboard') {
+      setActiveScreen('business-dashboard');
+      setCurrentPath('/business/dashboard');
+      return;
+    }
     
     // Default fallback to home
     setActiveScreen('explore');
@@ -433,6 +463,22 @@ const AppContent: React.FC = () => {
       company_name: company.name,
       biz_role: 'BIZ_ADMIN',
     });
+    fetchBizContext();
+  };
+
+  const handleBizLoginSuccess = (
+    loggedInUser: UserProfile,
+    company: MyBizCompany,
+    employee: MyBizEmployee
+  ) => {
+    setUser(loggedInUser);
+    setBizContext({
+      is_biz_user: true,
+      company_id: company.id,
+      company_name: company.name,
+      biz_role: employee.role as any,
+    });
+    fetchBizContext();
   };
 
   const handleSearchFlights = (params: FlightSearchParams) => {
@@ -497,6 +543,7 @@ const AppContent: React.FC = () => {
         bizContext={bizContext}
         onOpenAuth={handleOpenCustomerAuth}
         onPartnerLogin={handlePartnerLogin}
+        onBusinessLogin={() => navigateTo('business-login')}
         onLogout={handleLogout}
         onOpenWishlist={() => {
           if (!user) {
@@ -615,21 +662,36 @@ const AppContent: React.FC = () => {
             onLogout={handleLogout}
           />
         )}
-        {activeScreen === 'mybiz' && (
-          <MyBizLandingPage 
+        {(activeScreen === 'business' || activeScreen === 'mybiz') && (
+          <BusinessLandingPage 
             onNavigate={navigateTo} 
             user={user}
             bizContext={bizContext}
             onOpenAuth={handleOpenCustomerAuth}
-            onBizRegistered={handleBizRegistered}
           />
         )}
-        {activeScreen === 'mybiz-dashboard' && (
-          <MyBizDashboardPage 
+        {activeScreen === 'business-register' && (
+          <BusinessRegistrationPage
+            onNavigate={navigateTo}
+            onBizRegistered={(company) => {
+              handleBizRegistered(company);
+              fetchBizContext();
+            }}
+          />
+        )}
+        {activeScreen === 'business-login' && (
+          <BusinessLoginPage
+            onNavigate={navigateTo}
+            onBizLoginSuccess={handleBizLoginSuccess}
+          />
+        )}
+        {(activeScreen === 'business-dashboard' || activeScreen === 'mybiz-dashboard') && (
+          <BusinessDashboardPage 
             onNavigate={navigateTo} 
             user={user}
             bizContext={bizContext}
-            onOpenAuth={handleOpenCustomerAuth}
+            onOpenAuth={() => navigateTo('business-login')}
+            initialTab={currentPath?.replace('/business/', '')}
           />
         )}
       </main>

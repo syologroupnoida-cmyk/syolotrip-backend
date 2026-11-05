@@ -16,6 +16,7 @@ import { UsersManagement } from './pages/UsersManagement';
 import { PricingManagement } from './pages/PricingManagement';
 import { CouponsManagement } from './pages/CouponsManagement';
 import { WalletManagement } from './pages/WalletManagement';
+import { BusinessManagement } from './pages/BusinessManagement';
 import { AuditLogsManagement } from './pages/AuditLogsManagement';
 import { PlatformSettings } from './pages/PlatformSettings';
 
@@ -76,6 +77,8 @@ const AdminMainContent: React.FC = () => {
       // Users & Access
       case 'customers':
         return <CustomersManagement />;
+      case 'business':
+        return <BusinessManagement />;
       case 'roles':
         return <RolesManagement />;
       case 'users':
