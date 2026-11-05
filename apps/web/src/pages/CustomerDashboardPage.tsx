@@ -166,6 +166,12 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
   }, []);
 
   useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  useEffect(() => {
     if (activeTab === 'wallet') {
       fetchWalletData();
     }
@@ -498,7 +504,53 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                   <span className="w-2 h-2 rounded-full bg-[#ff3b30]" />
                 </button>
 
-                {/* 2. Co-Travellers */}
+                {/* 2. My Wallet (Dual Wallet) */}
+                <button
+                  onClick={() => {
+                    setActiveTab('wallet');
+                    setIsEditingCoTraveller(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === 'wallet'
+                      ? 'bg-emerald-50 text-emerald-700 font-extrabold shadow-xs'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-[20px] text-emerald-600">account_balance_wallet</span>
+                    <span>My Wallet</span>
+                  </div>
+                  {walletBalances && (
+                    <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                      ₹{walletBalances.totalSpendable || 0}
+                    </span>
+                  )}
+                </button>
+
+                {/* 3. My Trips & Bookings */}
+                <button
+                  onClick={() => {
+                    setActiveTab('trips');
+                    setIsEditingCoTraveller(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === 'trips'
+                      ? 'bg-[#eaf5ff] text-[#008cff]'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-[20px] text-blue-600">luggage</span>
+                    <span>My Trips</span>
+                  </div>
+                  {trips.length > 0 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                      {trips.length}
+                    </span>
+                  )}
+                </button>
+
+                {/* 4. Co-Travellers */}
                 <button
                   onClick={() => {
                     setActiveTab('travellers');
@@ -516,7 +568,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({
                   </div>
                 </button>
 
-                {/* 3. Logged In Devices */}
+                {/* 5. Logged In Devices */}
                 <button
                   onClick={() => {
                     setActiveTab('devices');

@@ -1267,6 +1267,123 @@ export const verifyWalletTopupApi = async (payload: {
   return res.data.data;
 };
 
+// ================= VENDOR ONBOARDING, KYC & PROPERTY API =================
+export interface VendorRegisterPayload {
+  full_name: string;
+  business_name: string;
+  email: string;
+  phone: string;
+  password: string;
+  property_type?: string;
+  city: string;
+  state?: string;
+  agree_terms: boolean;
+}
+
+export interface VendorOverviewResponse {
+  vendor: {
+    id: string;
+    business_name: string;
+    owner_name?: string;
+    property_type: string;
+    onboarding_status: string;
+    kyc_status: string;
+    is_verified: boolean;
+    city: string;
+    state: string;
+    created_at: string;
+  };
+  kyc: any;
+  checklist: {
+    registered: boolean;
+    kyc_submitted: boolean;
+    kyc_approved: boolean;
+    property_listed: boolean;
+    property_approved: boolean;
+    is_live: boolean;
+  };
+  properties_count: number;
+  approved_properties_count: number;
+  unread_notifications: number;
+}
+
+export interface VendorPropertyCreatePayload {
+  name: string;
+  property_type?: string;
+  star_rating?: number;
+  city: string;
+  state?: string;
+  address: string;
+  pincode?: string;
+  latitude?: number;
+  longitude?: number;
+  overview: string;
+  amenities?: string[];
+  featured_image: string;
+  images?: string[];
+  starting_price: number;
+  rooms: Array<{
+    room_type: string;
+    bed_type?: string;
+    max_occupancy?: number;
+    price_per_night: number;
+    taxes_per_night?: number;
+    available_rooms?: number;
+    amenities?: string[];
+  }>;
+}
+
+export const registerVendorApi = async (payload: VendorRegisterPayload): Promise<any> => {
+  const res = await apiClient.post<ApiResponse<any>>('/vendor/register', payload);
+  return res.data.data;
+};
+
+export const getVendorDashboardApi = async (): Promise<VendorOverviewResponse> => {
+  const res = await apiClient.get<ApiResponse<VendorOverviewResponse>>('/vendor/dashboard');
+  return res.data.data;
+};
+
+export const getVendorProfileApi = async (): Promise<any> => {
+  const res = await apiClient.get<ApiResponse<any>>('/vendor/profile');
+  return res.data.data;
+};
+
+export const updateVendorProfileApi = async (payload: any): Promise<any> => {
+  const res = await apiClient.put<ApiResponse<any>>('/vendor/profile', payload);
+  return res.data.data;
+};
+
+export const getVendorKYCApi = async (): Promise<any> => {
+  const res = await apiClient.get<ApiResponse<any>>('/vendor/kyc');
+  return res.data.data;
+};
+
+export const submitVendorKYCApi = async (payload: any): Promise<any> => {
+  const res = await apiClient.post<ApiResponse<any>>('/vendor/kyc/submit', payload);
+  return res.data.data;
+};
+
+export const getVendorPropertiesApi = async (): Promise<any[]> => {
+  const res = await apiClient.get<ApiResponse<any[]>>('/vendor/properties');
+  return res.data.data;
+};
+
+export const createVendorPropertyApi = async (payload: VendorPropertyCreatePayload): Promise<any> => {
+  const res = await apiClient.post<ApiResponse<any>>('/vendor/properties', payload);
+  return res.data.data;
+};
+
+export const getVendorNotificationsApi = async (): Promise<any[]> => {
+  const res = await apiClient.get<ApiResponse<any[]>>('/vendor/notifications');
+  return res.data.data;
+};
+
+export const markVendorNotificationReadApi = async (id: string): Promise<any> => {
+  const res = await apiClient.patch<ApiResponse<any>>(`/vendor/notifications/${id}/read`);
+  return res.data.data;
+};
+
+
 
 
 

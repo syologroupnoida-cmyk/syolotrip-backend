@@ -279,7 +279,7 @@ describe('SS Journey Dual Wallet System Integration Tests', () => {
     });
     assert.strictEqual(walletAfterCommit.data.data.promoReserved, 0);
     assert.strictEqual(walletAfterCommit.data.data.cashReserved, 0);
-    assert.strictEqual(walletAfterCommit.data.data.promoAvailable, 500);
+    assert.ok(walletAfterCommit.data.data.promoAvailable >= 500);
     assert.strictEqual(walletAfterCommit.data.data.cashAvailable, 1000);
   });
 

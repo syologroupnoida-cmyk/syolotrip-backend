@@ -1,39 +1,80 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserProfile, MyBizContext } from '../services/api';
+import { UserProfile, MyBizContext, getWalletBalancesApi } from '../services/api';
 import { useCurrency } from '../context/CurrencyContext';
+import { getHeaderRouteContext } from '../utils/routeContext';
 
-export type ScreenType = 'explore' | 'flights' | 'hotels' | 'trains' | 'buses' | 'cabs' | 'packages' | 'checkout' | 'trips' | 'dashboard' | 'list-property' | 'mybiz' | 'mybiz-dashboard';
+export type ScreenType = 
+  | 'explore' 
+  | 'flights' 
+  | 'hotels' 
+  | 'trains' 
+  | 'buses' 
+  | 'cabs' 
+  | 'packages' 
+  | 'checkout' 
+  | 'trips' 
+  | 'dashboard' 
+  | 'wallet'
+  | 'list-property' 
+  | 'vendor-register' 
+  | 'vendor-kyc' 
+  | 'vendor-dashboard' 
+  | 'mybiz' 
+  | 'mybiz-dashboard';
 
 interface HeaderProps {
   activeScreen: ScreenType;
   setActiveScreen: (screen: ScreenType) => void;
+  currentPath?: string;
   user?: UserProfile | null;
   bizContext?: MyBizContext | null;
   onOpenAuth: () => void;
+  onPartnerLogin?: () => void;
   onLogout: () => void;
   onOpenWishlist?: () => void;
   wishlistCount?: number;
-  onNavigateDashboardTab?: (tab: 'overview' | 'trips' | 'wishlist' | 'travellers' | 'payments' | 'profile' | 'support') => void;
+  onNavigateDashboardTab?: (tab: 'overview' | 'trips' | 'wishlist' | 'travellers' | 'payments' | 'profile' | 'support' | 'wallet') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
   activeScreen, 
   setActiveScreen,
+  currentPath,
   user,
   bizContext,
   onOpenAuth,
+  onPartnerLogin,
   onLogout,
   onOpenWishlist,
   wishlistCount = 0,
   onNavigateDashboardTab,
 }) => {
-  const { currency, setCurrency, currencyInfo, currencies } = useCurrency();
+  const { currency, setCurrency, currencyInfo, currencies, formatPrice } = useCurrency();
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [walletTotal, setWalletTotal] = useState<number | null>(null);
   const currencyMenuRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Context-aware Header Authentication calculation
+  const pathname = currentPath || (typeof window !== 'undefined' ? window.location.pathname : '/');
+  const routeContext = getHeaderRouteContext(pathname, activeScreen, user);
+
+  useEffect(() => {
+    if (user && routeContext.authMode === 'CUSTOMER_AUTH') {
+      getWalletBalancesApi()
+        .then((res) => {
+          if (res?.totalSpendable != null) {
+            setWalletTotal(res.totalSpendable);
+          }
+        })
+        .catch(() => {});
+    } else {
+      setWalletTotal(null);
+    }
+  }, [user, routeContext.authMode]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -88,7 +129,7 @@ export const Header: React.FC<HeaderProps> = ({
     label: React.ReactNode;
     onClick: () => void;
     isActive?: boolean;
-    badge?: number | null;
+    badge?: React.ReactNode;
     title?: string;
   }> = ({ icon, label, onClick, isActive = false, badge, title }) => (
     <button
@@ -109,7 +150,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="transition-transform duration-200 group-hover:scale-105">
           {icon}
         </div>
-        {badge !== undefined && badge !== null && badge > 0 && (
+        {badge !== undefined && badge !== null && (
           <span className="absolute -top-1.5 -right-2.5 bg-[#ff3b30] text-white text-[10px] font-bold h-4 min-w-[16px] px-1 rounded-full flex items-center justify-center shadow-xs leading-none">
             {badge}
           </span>
@@ -260,6 +301,30 @@ export const Header: React.FC<HeaderProps> = ({
                   badge={wishlistCount > 0 ? wishlistCount : null}
                   title="Your saved stays & experiences"
                 />
+
+                {/* Vertical Divider */}
+                <div className={`hidden md:block w-px h-7 mx-1 sm:mx-1.5 self-center ${
+                  isTransparent ? 'bg-white/20' : 'bg-gray-300'
+                }`} />
+
+                {/* SS Wallet */}
+                <UtilityNavItem
+                  icon={
+                    <svg className="w-5 h-5 sm:w-[22px] sm:h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="5" width="20" height="14" rx="2" />
+                      <line x1="2" y1="10" x2="22" y2="10" />
+                      <circle cx="16" cy="14" r="1.5" fill="currentColor" />
+                    </svg>
+                  }
+                  label={walletTotal != null ? `₹${walletTotal}` : 'Wallet'}
+                  onClick={() => {
+                    if (onNavigateDashboardTab) onNavigateDashboardTab('wallet');
+                    else setActiveScreen('wallet');
+                  }}
+                  isActive={activeScreen === 'wallet'}
+                  badge={walletTotal != null && walletTotal > 0 ? 'Dual' : null}
+                  title="View your SS Journey Cash and Promotional Wallet"
+                />
               </>
             )}
 
@@ -359,8 +424,100 @@ export const Header: React.FC<HeaderProps> = ({
               </a>
             )}
 
-            {/* ── USER PROFILE PILL (Matches Screenshot: [Green Circle] Name v) ── */}
-            {user ? (
+            {/* ── CONTEXT-AWARE AUTHENTICATION BUTTON / ACCOUNT MENU ── */}
+            {routeContext.authMode === 'VENDOR_AUTH' && user ? (
+              /* 1. Authenticated Partner Menu in Vendor Section */
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className={`flex items-center rounded-full pl-1.5 pr-3 sm:pr-4 py-1 sm:py-1.5 gap-2 sm:gap-2.5 transition-all duration-200 cursor-pointer shadow-md select-none ${
+                    isTransparent 
+                      ? 'bg-[#222638]/85 hover:bg-[#2c324a] border border-white/15 text-white' 
+                      : 'bg-[#1a2035] hover:bg-[#242b46] border border-gray-700/40 text-white'
+                  }`}
+                  title="Partner Extranet Menu"
+                >
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#008cff] flex items-center justify-center text-xs sm:text-sm font-bold text-white shadow-xs shrink-0">
+                    <span className="material-symbols-outlined text-[18px]">domain</span>
+                  </div>
+                  <div className="flex flex-col text-left hidden sm:flex">
+                    <span className="text-xs sm:text-sm font-bold text-white tracking-tight truncate max-w-[110px] leading-tight">
+                      {user.fullName || user.email.split('@')[0]}
+                    </span>
+                    <span className="text-[9px] font-black uppercase tracking-wider text-sky-300 leading-tight">
+                      Partner
+                    </span>
+                  </div>
+                  <svg className={`w-3.5 h-3.5 text-white/90 shrink-0 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {/* Vendor Dropdown */}
+                {isUserMenuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-60 bg-white text-gray-800 rounded-2xl shadow-2xl border border-gray-200 p-2 z-50 animate-fade-in space-y-0.5">
+                    <div className="px-3 py-2.5 border-b border-gray-100 mb-1 bg-blue-50/60 rounded-xl">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-black text-gray-900 truncate">{user.fullName || user.email.split('@')[0]}</p>
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-blue-100 text-[#008cff]">
+                          PARTNER
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-gray-500 truncate mt-0.5">{user.email}</p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setActiveScreen('vendor-dashboard');
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-blue-50 hover:text-[#008cff] transition"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">dashboard</span>
+                      <span>Dashboard Overview</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setActiveScreen('vendor-dashboard');
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-blue-50 hover:text-[#008cff] transition"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">apartment</span>
+                      <span>My Properties</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setActiveScreen('vendor-kyc');
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-blue-50 hover:text-[#008cff] transition"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">verified_user</span>
+                      <span>KYC Verification</span>
+                    </button>
+
+                    <div className="my-1 border-t border-gray-100" />
+
+                    <button
+                      type="button"
+                      onClick={() => { setIsUserMenuOpen(false); onLogout(); }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">logout</span>
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : routeContext.authMode === 'CUSTOMER_AUTH' && user ? (
+              /* 2. Authenticated Customer Menu in Customer Section */
               <div className="relative" ref={userMenuRef}>
                 <button
                   type="button"
@@ -382,7 +539,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </svg>
                 </button>
 
-                {/* User Dropdown */}
+                {/* Customer Dropdown */}
                 {isUserMenuOpen && (
                   <div className="absolute right-0 top-full mt-2 w-56 bg-white text-gray-800 rounded-2xl shadow-2xl border border-gray-200 p-2 z-50 animate-fade-in space-y-0.5">
                     <div className="px-3 py-2.5 border-b border-gray-100 mb-1 bg-gray-50/60 rounded-xl">
@@ -401,6 +558,26 @@ export const Header: React.FC<HeaderProps> = ({
                     >
                       <span className="material-symbols-outlined text-[18px]">dashboard</span>
                       <span>My Dashboard</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        if (onNavigateDashboardTab) onNavigateDashboardTab('wallet');
+                        else setActiveScreen('wallet');
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition"
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <span className="material-symbols-outlined text-[18px] text-emerald-600">account_balance_wallet</span>
+                        <span>My Wallet</span>
+                      </div>
+                      {walletTotal !== null && (
+                        <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                          {formatPrice(walletTotal)}
+                        </span>
+                      )}
                     </button>
 
                     <button
@@ -470,7 +647,30 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 )}
               </div>
+            ) : routeContext.authMode === 'VENDOR_GUEST' ? (
+              /* 3. Vendor Section: "Partner Login" */
+              <button 
+                type="button"
+                onClick={onPartnerLogin || (() => setActiveScreen('vendor-register'))}
+                className={`flex items-center rounded-full pl-1.5 pr-3 sm:pr-4 py-1 sm:py-1.5 gap-2 sm:gap-2.5 transition-all duration-200 cursor-pointer shadow-md select-none ${
+                  isTransparent 
+                    ? 'bg-[#222638]/85 hover:bg-[#2c324a] border border-white/15 text-white' 
+                    : 'bg-[#008cff] hover:bg-blue-600 border border-blue-400 text-white'
+                }`}
+                title="Partner Extranet Login"
+              >
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/20 flex items-center justify-center text-xs sm:text-sm font-bold text-white shadow-xs shrink-0">
+                  <span className="material-symbols-outlined text-[18px]">domain</span>
+                </div>
+                <span className="text-xs sm:text-sm font-semibold text-white tracking-tight hidden sm:inline leading-none">
+                  Partner Login
+                </span>
+                <svg className="w-3.5 h-3.5 text-white/90 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
             ) : (
+              /* 4. Customer Section: "Login / Sign Up" */
               <button 
                 type="button"
                 onClick={onOpenAuth}
@@ -554,18 +754,18 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* User Account Section */}
               <div className="p-4 bg-gradient-to-r from-blue-50/80 to-indigo-50/60 border-b border-gray-100">
-                {user ? (
+                {routeContext.authMode === 'VENDOR_AUTH' && user ? (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-sm font-black text-white shadow-xs">
-                        {(user.fullName || user.email).charAt(0).toUpperCase()}
+                      <div className="w-10 h-10 rounded-full bg-[#008cff] flex items-center justify-center text-sm font-black text-white shadow-xs">
+                        <span className="material-symbols-outlined text-[20px]">domain</span>
                       </div>
                       <div className="leading-tight max-w-[150px] truncate">
                         <p className="font-bold text-xs text-gray-900 truncate">
                           {user.fullName || user.email.split('@')[0]}
                         </p>
-                        <p className="text-[10px] text-gray-500 truncate mt-0.5">
-                          {user.email}
+                        <p className="text-[10px] text-blue-600 font-bold truncate mt-0.5">
+                          Partner Extranet
                         </p>
                       </div>
                     </div>
@@ -577,6 +777,72 @@ export const Header: React.FC<HeaderProps> = ({
                       Sign Out
                     </button>
                   </div>
+                ) : routeContext.authMode === 'CUSTOMER_AUTH' && user ? (
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-sm font-black text-white shadow-xs">
+                          {(user.fullName || user.email).charAt(0).toUpperCase()}
+                        </div>
+                        <div className="leading-tight max-w-[150px] truncate">
+                          <p className="font-bold text-xs text-gray-900 truncate">
+                            {user.fullName || user.email.split('@')[0]}
+                          </p>
+                          <p className="text-[10px] text-gray-500 truncate mt-0.5">
+                            {user.email}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { onLogout(); setIsMobileMenuOpen(false); }}
+                        className="px-2.5 py-1 text-[11px] font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2 pt-2 border-t border-blue-100/60">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          if (onNavigateDashboardTab) onNavigateDashboardTab('wallet');
+                          else setActiveScreen('wallet');
+                        }}
+                        className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs transition cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[16px] text-emerald-600">account_balance_wallet</span>
+                        <span>Wallet {walletTotal != null ? `(₹${walletTotal})` : ''}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          if (onNavigateDashboardTab) onNavigateDashboardTab('trips');
+                          else setActiveScreen('trips');
+                        }}
+                        className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#008cff] font-bold text-xs transition cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">luggage</span>
+                        <span>My Trips</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : routeContext.authMode === 'VENDOR_GUEST' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      if (onPartnerLogin) onPartnerLogin();
+                      else setActiveScreen('vendor-register');
+                    }}
+                    className="w-full py-2.5 px-4 rounded-xl bg-[#008cff] hover:bg-blue-600 text-white font-bold text-xs text-center shadow-md flex items-center justify-center space-x-2"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">domain</span>
+                    <span>Partner Login</span>
+                  </button>
                 ) : (
                   <button
                     type="button"
@@ -584,7 +850,7 @@ export const Header: React.FC<HeaderProps> = ({
                     className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#008cff] to-[#0A58CA] text-white font-bold text-xs text-center shadow-md flex items-center justify-center space-x-2"
                   >
                     <span className="material-symbols-outlined text-[18px]">account_circle</span>
-                    <span>Sign In or Create Account</span>
+                    <span>Login / Sign Up</span>
                   </button>
                 )}
               </div>
@@ -677,10 +943,52 @@ export const Header: React.FC<HeaderProps> = ({
 
                 {/* Account & Orders */}
                 <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-3 py-1 block">
-                  My Travel Desk
+                  {routeContext.isVendorArea ? 'Partner Operations' : 'My Travel Desk'}
                 </span>
                 <nav className="space-y-0.5">
-                  {user ? (
+                  {routeContext.authMode === 'VENDOR_AUTH' && user ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleMobileNav('vendor-dashboard')}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                          activeScreen === 'vendor-dashboard' ? 'bg-blue-50 text-[#008cff] font-bold' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <span className="material-symbols-outlined text-[19px] text-[#008cff]">dashboard</span>
+                          <span>Dashboard Overview</span>
+                        </div>
+                        <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleMobileNav('vendor-dashboard')}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <span className="material-symbols-outlined text-[19px] text-emerald-600">apartment</span>
+                          <span>My Properties</span>
+                        </div>
+                        <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleMobileNav('vendor-kyc')}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                          activeScreen === 'vendor-kyc' ? 'bg-blue-50 text-[#008cff] font-bold' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <span className="material-symbols-outlined text-[19px] text-purple-600">verified_user</span>
+                          <span>KYC Verification</span>
+                        </div>
+                        <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
+                      </button>
+                    </>
+                  ) : routeContext.authMode === 'CUSTOMER_AUTH' && user ? (
                     <>
                       <button
                         type="button"
@@ -738,6 +1046,24 @@ export const Header: React.FC<HeaderProps> = ({
                         <span className="material-symbols-outlined text-[16px] text-gray-400">chevron_right</span>
                       </button>
                     </>
+                  ) : routeContext.authMode === 'VENDOR_GUEST' ? (
+                    <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200/80 text-center space-y-2">
+                      <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                        Sign in to your partner extranet to manage room rates, bookings, and payouts.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          if (onPartnerLogin) onPartnerLogin();
+                          else setActiveScreen('vendor-register');
+                        }}
+                        className="w-full py-2 px-3 bg-[#008cff] hover:bg-blue-600 text-white rounded-lg text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5"
+                      >
+                        <span className="material-symbols-outlined text-[17px]">domain</span>
+                        <span>Partner Login</span>
+                      </button>
+                    </div>
                   ) : (
                     <div className="p-3 bg-gray-50 rounded-xl border border-gray-200/80 text-center space-y-2">
                       <p className="text-xs text-gray-500 font-medium leading-relaxed">

@@ -11,9 +11,13 @@ import { CabSearchPage } from './pages/CabSearchPage';
 import { PackageSearchPage } from './pages/PackageSearchPage';
 import { BookingCheckoutPage, WebCheckoutItem } from './pages/BookingCheckoutPage';
 import { ListPropertyPage } from './pages/ListPropertyPage';
+import { VendorRegistrationPage } from './pages/VendorRegistrationPage';
+import { VendorKYCPage } from './pages/VendorKYCPage';
+import { VendorDashboardPage } from './pages/VendorDashboardPage';
 import { MyBizLandingPage } from './pages/MyBizLandingPage';
 import { MyBizDashboardPage } from './pages/MyBizDashboardPage';
 import { CustomerDashboardPage, DashboardSubTab } from './pages/CustomerDashboardPage';
+import { normalizePath } from './utils/routeContext';
 import { AuthModal } from './components/AuthModal';
 import { WishlistModal } from './components/WishlistModal';
 import { WishlistProvider, useWishlist } from './context/WishlistContext';
@@ -38,6 +42,10 @@ const queryClient = new QueryClient({
 
 const AppContent: React.FC = () => {
   const [activeScreen, setActiveScreen] = useState<ScreenType>('explore');
+  const [currentPath, setCurrentPath] = useState<string>(
+    typeof window !== 'undefined' ? window.location.pathname || '/' : '/'
+  );
+  const [vendorFormMode, setVendorFormMode] = useState<'register' | 'login'>('register');
   const [user, setUser] = useState<UserProfile | null>(null);
   const [bizContext, setBizContext] = useState<MyBizContext | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -106,15 +114,40 @@ const AppContent: React.FC = () => {
     destination: 'Kashmir',
   });
 
+  const getPathForScreen = (screen: ScreenType, vendorMode: 'register' | 'login' = 'register'): string => {
+    switch (screen) {
+      case 'explore': return '/';
+      case 'flights': return '/flights';
+      case 'hotels': return '/hotels';
+      case 'trains': return '/trains';
+      case 'buses': return '/buses';
+      case 'cabs': return '/cabs';
+      case 'packages': return '/packages';
+      case 'checkout': return '/checkout';
+      case 'trips': return '/trips';
+      case 'dashboard': return '/dashboard';
+      case 'wallet': return '/wallet';
+      case 'list-property': return '/list-your-property';
+      case 'vendor-register': return vendorMode === 'login' ? '/partner/login' : '/partner/register';
+      case 'vendor-kyc': return '/partner/kyc';
+      case 'vendor-dashboard': return '/partner/dashboard';
+      case 'mybiz': return '/mybiz';
+      case 'mybiz-dashboard': return '/mybiz-dashboard';
+      default: return '/';
+    }
+  };
+
   const syncUrlState = (
     screen: ScreenType,
     fParams?: FlightSearchParams,
     hParams?: HotelSearchParams,
-    replace = false
+    replace = false,
+    targetPath?: string
   ) => {
     try {
+      const path = targetPath || getPathForScreen(screen, vendorFormMode);
       const sp = new URLSearchParams(window.location.search);
-      sp.set('screen', screen);
+      sp.delete('screen');
       if (screen === 'flights') {
         const p = fParams || flightSearchParams;
         if (p.fromCode) sp.set('fromCode', p.fromCode);
@@ -129,8 +162,15 @@ const AppContent: React.FC = () => {
         if (p.checkIn) sp.set('checkIn', p.checkIn);
         if (p.checkOut) sp.set('checkOut', p.checkOut);
       }
-      const newUrl = `${window.location.pathname}?${sp.toString()}`;
-      const stateObj = { screen, fParams: fParams || flightSearchParams, hParams: hParams || hotelSearchParams };
+      const qs = sp.toString();
+      const newUrl = qs ? `${path}?${qs}` : path;
+      const stateObj = { 
+        screen, 
+        path, 
+        vendorMode: vendorFormMode,
+        fParams: fParams || flightSearchParams, 
+        hParams: hParams || hotelSearchParams 
+      };
       if (replace) {
         window.history.replaceState(stateObj, '', newUrl);
       } else {
@@ -141,26 +181,133 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const navigateTo = (screen: ScreenType) => {
-    // Auth Guard for private customer sections
-    if ((screen === 'checkout' || screen === 'trips' || screen === 'dashboard') && !user) {
-      setPendingScreen(screen);
+  const parseRouteFromUrl = (pathname: string) => {
+    const norm = normalizePath(pathname);
+    if (norm === '/partner/login') {
+      setVendorFormMode('login');
+      setActiveScreen('vendor-register');
+      setCurrentPath('/partner/login');
+      return;
+    }
+    if (norm === '/partner/register') {
+      setVendorFormMode('register');
+      setActiveScreen('vendor-register');
+      setCurrentPath('/partner/register');
+      return;
+    }
+    if (norm === '/partner/dashboard' || norm === '/partner/properties' || norm === '/partner/profile') {
+      setActiveScreen('vendor-dashboard');
+      setCurrentPath('/partner/dashboard');
+      return;
+    }
+    if (norm === '/partner/kyc') {
+      setActiveScreen('vendor-kyc');
+      setCurrentPath('/partner/kyc');
+      return;
+    }
+    if (norm === '/list-your-property' || norm === '/list-property') {
+      setActiveScreen('list-property');
+      setCurrentPath('/list-your-property');
+      return;
+    }
+    if (norm === '/login') {
+      setActiveScreen('explore');
+      setCurrentPath('/login');
       setIsAuthOpen(true);
       return;
     }
+    if (norm === '/flights') { setActiveScreen('flights'); setCurrentPath('/flights'); return; }
+    if (norm === '/hotels') { setActiveScreen('hotels'); setCurrentPath('/hotels'); return; }
+    if (norm === '/trains') { setActiveScreen('trains'); setCurrentPath('/trains'); return; }
+    if (norm === '/buses') { setActiveScreen('buses'); setCurrentPath('/buses'); return; }
+    if (norm === '/cabs') { setActiveScreen('cabs'); setCurrentPath('/cabs'); return; }
+    if (norm === '/packages') { setActiveScreen('packages'); setCurrentPath('/packages'); return; }
+    if (norm === '/checkout') { setActiveScreen('checkout'); setCurrentPath('/checkout'); return; }
+    if (norm === '/trips') { setActiveScreen('trips'); setCurrentPath('/trips'); return; }
+    if (norm === '/wallet') {
+      setActiveScreen('wallet');
+      setDashboardTab('wallet');
+      setCurrentPath('/wallet');
+      return;
+    }
+    if (norm === '/dashboard') { setActiveScreen('dashboard'); setCurrentPath('/dashboard'); return; }
+    if (norm === '/mybiz') { setActiveScreen('mybiz'); setCurrentPath('/mybiz'); return; }
+    if (norm === '/mybiz-dashboard') { setActiveScreen('mybiz-dashboard'); setCurrentPath('/mybiz-dashboard'); return; }
+    
+    // Default fallback to home
+    setActiveScreen('explore');
+    setCurrentPath('/');
+  };
+
+  const navigateTo = (screen: ScreenType, vendorMode?: 'register' | 'login') => {
+    // Auth Guard for private customer sections
+    if ((screen === 'checkout' || screen === 'trips' || screen === 'dashboard' || screen === 'wallet') && !user) {
+      setPendingScreen(screen === 'wallet' ? 'dashboard' : screen);
+      if (screen === 'wallet') setDashboardTab('wallet');
+      handleOpenCustomerAuth();
+      return;
+    }
+
+    if (screen === 'wallet') {
+      setDashboardTab('wallet');
+      setActiveScreen('dashboard');
+      setCurrentPath('/wallet');
+      syncUrlState('dashboard', undefined, undefined, false, '/wallet');
+      return;
+    }
+
+    // Role Guard for protected vendor sections
+    if ((screen === 'vendor-dashboard' || screen === 'vendor-kyc') && user && user.role === 'CUSTOMER') {
+      alert('Your logged-in account is a Customer account. Please sign in or register with your Property Partner credentials to access the Extranet.');
+      navigateTo('vendor-register', 'login');
+      return;
+    }
+
+    if (screen === 'vendor-register' && vendorMode) {
+      setVendorFormMode(vendorMode);
+    }
+
+    const mode = vendorMode || vendorFormMode;
+    const newPath = getPathForScreen(screen, mode);
+    setCurrentPath(newPath);
     setActiveScreen(screen);
-    syncUrlState(screen, flightSearchParams, hotelSearchParams, false);
+    syncUrlState(screen, flightSearchParams, hotelSearchParams, false, newPath);
+  };
+
+  const handleOpenCustomerAuth = () => {
+    try {
+      window.history.pushState({ screen: activeScreen, auth: true }, '', '/login');
+      setCurrentPath('/login');
+    } catch {}
+    setIsAuthOpen(true);
+  };
+
+  const handlePartnerLogin = () => {
+    navigateTo('vendor-register', 'login');
+  };
+
+  const handleCloseAuth = () => {
+    setIsAuthOpen(false);
+    if (currentPath === '/login') {
+      const prevPath = getPathForScreen(activeScreen, vendorFormMode);
+      try {
+        window.history.replaceState({ screen: activeScreen }, '', prevPath);
+        setCurrentPath(prevPath);
+      } catch {}
+    }
   };
 
   const handleNavigateDashboardTab = (tab: DashboardSubTab) => {
     setDashboardTab(tab);
     if (!user) {
-      setPendingScreen('dashboard');
-      setIsAuthOpen(true);
+      setPendingScreen(tab === 'wallet' ? 'wallet' : 'dashboard');
+      handleOpenCustomerAuth();
       return;
     }
     setActiveScreen('dashboard');
-    syncUrlState('dashboard', undefined, undefined, false);
+    const path = tab === 'wallet' ? '/wallet' : tab === 'trips' ? '/trips' : '/dashboard';
+    setCurrentPath(path);
+    syncUrlState('dashboard', undefined, undefined, false, path);
   };
 
   const fetchBizContext = async () => {
@@ -183,10 +330,16 @@ const AppContent: React.FC = () => {
     // 1. Initial parse of URL on mount
     const parseUrl = () => {
       try {
+        const path = window.location.pathname;
+        if (path && path !== '/') {
+          parseRouteFromUrl(path);
+          return;
+        }
         const sp = new URLSearchParams(window.location.search);
         const scr = sp.get('screen') as ScreenType | null;
         if (scr) {
           setActiveScreen(scr);
+          setCurrentPath(getPathForScreen(scr));
           if (scr === 'flights') {
             const fromCode = sp.get('fromCode');
             const toCode = sp.get('toCode');
@@ -212,6 +365,9 @@ const AppContent: React.FC = () => {
               }));
             }
           }
+        } else {
+          setActiveScreen('explore');
+          setCurrentPath('/');
         }
       } catch {
         // Safe fallback
@@ -222,8 +378,15 @@ const AppContent: React.FC = () => {
 
     // 2. Handle Browser Back / Forward buttons
     const handlePopState = (e: PopStateEvent) => {
+      const path = window.location.pathname;
+      if (path && path !== '/') {
+        parseRouteFromUrl(path);
+        return;
+      }
       if (e.state && e.state.screen) {
         setActiveScreen(e.state.screen);
+        if (e.state.path) setCurrentPath(e.state.path);
+        if (e.state.vendorMode) setVendorFormMode(e.state.vendorMode);
         if (e.state.fParams) setFlightSearchParams(e.state.fParams);
         if (e.state.hParams) setHotelSearchParams(e.state.hParams);
       } else {
@@ -239,6 +402,9 @@ const AppContent: React.FC = () => {
     await logoutApi();
     setUser(null);
     setBizContext(null);
+    if (currentPath.startsWith('/partner')) {
+      navigateTo('vendor-register', 'login');
+    }
   };
 
   const handleAuthSuccess = (loggedInUser: UserProfile) => {
@@ -326,15 +492,17 @@ const AppContent: React.FC = () => {
       <Header 
         activeScreen={activeScreen} 
         setActiveScreen={navigateTo} 
+        currentPath={currentPath}
         user={user}
         bizContext={bizContext}
-        onOpenAuth={() => setIsAuthOpen(true)}
+        onOpenAuth={handleOpenCustomerAuth}
+        onPartnerLogin={handlePartnerLogin}
         onLogout={handleLogout}
         onOpenWishlist={() => {
           if (!user) {
             setPendingScreen('dashboard');
             setDashboardTab('wishlist');
-            setIsAuthOpen(true);
+            handleOpenCustomerAuth();
           } else {
             handleNavigateDashboardTab('wishlist');
           }
@@ -414,12 +582,12 @@ const AppContent: React.FC = () => {
             currentUser={user}
           />
         )}
-        {(activeScreen === 'dashboard' || activeScreen === 'trips') && (
+        {(activeScreen === 'dashboard' || activeScreen === 'trips' || activeScreen === 'wallet') && (
           <CustomerDashboardPage 
             onNavigate={navigateTo} 
             onInitiateCheckout={handleInitiateCheckout}
-            onOpenAuth={() => setIsAuthOpen(true)}
-            initialTab={activeScreen === 'trips' ? 'trips' : dashboardTab}
+            onOpenAuth={handleOpenCustomerAuth}
+            initialTab={activeScreen === 'trips' ? 'trips' : activeScreen === 'wallet' ? 'wallet' : dashboardTab}
             currentUser={user}
             onLogout={handleLogout}
           />
@@ -429,12 +597,30 @@ const AppContent: React.FC = () => {
             onNavigate={navigateTo} 
           />
         )}
+        {activeScreen === 'vendor-register' && (
+          <VendorRegistrationPage 
+            onNavigate={navigateTo} 
+            onLoginSuccess={(u) => setUser(u)}
+            initialMode={vendorFormMode}
+          />
+        )}
+        {activeScreen === 'vendor-kyc' && (
+          <VendorKYCPage 
+            onNavigate={navigateTo} 
+          />
+        )}
+        {activeScreen === 'vendor-dashboard' && (
+          <VendorDashboardPage 
+            onNavigate={navigateTo} 
+            onLogout={handleLogout}
+          />
+        )}
         {activeScreen === 'mybiz' && (
           <MyBizLandingPage 
             onNavigate={navigateTo} 
             user={user}
             bizContext={bizContext}
-            onOpenAuth={() => setIsAuthOpen(true)}
+            onOpenAuth={handleOpenCustomerAuth}
             onBizRegistered={handleBizRegistered}
           />
         )}
@@ -443,7 +629,7 @@ const AppContent: React.FC = () => {
             onNavigate={navigateTo} 
             user={user}
             bizContext={bizContext}
-            onOpenAuth={() => setIsAuthOpen(true)}
+            onOpenAuth={handleOpenCustomerAuth}
           />
         )}
       </main>
@@ -459,7 +645,7 @@ const AppContent: React.FC = () => {
       {/* Auth Modal */}
       <AuthModal 
         isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
+        onClose={handleCloseAuth}
         onSuccess={handleAuthSuccess}
       />
 
