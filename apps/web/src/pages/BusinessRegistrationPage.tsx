@@ -114,7 +114,7 @@ export const BusinessRegistrationPage: React.FC<BusinessRegistrationPageProps> =
           className="inline-flex items-center space-x-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 transition mb-6 cursor-pointer"
         >
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-          <span>Back to SS Journey myBiz</span>
+          <span>Back to Syolo Travels myBiz</span>
         </button>
 
         {/* Header Title Card */}
@@ -125,7 +125,7 @@ export const BusinessRegistrationPage: React.FC<BusinessRegistrationPageProps> =
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                Register for SS Journey myBiz
+                Register for Syolo Travels myBiz
               </h1>
               <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
                 Centralize corporate travel, manage travel agency bookings, and streamline GST invoicing.

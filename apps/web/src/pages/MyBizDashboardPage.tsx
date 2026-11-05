@@ -260,6 +260,9 @@ export const MyBizDashboardPage: React.FC<MyBizDashboardPageProps> = ({
                 B
               </div>
               <div>
+                <p className="text-[10px] text-amber-400 font-extrabold uppercase tracking-widest mb-0.5">
+                  Syolo Travels myBiz Platform
+                </p>
                 <div className="flex items-center space-x-2">
                   <h1 className="text-xl font-black text-white tracking-tight">
                     {company?.name || 'My Company Business Account'}
@@ -1336,7 +1339,7 @@ export const MyBizDashboardPage: React.FC<MyBizDashboardPageProps> = ({
                 </div>
                 <div>
                   <h3 className="text-xl font-black text-slate-900">TAX INVOICE</h3>
-                  <p className="text-xs text-slate-500">SS Journey &bull; myBiz Corporate Travel</p>
+                  <p className="text-xs text-slate-500">Syolo Travels &bull; myBiz Corporate Travel</p>
                 </div>
               </div>
               <div className="text-right">
@@ -1356,7 +1359,7 @@ export const MyBizDashboardPage: React.FC<MyBizDashboardPageProps> = ({
               </div>
               <div>
                 <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">Issued By</p>
-                <p className="font-bold text-slate-900 text-sm">SS Journey Global Pvt Ltd</p>
+                <p className="font-bold text-slate-900 text-sm">Syolo Travels Global Pvt Ltd</p>
                 <p className="text-slate-600 mt-1">Cyber City, DLF Phase 2, Gurugram, Haryana 122002</p>
                 <p className="text-slate-900 font-mono font-bold mt-2">GSTIN: 06AAACS1234F1Z8</p>
               </div>

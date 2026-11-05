@@ -201,7 +201,7 @@ businessRouter.post('/login', async (req, res) => {
       if (ownerComp.rows.length === 0) {
         return res.status(403).json({
           success: false,
-          message: 'This account is not associated with any registered SS Journey myBiz company.',
+          message: 'This account is not associated with any registered Syolo Travels myBiz company.',
         });
       }
     }

@@ -74,7 +74,7 @@ export const BusinessLoginPage: React.FC<BusinessLoginPageProps> = ({
           className="inline-flex items-center space-x-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 transition mb-6 cursor-pointer"
         >
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-          <span>Back to SS Journey myBiz</span>
+          <span>Back to Syolo Travels myBiz</span>
         </button>
 
         {/* Branding header */}
@@ -83,7 +83,7 @@ export const BusinessLoginPage: React.FC<BusinessLoginPageProps> = ({
             B
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            SS Journey <span className="text-amber-400">myBiz</span>
+            Syolo Travels <span className="text-amber-400">myBiz</span>
           </h2>
           <p className="mt-1 text-xs sm:text-sm text-slate-400">
             Sign in to your corporate or travel agency command center
@@ -171,9 +171,9 @@ export const BusinessLoginPage: React.FC<BusinessLoginPageProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  setEmail('corp.admin@ssjourney.com');
+                  setEmail('corp.admin@syolotravels.com');
                   setPassword('CorpPass123!');
-                  handleLogin('corp.admin@ssjourney.com', 'CorpPass123!');
+                  handleLogin('corp.admin@syolotravels.com', 'CorpPass123!');
                 }}
                 className="p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-900 border border-amber-500/30 text-amber-300 font-bold text-[11px] transition text-center hover:border-amber-400"
               >
@@ -182,9 +182,9 @@ export const BusinessLoginPage: React.FC<BusinessLoginPageProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  setEmail('agency.admin@ssjourney.com');
+                  setEmail('agency.admin@syolotravels.com');
                   setPassword('AgencyPass123!');
-                  handleLogin('agency.admin@ssjourney.com', 'AgencyPass123!');
+                  handleLogin('agency.admin@syolotravels.com', 'AgencyPass123!');
                 }}
                 className="p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-900 border border-blue-500/30 text-blue-300 font-bold text-[11px] transition text-center hover:border-blue-400"
               >

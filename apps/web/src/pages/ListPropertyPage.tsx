@@ -106,11 +106,11 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate }
     {
       step: "05",
       title: "Listing Quality Audit",
-      desc: "We ensure your photography and room descriptions meet SS Journey quality standards."
+      desc: "We ensure your photography and room descriptions meet Syolo Travels quality standards."
     },
     {
       step: "06",
-      title: "Go Live on SS Journey",
+      title: "Go Live on Syolo Travels",
       desc: "Your property immediately appears across search results for millions of travelers."
     },
     {
@@ -183,7 +183,7 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate }
       a: "Our dedicated partner onboarding team reviews and approves submitted KYC applications within 24 to 48 business hours. Once KYC is approved, your property listing is reviewed and can go live within the same day."
     },
     {
-      q: "What is the platform commission rate on SS Journey?",
+      q: "What is the platform commission rate on Syolo Travels?",
       a: "All new property partners enjoy 0% commission for their first 30 days! Afterwards, our standard competitive commission ranges between 10% to 15%, which includes payment gateway charges and full customer marketing coverage."
     },
     {
@@ -192,11 +192,11 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate }
     },
     {
       q: "Can I list multiple properties or different room categories under one account?",
-      a: "Yes! Your SS Journey Vendor Dashboard allows you to manage multiple properties, various room tiers (Deluxe, Suite, Standard), and multiple rate plans from a single unified portal."
+      a: "Yes! Your Syolo Travels Vendor Dashboard allows you to manage multiple properties, various room tiers (Deluxe, Suite, Standard), and multiple rate plans from a single unified portal."
     },
     {
       q: "Is there any registration fee or setup cost to join?",
-      a: "No. Partner registration, listing creation, and onboarding support on SS Journey are 100% free with zero upfront setup fees."
+      a: "No. Partner registration, listing creation, and onboarding support on Syolo Travels are 100% free with zero upfront setup fees."
     }
   ];
 
@@ -220,7 +220,7 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate }
             {/* Tag Badge */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-white/10 text-emerald-400 border border-white/15 backdrop-blur-md shadow-sm">
               <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-              <span>SS Journey Partner Network</span>
+              <span>Syolo Travels Partner Network</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             </div>
 
@@ -228,7 +228,7 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate }
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.15] text-white">
               Grow your hospitality business with{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#008cff] via-sky-400 to-emerald-400">
-                SS Journey
+                Syolo Travels
               </span>
             </h1>
 
@@ -424,7 +424,7 @@ export const ListPropertyPage: React.FC<ListPropertyPageProps> = ({ onNavigate }
               Built for hotels, resorts, homestays and villas
             </h2>
             <p className="text-sm text-slate-600">
-              Whether you manage a 100-key luxury resort or a private mountain chalet, SS Journey has customized tools for you.
+              Whether you manage a 100-key luxury resort or a private mountain chalet, Syolo Travels has customized tools for you.
             </p>
           </div>
 

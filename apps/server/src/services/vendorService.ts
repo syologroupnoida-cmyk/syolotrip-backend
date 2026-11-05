@@ -21,7 +21,10 @@ export interface VendorRegisterPayload {
   password: string;
   property_type: 'Hotel' | 'Homestay' | string;
   city: string;
-  state: string;
+  state?: string;
+  address?: string;
+  tax_id?: string;
+  room_count?: string;
   agree_terms: boolean;
 }
 
@@ -79,7 +82,7 @@ export interface VendorPropertyPayload {
  * 1. Register a new Property Vendor
  */
 export async function registerVendor(payload: VendorRegisterPayload) {
-  const { full_name, business_name, email, phone, password, property_type, city, state, agree_terms } = payload;
+  const { full_name, business_name, email, phone, password, property_type, city, state, address, tax_id, room_count, agree_terms } = payload;
 
   if (!email || !password || !full_name || !business_name) {
     throw new Error('Full Name, Business Name, Email and Password are required');
@@ -110,11 +113,21 @@ export async function registerVendor(payload: VendorRegisterPayload) {
   const partnerRes = await query(
     `INSERT INTO partner_profiles (
        user_id, business_name, owner_name, business_type, property_type,
-       phone, city, state, status, onboarding_status, kyc_status, is_verified
+       phone, city, state, address, tax_id, status, onboarding_status, kyc_status, is_verified
      )
-     VALUES ($1, $2, $3, 'HOTELIER', $4, $5, $6, $7, 'PENDING', 'REGISTERED', 'KYC_INCOMPLETE', false)
+     VALUES ($1, $2, $3, 'HOTELIER', $4, $5, $6, $7, $8, $9, 'PENDING', 'REGISTERED', 'KYC_INCOMPLETE', false)
      RETURNING *`,
-    [user.id, business_name.trim(), full_name.trim(), normalizedPropType, phone.trim(), city.trim(), state?.trim() || '']
+    [
+      user.id,
+      business_name.trim(),
+      full_name.trim(),
+      normalizedPropType,
+      phone.trim(),
+      city.trim(),
+      state?.trim() || '',
+      address?.trim() || null,
+      tax_id?.trim() || null
+    ]
   );
   const partner = partnerRes.rows[0];
 

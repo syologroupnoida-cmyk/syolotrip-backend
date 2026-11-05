@@ -18,8 +18,8 @@ export const BusinessLandingPage: React.FC<BusinessLandingPageProps> = ({
 
   const faqs = [
     {
-      q: 'What is SS Journey myBiz?',
-      a: 'SS Journey myBiz is our enterprise business travel management platform designed specifically for corporate companies and travel agencies. It streamlines travel bookings, automated expense reporting, travel policy compliance, manager approvals, and GST input tax credit recovery from one centralized platform.',
+      q: 'What is Syolo Travels myBiz?',
+      a: 'Syolo Travels myBiz is our enterprise business travel management platform designed specifically for corporate companies and travel agencies. It streamlines travel bookings, automated expense reporting, travel policy compliance, manager approvals, and GST input tax credit recovery from one centralized platform.',
     },
     {
       q: 'How does myBiz help us save up to 18% on GST?',
@@ -35,7 +35,7 @@ export const BusinessLandingPage: React.FC<BusinessLandingPageProps> = ({
     },
     {
       q: 'Is there a setup or annual subscription fee for myBiz?',
-      a: 'No. SS Journey myBiz is completely free to set up and use. There are zero upfront setup fees, no software license subscriptions, and no hidden monthly platform maintenance charges.',
+      a: 'No. Syolo Travels myBiz is completely free to set up and use. There are zero upfront setup fees, no software license subscriptions, and no hidden monthly platform maintenance charges.',
     },
     {
       q: 'What payment methods are supported for corporate travel?',
@@ -55,7 +55,7 @@ export const BusinessLandingPage: React.FC<BusinessLandingPageProps> = ({
           {/* Badge */}
           <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-500/20 to-orange-500/10 border border-amber-400/30 px-4 py-1.5 rounded-full text-xs font-bold text-amber-300 mb-6 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <span className="tracking-wide">SS JOURNEY myBiz &bull; ENTERPRISE B2B PLATFORM</span>
+            <span className="tracking-wide">SYOLO TRAVELS myBiz &bull; ENTERPRISE B2B PLATFORM</span>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -64,7 +64,7 @@ export const BusinessLandingPage: React.FC<BusinessLandingPageProps> = ({
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
                 Smarter Business Travel Starts with{' '}
                 <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-200 bg-clip-text text-transparent">
-                  SS Journey myBiz
+                  Syolo Travels myBiz
                 </span>
               </h1>
 
@@ -361,10 +361,10 @@ export const BusinessLandingPage: React.FC<BusinessLandingPageProps> = ({
         <div className="max-w-[1000px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h3 className="text-2xl sm:text-3xl font-black tracking-tight">
-              Why Companies Switch to SS Journey myBiz
+              Why Companies Switch to Syolo Travels myBiz
             </h3>
             <p className="text-slate-400 text-xs sm:text-sm mt-2">
-              Comparing conventional unmanaged bookings vs the SS Journey myBiz platform.
+              Comparing conventional unmanaged bookings vs the Syolo Travels myBiz platform.
             </p>
           </div>
 
@@ -374,7 +374,7 @@ export const BusinessLandingPage: React.FC<BusinessLandingPageProps> = ({
                 <tr className="border-b border-slate-800 bg-slate-900/80">
                   <th className="py-4 px-5 font-bold text-slate-400 uppercase tracking-wider">Features</th>
                   <th className="py-4 px-5 font-bold text-rose-400 uppercase tracking-wider">Unmanaged Retail Booking</th>
-                  <th className="py-4 px-5 font-bold text-amber-400 uppercase tracking-wider bg-amber-500/10">SS Journey myBiz</th>
+                  <th className="py-4 px-5 font-bold text-amber-400 uppercase tracking-wider bg-amber-500/10">Syolo Travels myBiz</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">

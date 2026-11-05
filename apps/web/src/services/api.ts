@@ -1383,6 +1383,9 @@ export interface VendorRegisterPayload {
   property_type?: string;
   city: string;
   state?: string;
+  address?: string;
+  tax_id?: string;
+  room_count?: string;
   agree_terms: boolean;
 }
 

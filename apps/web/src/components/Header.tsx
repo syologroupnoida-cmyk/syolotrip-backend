@@ -234,7 +234,7 @@ export const Header: React.FC<HeaderProps> = ({
               label="For Business / myBiz"
               onClick={() => setActiveScreen(bizContext?.is_biz_user || user?.role?.includes('BUSINESS') || user?.role?.includes('AGENCY') ? 'business-dashboard' : 'business')}
               isActive={routeContext.isBusinessArea}
-              title="SS Journey myBiz &bull; Corporate Travel & Agencies"
+              title="Syolo Travels myBiz &bull; Corporate Travel & Agencies"
             />
 
             {/* List Your Property */}
@@ -780,7 +780,7 @@ export const Header: React.FC<HeaderProps> = ({
                     ? 'bg-[#222638]/85 hover:bg-[#2c324a] border border-white/15 text-white' 
                     : 'bg-[#1e293b] hover:bg-[#334155] border border-amber-500/50 text-white'
                 }`}
-                title="SS Journey myBiz Business Login"
+                title="Syolo Travels myBiz Business Login"
               >
                 <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-amber-400 via-orange-500 to-amber-600 flex items-center justify-center text-xs sm:text-sm font-black text-white shadow-xs shrink-0">
                   B

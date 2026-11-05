@@ -470,6 +470,45 @@ export async function reviewVendorProperty(
     );
 
     return { success: true, message: `Property rejected. Notification sent to vendor.` };
+  } else if (action === 'REQUEST_CHANGES') {
+    if (!reason || !reason.trim()) {
+      throw new Error('Specific feedback/reason is required when requesting property changes.');
+    }
+
+    await query(
+      `UPDATE hotels
+       SET publication_status = 'CHANGES_REQUESTED',
+           is_active = false,
+           admin_rejection_reason = $1,
+           updated_at = NOW()
+       WHERE id = $2`,
+      [reason.trim(), propertyId]
+    );
+
+    if (property.partner_id) {
+      const pRes = await query('SELECT user_id FROM partner_profiles WHERE id = $1', [property.partner_id]);
+      const vendorUserId = pRes.rows[0]?.user_id;
+      if (vendorUserId) {
+        await query(
+          `INSERT INTO vendor_notifications (vendor_id, user_id, title, message, type, reference_id)
+           VALUES ($1, $2, 'Property Changes Requested', $3, 'CHANGES_REQUESTED', $4)`,
+          [
+            property.partner_id,
+            vendorUserId,
+            `Admin requested updates for "${property.name}": ${reason.trim()}. Please review and update your listing.`,
+            propertyId,
+          ]
+        );
+      }
+    }
+
+    await query(
+      `INSERT INTO vendor_audit_logs (entity_type, entity_id, action, actor_id, actor_role, details)
+       VALUES ('PROPERTY', $1, 'PROPERTY_REQUEST_CHANGES', $2, 'ADMIN', $3)`,
+      [propertyId, adminUserId, JSON.stringify({ reason: reason.trim() })]
+    );
+
+    return { success: true, message: `Changes requested for property "${property.name}". Notification sent to vendor.` };
   }
 
   throw new Error(`Unknown action: ${action}`);
@@ -497,5 +536,362 @@ export async function getAdminNotifications() {
  */
 export async function markAdminNotificationRead(notificationId: string) {
   await query('UPDATE admin_notifications SET is_read = true WHERE id = $1', [notificationId]);
+}
+
+/**
+ * 9. Mark All Admin Notifications as Read
+ */
+export async function markAllAdminNotificationsRead() {
+  await query('UPDATE admin_notifications SET is_read = true WHERE is_read = false');
+}
+
+/**
+ * 10. Vendor Overview Dashboard Metrics & Queues
+ */
+export async function getAdminVendorOverview() {
+  const [
+    totalVendorsRes,
+    newRegRes,
+    pendingKycRes,
+    approvedVendorsRes,
+    rejectedVendorsRes,
+    suspendedVendorsRes,
+    totalPropertiesRes,
+    pendingPropertiesRes,
+    approvedPropertiesRes,
+    rejectedPropertiesRes,
+    unreadNotifRes,
+    recentVendorsRes,
+    pendingApprovalsRes,
+    recentActivityRes,
+  ] = await Promise.all([
+    query('SELECT COUNT(*) as c FROM partner_profiles'),
+    query("SELECT COUNT(*) as c FROM partner_profiles WHERE created_at >= NOW() - INTERVAL '30 days'"),
+    query("SELECT COUNT(*) as c FROM partner_profiles WHERE kyc_status IN ('KYC_SUBMITTED', 'PENDING_REVIEW')"),
+    query("SELECT COUNT(*) as c FROM partner_profiles WHERE kyc_status = 'KYC_APPROVED' AND is_verified = true"),
+    query("SELECT COUNT(*) as c FROM partner_profiles WHERE kyc_status = 'KYC_REJECTED'"),
+    query("SELECT COUNT(*) as c FROM partner_profiles WHERE onboarding_status = 'ACCOUNT_SUSPENDED' OR status = 'SUSPENDED'"),
+    query('SELECT COUNT(*) as c FROM hotels WHERE partner_id IS NOT NULL'),
+    query("SELECT COUNT(*) as c FROM hotels WHERE partner_id IS NOT NULL AND publication_status IN ('SUBMITTED', 'UNDER_REVIEW')"),
+    query("SELECT COUNT(*) as c FROM hotels WHERE partner_id IS NOT NULL AND publication_status = 'APPROVED'"),
+    query("SELECT COUNT(*) as c FROM hotels WHERE partner_id IS NOT NULL AND publication_status = 'REJECTED'"),
+    query('SELECT COUNT(*) as c FROM admin_notifications WHERE is_read = false'),
+    // Recent 5 registered vendors
+    query(`
+      SELECT p.id, p.business_name, p.owner_name, p.phone, p.city, p.state, p.kyc_status, p.onboarding_status, p.created_at, u.email as user_email
+      FROM partner_profiles p
+      JOIN users u ON p.user_id = u.id
+      ORDER BY p.created_at DESC
+      LIMIT 6
+    `),
+    // Pending Approvals queue (KYC + Properties)
+    query(`
+      SELECT 
+        h.id as item_id,
+        h.name as title,
+        h.property_type as category,
+        h.city,
+        h.submission_date as submitted_at,
+        h.publication_status as status,
+        p.id as vendor_id,
+        p.business_name as vendor_name,
+        'PROPERTY' as approval_type
+      FROM hotels h
+      JOIN partner_profiles p ON h.partner_id = p.id
+      WHERE h.publication_status IN ('SUBMITTED', 'UNDER_REVIEW')
+      UNION ALL
+      SELECT
+        p.id as item_id,
+        p.business_name as title,
+        p.property_type as category,
+        p.city,
+        p.kyc_submitted_at as submitted_at,
+        p.kyc_status as status,
+        p.id as vendor_id,
+        p.business_name as vendor_name,
+        'KYC' as approval_type
+      FROM partner_profiles p
+      WHERE p.kyc_status IN ('KYC_SUBMITTED', 'PENDING_REVIEW')
+      ORDER BY submitted_at DESC NULLS LAST
+      LIMIT 10
+    `),
+    // Recent Activity
+    query(`
+      SELECT a.*, u.email as actor_email
+      FROM vendor_audit_logs a
+      LEFT JOIN users u ON a.actor_id = u.id
+      ORDER BY a.created_at DESC
+      LIMIT 12
+    `),
+  ]);
+
+  const metrics = {
+    total_vendors: parseInt(totalVendorsRes.rows[0]?.c || '0', 10),
+    new_registrations: parseInt(newRegRes.rows[0]?.c || '0', 10),
+    pending_kyc: parseInt(pendingKycRes.rows[0]?.c || '0', 10),
+    approved_vendors: parseInt(approvedVendorsRes.rows[0]?.c || '0', 10),
+    rejected_vendors: parseInt(rejectedVendorsRes.rows[0]?.c || '0', 10),
+    suspended_vendors: parseInt(suspendedVendorsRes.rows[0]?.c || '0', 10),
+    total_properties: parseInt(totalPropertiesRes.rows[0]?.c || '0', 10),
+    pending_properties: parseInt(pendingPropertiesRes.rows[0]?.c || '0', 10),
+    approved_properties: parseInt(approvedPropertiesRes.rows[0]?.c || '0', 10),
+    rejected_properties: parseInt(rejectedPropertiesRes.rows[0]?.c || '0', 10),
+    unread_notifications: parseInt(unreadNotifRes.rows[0]?.c || '0', 10),
+  };
+
+  const badges = {
+    applications: metrics.new_registrations,
+    kyc: metrics.pending_kyc,
+    property_approvals: metrics.pending_properties,
+    notifications: metrics.unread_notifications,
+  };
+
+  return {
+    metrics,
+    badges,
+    recent_vendors: recentVendorsRes.rows,
+    pending_approvals: pendingApprovalsRes.rows,
+    recent_activity: recentActivityRes.rows,
+  };
+}
+
+/**
+ * 11. List All Properties Across All Vendors
+ */
+export async function getAdminAllVendorProperties(filters: {
+  search?: string;
+  status?: string;
+  property_type?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const { search, status, property_type, page = 1, limit = 20 } = filters;
+  const offset = (Math.max(1, page) - 1) * limit;
+
+  const conditions: string[] = ['h.partner_id IS NOT NULL'];
+  const values: any[] = [];
+  let idx = 1;
+
+  if (search) {
+    conditions.push(`(h.name ILIKE $${idx} OR h.city ILIKE $${idx} OR p.business_name ILIKE $${idx} OR p.owner_name ILIKE $${idx})`);
+    values.push(`%${search.trim()}%`);
+    idx++;
+  }
+
+  if (status && status !== 'ALL') {
+    if (status === 'PENDING') {
+      conditions.push(`h.publication_status IN ('SUBMITTED', 'UNDER_REVIEW')`);
+    } else if (status === 'APPROVED') {
+      conditions.push(`h.publication_status = 'APPROVED'`);
+    } else if (status === 'REJECTED') {
+      conditions.push(`h.publication_status = 'REJECTED'`);
+    } else if (status === 'INACTIVE') {
+      conditions.push(`(h.is_active = false OR h.publication_status = 'INACTIVE')`);
+    } else {
+      conditions.push(`h.publication_status = $${idx++}`);
+      values.push(status);
+    }
+  }
+
+  if (property_type && property_type !== 'ALL') {
+    conditions.push(`h.property_type = $${idx++}`);
+    values.push(property_type);
+  }
+
+  const whereClause = conditions.join(' AND ');
+
+  const countRes = await query(
+    `SELECT COUNT(*) as total
+     FROM hotels h
+     JOIN partner_profiles p ON h.partner_id = p.id
+     WHERE ${whereClause}`,
+    values
+  );
+  const total = parseInt(countRes.rows[0]?.total || '0', 10);
+
+  const dataRes = await query(
+    `SELECT 
+       h.*,
+       p.business_name as partner_business_name,
+       p.owner_name as partner_owner_name,
+       p.phone as partner_phone,
+       p.city as partner_city,
+       p.kyc_status as partner_kyc_status,
+       (SELECT COUNT(*) FROM hotel_rooms r WHERE r.hotel_id = h.id) as rooms_count
+     FROM hotels h
+     JOIN partner_profiles p ON h.partner_id = p.id
+     WHERE ${whereClause}
+     ORDER BY h.created_at DESC
+     LIMIT $${idx++} OFFSET $${idx++}`,
+    [...values, limit, offset]
+  );
+
+  return {
+    items: dataRes.rows,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
+
+/**
+ * 12. Get Detailed Vendor Property for Admin Review
+ */
+export async function getAdminVendorPropertyDetail(propertyId: string) {
+  const propRes = await query(
+    `SELECT 
+       h.*,
+       p.business_name as partner_business_name,
+       p.owner_name as partner_owner_name,
+       p.phone as partner_phone,
+       p.city as partner_city,
+       p.state as partner_state,
+       p.kyc_status as partner_kyc_status,
+       p.is_verified as partner_is_verified,
+       u.email as partner_email
+     FROM hotels h
+     JOIN partner_profiles p ON h.partner_id = p.id
+     JOIN users u ON p.user_id = u.id
+     WHERE h.id = $1`,
+    [propertyId]
+  );
+  if (propRes.rows.length === 0) {
+    throw new Error('Property not found');
+  }
+
+  const property = propRes.rows[0];
+
+  const roomsRes = await query(
+    `SELECT * FROM hotel_rooms WHERE hotel_id = $1 ORDER BY price_per_night ASC`,
+    [propertyId]
+  );
+
+  const auditRes = await query(
+    `SELECT a.*, u.email as actor_email
+     FROM vendor_audit_logs a
+     LEFT JOIN users u ON a.actor_id = u.id
+     WHERE a.entity_id = $1
+     ORDER BY a.created_at DESC LIMIT 15`,
+    [propertyId]
+  );
+
+  return {
+    property,
+    rooms: roomsRes.rows,
+    auditLogs: auditRes.rows,
+  };
+}
+
+/**
+ * 13. Review Initial Vendor Application (Registration Stage)
+ */
+export async function reviewVendorApplication(
+  adminUserId: string,
+  vendorId: string,
+  payload: { action: 'APPROVE' | 'REJECT' | 'REQUEST_INFO'; reason?: string; notes?: string }
+) {
+  const { action, reason, notes } = payload;
+  const vendorRes = await query('SELECT * FROM partner_profiles WHERE id = $1', [vendorId]);
+  if (vendorRes.rows.length === 0) {
+    throw new Error('Vendor application not found');
+  }
+  const vendor = vendorRes.rows[0];
+
+  if (action === 'APPROVE') {
+    await query(
+      `UPDATE partner_profiles
+       SET onboarding_status = 'APPLICATION_APPROVED',
+           admin_notes = $1,
+           updated_at = NOW()
+       WHERE id = $2`,
+      [notes || 'Vendor registration approved. Ready for KYC.', vendorId]
+    );
+
+    await query(
+      `INSERT INTO vendor_notifications (vendor_id, user_id, title, message, type)
+       VALUES ($1, $2, 'Partner Registration Approved', 'Your partner registration has been approved. Please submit your business KYC documents to unlock property listings.', 'APPLICATION_APPROVED')`,
+      [vendorId, vendor.user_id]
+    );
+
+    await query(
+      `INSERT INTO vendor_audit_logs (entity_type, entity_id, action, actor_id, actor_role, details)
+       VALUES ('VENDOR', $1, 'APPLICATION_APPROVE', $2, 'ADMIN', $3)`,
+      [vendorId, adminUserId, JSON.stringify({ action: 'APPROVE', notes })]
+    );
+
+    return { success: true, message: 'Vendor application approved.' };
+  } else if (action === 'REJECT') {
+    if (!reason || !reason.trim()) {
+      throw new Error('A rejection reason is mandatory when rejecting a vendor application.');
+    }
+
+    await query(
+      `UPDATE partner_profiles
+       SET onboarding_status = 'APPLICATION_REJECTED',
+           status = 'REJECTED',
+           rejection_reason = $1,
+           admin_notes = $2,
+           updated_at = NOW()
+       WHERE id = $3`,
+      [reason.trim(), notes || null, vendorId]
+    );
+
+    await query(
+      `INSERT INTO vendor_notifications (vendor_id, user_id, title, message, type)
+       VALUES ($1, $2, 'Partner Registration Application Update', $3, 'APPLICATION_REJECTED')`,
+      [vendorId, vendor.user_id, `Your partner registration was not accepted: ${reason.trim()}`]
+    );
+
+    await query(
+      `INSERT INTO vendor_audit_logs (entity_type, entity_id, action, actor_id, actor_role, details)
+       VALUES ('VENDOR', $1, 'APPLICATION_REJECT', $2, 'ADMIN', $3)`,
+      [vendorId, adminUserId, JSON.stringify({ action: 'REJECT', reason: reason.trim() })]
+    );
+
+    return { success: true, message: 'Vendor application rejected.' };
+  } else if (action === 'REQUEST_INFO') {
+    if (!notes || !notes.trim()) {
+      throw new Error('Please specify the information required from the vendor.');
+    }
+
+    await query(
+      `UPDATE partner_profiles
+       SET onboarding_status = 'INFO_REQUESTED',
+           admin_notes = $1,
+           updated_at = NOW()
+       WHERE id = $2`,
+      [notes.trim(), vendorId]
+    );
+
+    await query(
+      `INSERT INTO vendor_notifications (vendor_id, user_id, title, message, type)
+       VALUES ($1, $2, 'Additional Information Requested', $3, 'INFO_REQUESTED')`,
+      [vendorId, vendor.user_id, `Admin requested details: ${notes.trim()}`]
+    );
+
+    await query(
+      `INSERT INTO vendor_audit_logs (entity_type, entity_id, action, actor_id, actor_role, details)
+       VALUES ('VENDOR', $1, 'APPLICATION_REQUEST_INFO', $2, 'ADMIN', $3)`,
+      [vendorId, adminUserId, JSON.stringify({ action: 'REQUEST_INFO', notes: notes.trim() })]
+    );
+
+    return { success: true, message: 'Information request sent to vendor.' };
+  }
+
+  throw new Error(`Unknown review action: ${action}`);
+}
+
+/**
+ * 14. Get KYC Document File for Secure Preview
+ */
+export async function getVendorDocumentFile(docId: string) {
+  const docRes = await query('SELECT * FROM vendor_kyc_documents WHERE id = $1', [docId]);
+  if (docRes.rows.length === 0) {
+    throw new Error('Document not found');
+  }
+  return docRes.rows[0];
 }
 

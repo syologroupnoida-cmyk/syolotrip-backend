@@ -100,7 +100,7 @@ export const MyBizLandingPage: React.FC<MyBizLandingPageProps> = ({
                     my<span className="text-amber-400">Biz</span>
                   </h2>
                   <p className="text-xs text-slate-300 uppercase tracking-widest font-bold">
-                    By SS Journey &bull; Smart Business Travel
+                    By Syolo Travels &bull; Smart Business Travel
                   </p>
                 </div>
               </div>

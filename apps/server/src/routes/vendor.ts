@@ -31,6 +31,9 @@ router.post('/register', async (req, res) => {
       property_type = 'Hotel',
       city,
       state = '',
+      address = '',
+      tax_id = '',
+      room_count = '',
       agree_terms,
     } = req.body;
 
@@ -43,6 +46,9 @@ router.post('/register', async (req, res) => {
       property_type,
       city,
       state,
+      address,
+      tax_id,
+      room_count,
       agree_terms,
     });
 

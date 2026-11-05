@@ -387,7 +387,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({ onNavi
                         Vendor Onboarding Journey
                       </h2>
                       <p className="text-xs text-slate-500 mt-1">
-                        Complete all 3 onboarding milestones to publish your properties live on SS Journey.
+                        Complete all 3 onboarding milestones to publish your properties live on Syolo Travels.
                       </p>
                     </div>
 
@@ -408,7 +408,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({ onNavi
                       </div>
                       <h3 className="text-sm font-bold text-emerald-950">Partner Registration</h3>
                       <p className="text-[11px] text-emerald-800">
-                        Account created on official SS Journey extranet.
+                        Account created on official Syolo Travels extranet.
                       </p>
                     </div>
 
@@ -534,7 +534,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({ onNavi
                     </span>
                     <h3 className="text-xl font-black">0% Commission For Your First 30 Days!</h3>
                     <p className="text-xs text-blue-100">
-                      Keep 100% of your earnings on all bookings completed during your first 30 days on SS Journey.
+                      Keep 100% of your earnings on all bookings completed during your first 30 days on Syolo Travels.
                     </p>
                   </div>
                 </div>

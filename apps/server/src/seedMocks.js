@@ -153,29 +153,34 @@ async function seedMocks() {
   // ==========================================
   // 2. MOCK MYBIZ CORPORATE ACCOUNT
   // ==========================================
-  const corpEmail = 'corp.admin@ssjourney.com';
+  const corpEmails = ['corp.admin@syolotravels.com', 'corp.admin@ssjourney.com'];
   const corpPass = await bcrypt.hash('CorpPass123!', 10);
 
-  let corpUserRes = await client.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [corpEmail]);
-  let corpUserId;
-  if (corpUserRes.rows.length === 0) {
-    const insUser = await client.query(
-      `INSERT INTO users (email, hashed_password, full_name, phone, role, is_active, is_verified)
-       VALUES ($1, $2, 'Arjun Mehta', '+91 98111 55566', 'BUSINESS_ADMIN', true, true)
-       RETURNING id`,
-      [corpEmail, corpPass]
-    );
-    corpUserId = insUser.rows[0].id;
-  } else {
-    corpUserId = corpUserRes.rows[0].id;
-    await client.query(
-      'UPDATE users SET hashed_password = $1, role = \'BUSINESS_ADMIN\', is_active = true WHERE id = $2',
-      [corpPass, corpUserId]
-    );
+  let primaryCorpUserId = null;
+  for (const cEmail of corpEmails) {
+    let corpUserRes = await client.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [cEmail]);
+    let cUserId;
+    if (corpUserRes.rows.length === 0) {
+      const insUser = await client.query(
+        `INSERT INTO users (email, hashed_password, full_name, phone, role, is_active, is_verified)
+         VALUES ($1, $2, 'Arjun Mehta', '+91 98111 55566', 'BUSINESS_ADMIN', true, true)
+         RETURNING id`,
+        [cEmail, corpPass]
+      );
+      cUserId = insUser.rows[0].id;
+    } else {
+      cUserId = corpUserRes.rows[0].id;
+      await client.query(
+        'UPDATE users SET hashed_password = $1, role = \'BUSINESS_ADMIN\', is_active = true WHERE id = $2',
+        [corpPass, cUserId]
+      );
+    }
+    if (!primaryCorpUserId) primaryCorpUserId = cUserId;
   }
+  const corpUserId = primaryCorpUserId;
   console.log('Corp User ID:', corpUserId);
 
-  let compRes = await client.query('SELECT id FROM mybiz_companies WHERE billing_email = $1', [corpEmail]);
+  let compRes = await client.query('SELECT id FROM mybiz_companies WHERE billing_email = $1 OR billing_email = $2', [corpEmails[0], corpEmails[1]]);
   let corpCompanyId;
   if (compRes.rows.length === 0) {
     const insComp = await client.query(
@@ -189,7 +194,7 @@ async function seedMocks() {
          'RMZ Infinity, Tower D, Old Madras Road', 'Bengaluru', 'Karnataka', 'India', '560016',
          500000, 145200, 'VERIFIED', NOW(), true
        ) RETURNING id`,
-      [corpEmail]
+      [corpEmails[0]]
     );
     corpCompanyId = insComp.rows[0].id;
   } else {
@@ -198,13 +203,14 @@ async function seedMocks() {
       `UPDATE mybiz_companies SET
          name = 'Acme Technologies India Pvt Ltd',
          account_type = 'CORPORATE',
+         billing_email = $2,
          verification_status = 'VERIFIED',
          credit_limit = 500000,
          used_credit = 145200,
          verified_at = NOW(),
          is_active = true
        WHERE id = $1`,
-      [corpCompanyId]
+      [corpCompanyId, corpEmails[0]]
     );
   }
   console.log('Corp Company ID:', corpCompanyId);
@@ -212,12 +218,17 @@ async function seedMocks() {
   // Clean previous employees for this company
   await client.query('DELETE FROM mybiz_employees WHERE company_id = $1', [corpCompanyId]);
 
-  // Insert corp admin employee entry
-  await client.query(
-    `INSERT INTO mybiz_employees (company_id, user_id, email, full_name, department, designation, role, status)
-     VALUES ($1, $2, $3, 'Arjun Mehta', 'Executive', 'VP of Operations', 'BIZ_ADMIN', 'ACTIVE')`,
-    [corpCompanyId, corpUserId, corpEmail]
-  );
+  // Insert corp admin employee entries for both emails
+  for (const cEmail of corpEmails) {
+    const uRes = await client.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [cEmail]);
+    if (uRes.rows.length > 0) {
+      await client.query(
+        `INSERT INTO mybiz_employees (company_id, user_id, email, full_name, department, designation, role, status)
+         VALUES ($1, $2, $3, 'Arjun Mehta', 'Executive', 'VP of Operations', 'BIZ_ADMIN', 'ACTIVE')`,
+        [corpCompanyId, uRes.rows[0].id, cEmail]
+      );
+    }
+  }
 
   // Add other team members
   await client.query(
@@ -257,29 +268,34 @@ async function seedMocks() {
   // ==========================================
   // 3. MOCK MYBIZ TRAVEL AGENCY ACCOUNT
   // ==========================================
-  const agencyEmail = 'agency.admin@ssjourney.com';
+  const agencyEmails = ['agency.admin@syolotravels.com', 'agency.admin@ssjourney.com'];
   const agencyPass = await bcrypt.hash('AgencyPass123!', 10);
 
-  let agencyUserRes = await client.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [agencyEmail]);
-  let agencyUserId;
-  if (agencyUserRes.rows.length === 0) {
-    const insUser = await client.query(
-      `INSERT INTO users (email, hashed_password, full_name, phone, role, is_active, is_verified)
-       VALUES ($1, $2, 'Sunita Chawla', '+91 98222 77788', 'AGENCY_ADMIN', true, true)
-       RETURNING id`,
-      [agencyEmail, agencyPass]
-    );
-    agencyUserId = insUser.rows[0].id;
-  } else {
-    agencyUserId = agencyUserRes.rows[0].id;
-    await client.query(
-      'UPDATE users SET hashed_password = $1, role = \'AGENCY_ADMIN\', is_active = true WHERE id = $2',
-      [agencyPass, agencyUserId]
-    );
+  let primaryAgencyUserId = null;
+  for (const aEmail of agencyEmails) {
+    let agencyUserRes = await client.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [aEmail]);
+    let aUserId;
+    if (agencyUserRes.rows.length === 0) {
+      const insUser = await client.query(
+        `INSERT INTO users (email, hashed_password, full_name, phone, role, is_active, is_verified)
+         VALUES ($1, $2, 'Sunita Chawla', '+91 98222 77788', 'AGENCY_ADMIN', true, true)
+         RETURNING id`,
+        [aEmail, agencyPass]
+      );
+      aUserId = insUser.rows[0].id;
+    } else {
+      aUserId = agencyUserRes.rows[0].id;
+      await client.query(
+        'UPDATE users SET hashed_password = $1, role = \'AGENCY_ADMIN\', is_active = true WHERE id = $2',
+        [agencyPass, aUserId]
+      );
+    }
+    if (!primaryAgencyUserId) primaryAgencyUserId = aUserId;
   }
+  const agencyUserId = primaryAgencyUserId;
   console.log('Agency User ID:', agencyUserId);
 
-  let agencyCompRes = await client.query('SELECT id FROM mybiz_companies WHERE billing_email = $1', [agencyEmail]);
+  let agencyCompRes = await client.query('SELECT id FROM mybiz_companies WHERE billing_email = $1 OR billing_email = $2', [agencyEmails[0], agencyEmails[1]]);
   let agencyCompanyId;
   if (agencyCompRes.rows.length === 0) {
     const insComp = await client.query(
@@ -293,7 +309,7 @@ async function seedMocks() {
          'Nariman Point Business Chambers', 'Mumbai', 'Maharashtra', 'India', '400021',
          1000000, 320000, 'VERIFIED', NOW(), true
        ) RETURNING id`,
-      [agencyEmail]
+      [agencyEmails[0]]
     );
     agencyCompanyId = insComp.rows[0].id;
   } else {
@@ -302,13 +318,14 @@ async function seedMocks() {
       `UPDATE mybiz_companies SET
          name = 'Skyline Horizons Travel Agency',
          account_type = 'AGENCY',
+         billing_email = $2,
          verification_status = 'VERIFIED',
          credit_limit = 1000000,
          used_credit = 320000,
          verified_at = NOW(),
          is_active = true
        WHERE id = $1`,
-      [agencyCompanyId]
+      [agencyCompanyId, agencyEmails[0]]
     );
   }
   console.log('Agency Company ID:', agencyCompanyId);
@@ -316,12 +333,17 @@ async function seedMocks() {
   // Clean previous employees for this agency
   await client.query('DELETE FROM mybiz_employees WHERE company_id = $1', [agencyCompanyId]);
 
-  // Insert agency admin
-  await client.query(
-    `INSERT INTO mybiz_employees (company_id, user_id, email, full_name, department, designation, role, status, commission_rate, booking_permission)
-     VALUES ($1, $2, $3, 'Sunita Chawla', 'Operations', 'Agency Principal', 'BIZ_ADMIN', 'ACTIVE', 10.0, 'FULL_BOOKING')`,
-    [agencyCompanyId, agencyUserId, agencyEmail]
-  );
+  // Insert agency admin entries for both emails
+  for (const aEmail of agencyEmails) {
+    const uRes = await client.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [aEmail]);
+    if (uRes.rows.length > 0) {
+      await client.query(
+        `INSERT INTO mybiz_employees (company_id, user_id, email, full_name, department, designation, role, status, commission_rate, booking_permission)
+         VALUES ($1, $2, $3, 'Sunita Chawla', 'Operations', 'Agency Principal', 'BIZ_ADMIN', 'ACTIVE', 10.0, 'FULL_BOOKING')`,
+        [agencyCompanyId, uRes.rows[0].id, aEmail]
+      );
+    }
+  }
 
   // Insert sub-agents
   await client.query(
