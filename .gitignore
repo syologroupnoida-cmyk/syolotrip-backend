@@ -3,23 +3,9 @@ node_modules/
 .pnp
 .pnp.js
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-.venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Testing & Coverage
-.coverage
-htmlcov/
-.pytest_cache/
+# Uploads & User Generated Content
+uploads/
+apps/server/uploads/
 
 # Production builds
 dist/

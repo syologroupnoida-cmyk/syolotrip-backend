@@ -9,8 +9,9 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/*.test.mjs",
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
     "seed": "tsx src/seed.ts",
+    "seed:mocks": "node src/seedMocks.js",
     "seed:locations": "tsx src/db/ingestReferenceData.ts",
     "import:locations": "tsx src/db/ingestReferenceData.ts",
     "import:packages": "tsx src/db/ingestHolidayPackages.ts"

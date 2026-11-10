@@ -1,6 +1,6 @@
-# SS Journey (SuccessSign Journey)
+# Syolo Travels (SS Journey Platform)
 
-A professional, scalable travel booking platform — **Explore · Book · Travel · More** — built with clean architecture, strict modularity, and production-grade engineering principles.
+A professional, scalable full-stack travel booking & management platform — **Explore · Book · Travel · Manage** — built with clean monorepo architecture, strict modularity, and modern Node.js and TypeScript engineering.
 
 ---
 
@@ -9,34 +9,17 @@ A professional, scalable travel booking platform — **Explore · Book · Travel
 ```text
 traveler/
 ├── apps/
-│   ├── web/               # Customer Travel Portal (Vite + React + TS + Tailwind)
-│   ├── admin/             # Operations & Inventory Dashboard (Vite + React + TS + Tailwind)
-│   └── mobile/            # Customer Mobile App (Expo SDK 57 + React Native + TS)
-├── backend/
-│   ├── app/
-│   │   ├── api/v1/        # API v1 versioned endpoints
-│   │   ├── core/          # App configuration, security, database sessions
-│   │   ├── dependencies/  # FastAPI dependency injection
-│   │   ├── models/        # SQLAlchemy 2.0 ORM models
-│   │   ├── providers/     # Travel provider adapter contracts & mock providers
-│   │   │   ├── flights/
-│   │   │   ├── hotels/
-│   │   │   ├── buses/
-│   │   │   ├── packages/
-│   │   │   └── payments/
-│   │   ├── repositories/  # Database access layer
-│   │   ├── schemas/       # Pydantic v2 validation models
-│   │   ├── services/      # Business logic layer
-│   │   └── main.py        # FastAPI entrypoint
-│   ├── migrations/        # Alembic database migrations
-│   ├── tests/             # Automated test suite (pytest)
-│   └── requirements.txt   # Backend Python dependencies
+│   ├── web/               # Customer Travel Portal & B2B myBiz Portal (Vite + React + TS + Tailwind)
+│   ├── admin/             # Platform Admin & Operations Dashboard (Vite + React + TS + Tailwind)
+│   ├── mobile/            # Syolo Trips Customer Mobile App (Expo + React Native + TS)
+│   ├── partner/           # Syolo Travels Partner Extranet Mobile App (Expo + React Native + TS)
+│   └── server/            # REST API Backend (Node.js + Express + TypeScript + PostgreSQL)
 ├── packages/
-│   └── contracts/         # Shared TypeScript interfaces & API contracts
-├── docs/                  # Architecture & operational documentation
+│   └── contracts/         # Shared TypeScript interfaces, types & API contracts
+├── data/                  # Cleaned reference datasets (e.g. Holiday packages catalog)
 ├── docker-compose.yml     # Local PostgreSQL service
-├── .env.example           # Environment template
-└── README.md
+├── .env.example           # Environment configuration template
+└── package.json           # Monorepo workspaces definition
 ```
 
 ---
@@ -45,66 +28,59 @@ traveler/
 
 ### 1. Prerequisites
 - **Node.js**: >= 20.x (tested on v22.x)
-- **Python**: >= 3.11 (tested on 3.14.x)
-- **Docker**: For local PostgreSQL database (or standalone PostgreSQL instance)
+- **npm**: >= 10.x
+- **Docker**: For local PostgreSQL database (or an existing PostgreSQL instance)
 
-### 2. Backend Setup
+### 2. Environment Setup
 ```bash
-# In repository root:
-python -m venv .venv
+# Copy environment configuration
+cp .env.example .env
 
-# Activate virtual environment (Windows PowerShell)
-.\.venv\Scripts\Activate.ps1
-# (Linux/macOS)
-# source .venv/bin/activate
-
-# Install dependencies
-pip install -r backend/requirements.txt
-
-# Start PostgreSQL via Docker Compose
-docker compose up -d db
-
-# Run backend server
-python -m uvicorn backend.app.main:app --reload --port 8000
+# Start local PostgreSQL database container
+docker compose up -d
 ```
 
-Backend health endpoints:
-- `http://localhost:8000/healthz`
-- `http://localhost:8000/api/v1/health`
-- Swagger UI: `http://localhost:8000/docs`
-
-### 3. Frontend Setup (Monorepo)
+### 3. Install Dependencies
 ```bash
-# Install all workspace dependencies
+# Install all workspace dependencies across the monorepo
 npm install
-
-# Start Customer Web App (Port 5173)
-npm run dev:web
-
-# Start Admin Dashboard (Port 5174)
-npm run dev:admin
-
-# Start Customer Mobile App (Expo)
-npm run dev:mobile
 ```
+
+### 4. Build Shared Contracts & Seed Database
+```bash
+# Build the shared contracts package
+npm --workspace=@traveler/contracts run build
+
+# Seed database with initial reference data & holiday packages
+npm run backend:seed
+```
+
+### 5. Running Applications
+
+| Application | Command | Default Port / URL |
+|---|---|---|
+| **Backend API Server** | `npm run dev:backend` | http://localhost:8000 |
+| **Customer Web App** | `npm run dev:web` | http://localhost:5173 |
+| **Admin Control Panel** | `npm run dev:admin` | http://localhost:5174 |
+| **Customer Mobile App** | `npm run mobile:web` (or `npm run dev:mobile`) | http://localhost:8081 |
+| **Partner Mobile App** | `npm run partner:web` (or `npm run dev:partner`) | http://localhost:8082 |
 
 ---
 
 ## 🧪 Testing & Verification
 
-### Backend Tests
 ```bash
-.\.venv\Scripts\pytest backend/tests -v
-```
+# Run backend test suite (Node.js native test runner)
+npm --workspace=@traveler/server run test
 
-### Frontend Typecheck & Build
-```bash
+# Typecheck all workspaces
 npm run typecheck
+
+# Production build for all workspaces
 npm run build
 ```
 
 ---
 
 ## 🛡️ Phase 1 Disclosure
-> **Simulated Travel Notice:** All travel inventory, quotes, flights, hotel rooms, and bookings created in Phase 1 are simulated mock operations. No actual airline tickets, hotel reservations, or payment charges are processed.
-# traveler-
+> **Simulated Travel Notice:** All travel inventory, quotes, flights, hotel rooms, and bookings created in Phase 1 are simulated operations. No actual airline tickets, hotel reservations, or real payment charges are processed.

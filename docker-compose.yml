@@ -17,24 +17,5 @@ services:
       timeout: 5s
       retries: 5
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: traveler-backend
-    restart: always
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgrespassword@postgres:5432/traveler_db
-      SECRET_KEY: dev-super-secret-jwt-key-change-in-prod-minimum-32-chars-long
-      ACCESS_TOKEN_EXPIRE_MINUTES: 1440
-      BACKEND_CORS_ORIGINS: '["http://localhost:5173","http://localhost:5174","http://localhost:8081","*"]'
-      ENVIRONMENT: production
-      PORT: 8000
-    ports:
-      - "8000:8000"
-
 volumes:
   pgdata:
