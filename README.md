@@ -17,7 +17,6 @@ traveler/
 ├── packages/
 │   └── contracts/         # Shared TypeScript interfaces, types & API contracts
 ├── data/                  # Cleaned reference datasets (e.g. Holiday packages catalog)
-├── docker-compose.yml     # Local PostgreSQL service
 ├── .env.example           # Environment configuration template
 └── package.json           # Monorepo workspaces definition
 ```
@@ -29,15 +28,12 @@ traveler/
 ### 1. Prerequisites
 - **Node.js**: >= 20.x (tested on v22.x)
 - **npm**: >= 10.x
-- **Docker**: For local PostgreSQL database (or an existing PostgreSQL instance)
+- **PostgreSQL**: Version 14+ running locally or in cloud (default port 5432)
 
 ### 2. Environment Setup
 ```bash
 # Copy environment configuration
 cp .env.example .env
-
-# Start local PostgreSQL database container
-docker compose up -d
 ```
 
 ### 3. Install Dependencies
