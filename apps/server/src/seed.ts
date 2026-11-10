@@ -13,11 +13,12 @@ async function seed() {
   console.log('[SEED] Starting database seed...');
 
   // 1. Users
-  const adminPass = await bcrypt.hash('Admin@123456', 10);
+  const adminRawPass = process.env.ADMIN_PASSWORD || 'ADMIN~321';
+  const adminPass = await bcrypt.hash(adminRawPass, 10);
   await query(
     `INSERT INTO users (email, full_name, phone, hashed_password, role, is_active, is_verified)
      VALUES ('admin@ssjourney.com', 'Operations Admin', '+91 98765 43210', $1, 'ADMIN', true, true)
-     ON CONFLICT (email) DO NOTHING`,
+     ON CONFLICT (email) DO UPDATE SET hashed_password = $1`,
     [adminPass]
   );
 

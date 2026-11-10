@@ -241,7 +241,7 @@ export const AdminLoginPage: React.FC = () => {
                 type="button"
                 onClick={() => {
                   setEmail('admin@ssjourney.com');
-                  setPassword('Admin@123456');
+                  setPassword('ADMIN~321');
                 }}
                 className="text-brand-400 hover:text-brand-300 font-medium underline underline-offset-2 cursor-pointer"
               >
