@@ -1,0 +1,40 @@
+{
+  "name": "syolotrip-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SyoloTrip Unified Backend API Service",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch app/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
+    "seed": "tsx app/seed.ts",
+    "seed:mocks": "node app/seedMocks.js",
+    "seed:locations": "tsx app/database/ingestReferenceData.ts",
+    "import:packages": "tsx app/database/ingestHolidayPackages.ts"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1",
+    "uuid": "^11.0.5",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.8",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "@types/uuid": "^10.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
+
